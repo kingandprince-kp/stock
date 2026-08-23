@@ -1,0 +1,2197 @@
+"use client";
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { supabase } from "@/app/lib/supabase";
+
+const GOAL = 300000;
+
+const PREFECTURE_GROUPS = [
+  {
+    region: "北海道・東北",
+    prefectures: [
+      "北海道",
+      "青森県",
+      "岩手県",
+      "宮城県",
+      "秋田県",
+      "山形県",
+      "福島県",
+    ],
+  },
+  {
+    region: "関東",
+    prefectures: [
+      "茨城県",
+      "栃木県",
+      "群馬県",
+      "埼玉県",
+      "千葉県",
+      "東京都",
+      "神奈川県",
+    ],
+  },
+  {
+    region: "中部",
+    prefectures: [
+      "新潟県",
+      "富山県",
+      "石川県",
+      "福井県",
+      "山梨県",
+      "長野県",
+      "岐阜県",
+      "静岡県",
+      "愛知県",
+    ],
+  },
+  {
+    region: "近畿",
+    prefectures: [
+      "三重県",
+      "滋賀県",
+      "京都府",
+      "大阪府",
+      "兵庫県",
+      "奈良県",
+      "和歌山県",
+    ],
+  },
+  {
+    region: "中国",
+    prefectures: [
+      "鳥取県",
+      "島根県",
+      "岡山県",
+      "広島県",
+      "山口県",
+    ],
+  },
+  {
+    region: "四国",
+    prefectures: [
+      "徳島県",
+      "香川県",
+      "愛媛県",
+      "高知県",
+    ],
+  },
+  {
+    region: "九州・沖縄",
+    prefectures: [
+      "福岡県",
+      "佐賀県",
+      "長崎県",
+      "熊本県",
+      "大分県",
+      "宮崎県",
+      "鹿児島県",
+      "沖縄県",
+    ],
+  },
+];
+
+const PREFECTURES = PREFECTURE_GROUPS.flatMap(
+  (group) => group.prefectures
+);
+
+const PREFECTURE_ORDER = new Map(
+  PREFECTURES.map((prefecture, index) => [
+    prefecture,
+    index,
+  ])
+);
+
+const CHAIN_PRIORITY = [
+  "タワーレコード",
+  "HMV",
+  "新星堂",
+  "紀伊國屋書店",
+  "TSUTAYA",
+  "アニメイト",
+  "玉光堂",
+  "バンダレコード",
+  "くまざわ書店",
+  "ACADEMIA",
+];
+
+type Store = {
+  id: number;
+  prefecture: string;
+  city: string | null;
+  name: string;
+  chain_name: string | null;
+  store_type: string | null;
+  online_url: string | null;
+  oricon_target: boolean | null;
+  billboard_status:
+    | "target"
+    | "check_store"
+    | "not_target"
+    | null;
+  address: string | null;
+  phone: string | null;
+  business_hours: string | null;
+  official_url: string | null;
+};
+
+type Product = {
+  id: number;
+  name: string;
+  sort_order: number | null;
+};
+
+type InventoryReport = {
+  id: number;
+  store_id: number;
+  product_id: number;
+  quantity: number;
+  comment: string | null;
+  created_at: string;
+};
+
+type SalesSummary = {
+  id: number;
+  today_sales: number;
+  weekly_sales: number;
+  total_sales: number;
+  goal: number;
+  updated_at: string;
+};
+
+type SearchMode = "physical" | "online";
+
+export default function Home() {
+  const [stores, setStores] = useState<Store[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [reports, setReports] = useState<InventoryReport[]>([]);
+
+  const [loading, setLoading] = useState(true);
+  const [dataError, setDataError] = useState("");
+
+  const [searchMode, setSearchMode] =
+    useState<SearchMode>("physical");
+  const [prefecture, setPrefecture] = useState("全国");
+  const [search, setSearch] = useState("");
+
+  const [reportMode, setReportMode] =
+    useState<SearchMode>("physical");
+  const [reportPrefecture, setReportPrefecture] =
+    useState("北海道");
+  const [reportStoreSearch, setReportStoreSearch] =
+    useState("");
+  const [reportStoreId, setReportStoreId] = useState("");
+  const [reportProductId, setReportProductId] = useState("");
+  const [reportQuantity, setReportQuantity] = useState("");
+  const [reportComment, setReportComment] = useState("");
+
+  const [submitting, setSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [requestOpen, setRequestOpen] = useState(false);
+  const [requestName, setRequestName] = useState("");
+  const [requestChainName, setRequestChainName] = useState("");
+  const [requestCity, setRequestCity] = useState("");
+  const [requestComment, setRequestComment] = useState("");
+  const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [requestMessage, setRequestMessage] = useState("");
+  const [requestError, setRequestError] = useState("");
+  const [salesData, setSalesData] =
+  useState<SalesSummary | null>(null);
+
+ const sales = salesData?.total_sales ?? 0;
+const today = salesData?.today_sales ?? 0;
+const week = salesData?.weekly_sales ?? 0;
+const goal = salesData?.goal ?? GOAL;
+
+const remain = Math.max(goal - sales, 0);
+
+const percent =
+  goal > 0
+    ? Math.min((sales / goal) * 100, 100)
+    : 0;
+
+  const loadInventoryReports = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("inventory_reports")
+      .select(
+        "id, store_id, product_id, quantity, comment, created_at"
+      )
+      .order("created_at", { ascending: false })
+      .limit(5000);
+
+    if (error) {
+      console.error("inventory_reports error:", error);
+      return;
+    }
+
+    setReports((data ?? []) as InventoryReport[]);
+  }, []);
+  const loadSalesData = useCallback(async () => {
+  const { data, error } = await supabase.rpc(
+    "get_sales_summary"
+  );
+
+  if (error) {
+    console.error("get_sales_summary error:", error);
+    return;
+  }
+
+  const latest =
+    Array.isArray(data) && data.length > 0
+      ? (data[0] as SalesSummary)
+      : null;
+
+  setSalesData(latest);
+}, []);
+
+  useEffect(() => {
+    async function loadInitialData() {
+      setLoading(true);
+      setDataError("");
+
+      const [storesResult, productsResult] = await Promise.all([
+        supabase
+          .from("stores")
+          .select(`
+            id,
+            prefecture,
+            city,
+            name,
+            chain_name,
+            store_type,
+            online_url,
+            oricon_target,
+            billboard_status,
+            address,
+            phone,
+            business_hours,
+            official_url
+          `)
+          .limit(2000),
+
+        supabase
+          .from("products")
+          .select("id, name, sort_order")
+          .order("sort_order", { ascending: true }),
+      ]);
+
+      if (storesResult.error) {
+        setDataError(
+          `店舗データを読み込めませんでした：${storesResult.error.message}`
+        );
+        setLoading(false);
+        return;
+      }
+
+      if (productsResult.error) {
+        setDataError(
+          `商品データを読み込めませんでした：${productsResult.error.message}`
+        );
+        setLoading(false);
+        return;
+      }
+
+      const loadedStores =
+        (storesResult.data ?? []) as Store[];
+
+      const loadedProducts =
+        (productsResult.data ?? []) as Product[];
+
+      setStores(loadedStores);
+      setProducts(loadedProducts);
+
+      if (loadedProducts.length > 0) {
+        setReportProductId(String(loadedProducts[0].id));
+      }
+
+      await Promise.all([
+  loadInventoryReports(),
+  loadSalesData(),
+]);
+
+setLoading(false);
+    }
+
+    loadInitialData();
+  }, [loadInventoryReports, loadSalesData]);
+
+  const physicalStores = useMemo(() => {
+    return stores.filter(
+      (store) =>
+        store.store_type !== "online" &&
+        store.prefecture !== "オンライン"
+    );
+  }, [stores]);
+
+  const onlineStores = useMemo(() => {
+    return stores.filter(
+      (store) =>
+        store.store_type === "online" ||
+        store.prefecture === "オンライン"
+    );
+  }, [stores]);
+
+  const visibleStores = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+
+    if (searchMode === "online") {
+      return [...onlineStores]
+        .filter((store) => {
+          if (!keyword) return true;
+
+          return (
+            getDisplayStoreName(store)
+              .toLowerCase()
+              .includes(keyword) ||
+            store.name.toLowerCase().includes(keyword) ||
+            (store.chain_name ?? "")
+              .toLowerCase()
+              .includes(keyword)
+          );
+        })
+        .sort(compareOnlineStores);
+    }
+
+    return [...physicalStores]
+      .filter((store) => {
+        const matchPrefecture =
+          prefecture === "全国" ||
+          store.prefecture === prefecture;
+
+        const matchSearch =
+          !keyword ||
+          getDisplayStoreName(store)
+            .toLowerCase()
+            .includes(keyword) ||
+          store.name.toLowerCase().includes(keyword) ||
+          (store.chain_name ?? "")
+            .toLowerCase()
+            .includes(keyword) ||
+          (store.city ?? "")
+            .toLowerCase()
+            .includes(keyword) ||
+          (store.address ?? "")
+            .toLowerCase()
+            .includes(keyword);
+
+        return matchPrefecture && matchSearch;
+      })
+      .sort((a, b) =>
+        comparePhysicalStores(a, b, prefecture)
+      );
+  }, [
+    physicalStores,
+    onlineStores,
+    searchMode,
+    prefecture,
+    search,
+  ]);
+
+  const reportCandidates = useMemo(() => {
+    const keyword =
+      reportStoreSearch.trim().toLowerCase();
+
+    const baseStores =
+      reportMode === "online"
+        ? onlineStores
+        : physicalStores.filter(
+            (store) => store.prefecture === reportPrefecture
+          );
+
+    return [...baseStores]
+      .filter((store) => {
+        if (!keyword) return true;
+
+        return (
+          getDisplayStoreName(store)
+            .toLowerCase()
+            .includes(keyword) ||
+          store.name.toLowerCase().includes(keyword) ||
+          (store.chain_name ?? "")
+            .toLowerCase()
+            .includes(keyword) ||
+          (store.city ?? "")
+            .toLowerCase()
+            .includes(keyword)
+        );
+      })
+      .sort(
+        reportMode === "online"
+          ? compareOnlineStores
+          : (a, b) =>
+              comparePhysicalStores(
+                a,
+                b,
+                reportPrefecture
+              )
+      );
+  }, [
+    reportMode,
+    reportPrefecture,
+    reportStoreSearch,
+    physicalStores,
+    onlineStores,
+  ]);
+
+  const latestReportMap = useMemo(() => {
+    const map = new Map<string, InventoryReport>();
+
+    for (const report of reports) {
+      const key = `${report.store_id}-${report.product_id}`;
+
+      if (!map.has(key)) {
+        map.set(key, report);
+      }
+    }
+
+    return map;
+  }, [reports]);
+
+  const latestFiveReports = reports.slice(0, 5);
+
+  const getLatestReport = (
+    storeId: number,
+    productId: number
+  ) =>
+    latestReportMap.get(`${storeId}-${productId}`) ?? null;
+
+  const getStoreName = (storeId: number) => {
+    const store = stores.find((item) => item.id === storeId);
+
+    return store ? getDisplayStoreName(store) : "店舗不明";
+  };
+
+  const getProductName = (productId: number) =>
+    products.find((product) => product.id === productId)
+      ?.name ?? "商品不明";
+
+  const selectedReportStore =
+    stores.find(
+      (store) => String(store.id) === reportStoreId
+    ) ?? null;
+
+  const formatDate = (dateString: string) =>
+    new Intl.DateTimeFormat("ja-JP", {
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(dateString));
+
+  async function handleSubmitReport() {
+  setSubmitMessage("");
+  setSubmitError("");
+
+  if (!reportStoreId) {
+    setSubmitError("店舗を選択してください。");
+    return;
+  }
+
+  if (!reportProductId) {
+    setSubmitError("商品を選択してください。");
+    return;
+  }
+
+  if (reportQuantity.trim() === "") {
+    setSubmitError("在庫枚数を入力してください。");
+    return;
+  }
+
+  const quantity = Number(reportQuantity);
+
+  if (
+    !Number.isInteger(quantity) ||
+    quantity < 0 ||
+    quantity > 999
+  ) {
+    setSubmitError(
+      "在庫枚数は0〜999の整数で入力してください。"
+    );
+    return;
+  }
+
+  if (reportComment.length > 500) {
+    setSubmitError(
+      "コメントは500文字以内で入力してください。"
+    );
+    return;
+  }
+
+  setSubmitting(true);
+
+  try {
+    // ブラウザごとの識別IDを作成
+    // 個人情報ではなく、連投制限のためだけに使用
+    let clientId = localStorage.getItem(
+      "kp_inventory_client_id"
+    );
+
+    if (!clientId) {
+      clientId = crypto.randomUUID();
+
+      localStorage.setItem(
+        "kp_inventory_client_id",
+        clientId
+      );
+    }
+
+    const { error } = await supabase.rpc(
+      "submit_inventory_report",
+      {
+        p_store_id: Number(reportStoreId),
+        p_product_id: Number(reportProductId),
+        p_quantity: quantity,
+        p_comment:
+          reportComment.trim() === ""
+            ? null
+            : reportComment.trim(),
+        p_client_id: clientId,
+      }
+    );
+
+    if (error) {
+      console.error(
+        "submit_inventory_report error:",
+        error
+      );
+
+      let message = error.message;
+
+      if (
+        message.includes(
+          "同じ店舗・同じ商品への連続投稿"
+        )
+      ) {
+        message =
+          "同じ店舗・同じ商品への再投稿は、3分ほど時間をおいてください。";
+      } else if (
+        message.includes(
+          "短時間に投稿が集中"
+        )
+      ) {
+        message =
+          "短時間に投稿が集中しています。少し時間をおいてから投稿してください。";
+      }
+
+      setSubmitError(message);
+      return;
+    }
+
+    setSubmitMessage(
+      "在庫情報を投稿しました。"
+    );
+
+    setReportQuantity("");
+    setReportComment("");
+
+    await loadInventoryReports();
+  } catch (error) {
+    console.error(error);
+
+    setSubmitError(
+      "投稿中にエラーが発生しました。もう一度お試しください。"
+    );
+  } finally {
+    setSubmitting(false);
+  }
+}
+
+async function handleStoreRequest() {
+  setRequestMessage("");
+  setRequestError("");
+
+  if (requestName.trim() === "") {
+    setRequestError("店舗名を入力してください。");
+    return;
+  }
+
+  if (requestName.trim().length > 150) {
+    setRequestError("店舗名は150文字以内で入力してください。");
+    return;
+  }
+
+  if (requestCity.trim().length > 100) {
+    setRequestError("市区町村は100文字以内で入力してください。");
+    return;
+  }
+
+  if (requestChainName.trim().length > 100) {
+    setRequestError("チェーン名は100文字以内で入力してください。");
+    return;
+  }
+
+  if (requestComment.length > 500) {
+    setRequestError("コメントは500文字以内で入力してください。");
+    return;
+  }
+
+  setRequestSubmitting(true);
+
+  try {
+    let clientId = localStorage.getItem(
+      "kp_inventory_client_id"
+    );
+
+    if (!clientId) {
+      clientId = crypto.randomUUID();
+
+      localStorage.setItem(
+        "kp_inventory_client_id",
+        clientId
+      );
+    }
+
+    const { error } = await supabase.rpc(
+      "submit_store_request",
+      {
+        p_prefecture:
+          reportMode === "online"
+            ? "オンライン"
+            : reportPrefecture,
+
+        p_city:
+          reportMode === "online"
+            ? null
+            : requestCity.trim() === ""
+              ? null
+              : requestCity.trim(),
+
+        p_name: requestName.trim(),
+
+        p_chain_name:
+          requestChainName.trim() === ""
+            ? null
+            : requestChainName.trim(),
+
+        p_comment:
+          requestComment.trim() === ""
+            ? null
+            : requestComment.trim(),
+
+        p_client_id: clientId,
+      }
+    );
+
+    if (error) {
+      console.error(
+        "submit_store_request error:",
+        error
+      );
+
+      setRequestError(error.message);
+      return;
+    }
+
+    setRequestMessage(
+      "店舗追加リクエストを送信しました。管理者が確認後、追加します。"
+    );
+
+    setRequestName("");
+    setRequestChainName("");
+    setRequestCity("");
+    setRequestComment("");
+  } catch (error) {
+    console.error(error);
+
+    setRequestError(
+      "リクエスト送信中にエラーが発生しました。もう一度お試しください。"
+    );
+  } finally {
+    setRequestSubmitting(false);
+  }
+}
+
+  return (
+    <main
+      id="top"
+      className="min-h-screen p-3 pb-24 md:p-6 md:pb-24"
+      style={{
+        fontFamily: '"Meiryo", "メイリオ", sans-serif',
+        fontSize: "16px",
+        background:
+          "linear-gradient(180deg, #f9eef7 0%, #f2ebfa 42%, #fcf9fc 100%)",
+      }}
+    >
+      <div className="mx-auto max-w-6xl space-y-5">
+
+        {/* ===== HERO ===== */}
+        <section className="relative overflow-hidden rounded-[30px] border border-white/80 bg-white/90 p-5 shadow-sm md:p-8">
+
+          {/* 淡い風船・丸モチーフ */}
+          <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-full bg-[#f4a8cc]/25" />
+          <div className="pointer-events-none absolute left-[16%] -top-20 h-40 w-40 rounded-full bg-[#d5b5ed]/25" />
+          <div className="pointer-events-none absolute right-[18%] -top-12 h-36 w-36 rounded-full bg-[#f6bfd9]/30" />
+          <div className="pointer-events-none absolute -right-16 top-8 h-52 w-52 rounded-full bg-[#cdb0ea]/25" />
+          <div className="pointer-events-none absolute right-[37%] bottom-3 h-20 w-20 rounded-full bg-[#f6cfdf]/30" />
+
+          {/* So Honey メインビジュアル */}
+          <div className="relative z-10 mx-auto flex max-w-4xl items-center justify-center gap-2 md:gap-6">
+
+            {/* 左の蜂 */}
+            <div className="hidden w-[150px] shrink-0 md:block lg:w-[190px]">
+              <img
+                src="/bee-ren.jpg"
+                alt=""
+                className="h-auto w-full object-contain mix-blend-multiply"
+              />
+            </div>
+
+            {/* 中央 */}
+            <div className="flex-1 text-center">
+
+           {/* So Honey EP リボン */}
+<div className="mx-auto flex w-full justify-center">
+  <img
+    src="/so-honey-ribbon.png"
+    alt="So Honey EP"
+    className="h-auto w-[360px] max-w-full -translate-x-0 translate-y-7 object-contain md:w-[500px]"
+  />
+</div>
+
+              {/* スマホ時の蜂2匹 */}
+              <div className="mt-2 flex items-center justify-center gap-3 md:hidden">
+                <img
+                  src="/bee-ren.jpg"
+                  alt=""
+                  className="h-24 w-24 object-contain mix-blend-multiply"
+                />
+                <img
+                  src="/bee-kaito.jpg"
+                  alt=""
+                  className="h-24 w-24 object-contain mix-blend-multiply"
+                />
+              </div>
+
+              <h1
+  className="mt-4 text-3xl font-bold leading-tight text-[#171417] md:mt-6 md:text-[62px]"
+  style={{
+    fontFamily: '"Meiryo", "メイリオ", sans-serif',
+  }}
+>
+  <span className="whitespace-nowrap">King & Prince</span>
+  <br />
+  <span className="whitespace-nowrap">在庫チェッカー</span>
+</h1>
+
+              <div className="mt-4 flex items-center justify-center gap-3 text-base font-medium leading-7 text-[#655b64] md:text-lg">
+  <span className="text-2xl" aria-hidden="true">
+    🍯
+  </span>
+
+  <p>
+    全国の実店舗・オンラインショップの在庫を
+    <br className="hidden md:block" />
+    7形態まとめて確認できます。
+  </p>
+
+  <span className="text-2xl" aria-hidden="true">
+    🍯
+  </span>
+</div>
+            </div>
+
+            {/* 右の蜂 */}
+            <div className="hidden w-[150px] shrink-0 md:block lg:w-[190px]">
+              <img
+                src="/bee-kaito.jpg"
+                alt=""
+                className="h-auto w-full object-contain mix-blend-multiply"
+              />
+            </div>
+          </div>
+
+          {/* 売上 */}
+          <div className="relative z-10 mt-8 rounded-3xl bg-[#211d21] p-6 text-white md:p-7">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <div className="text-sm font-bold tracking-[0.12em] text-[#e8cfe3]">
+                  TOTAL SALES
+                </div>
+
+                <div className="mt-2 text-4xl font-bold md:text-5xl">
+                  {sales.toLocaleString()}
+                  <span className="ml-1 text-xl">枚</span>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="text-base text-[#d9cfd8]">
+                  達成率 {percent.toFixed(1)}%
+                </div>
+
+                <div className="mt-1 text-lg font-bold text-[#efcbe7]">
+                  あと {remain.toLocaleString()}枚
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/15">
+              <div
+                className="h-full rounded-full bg-[#dc82c4]"
+                style={{ width: `${percent}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="relative z-10 mt-5 grid gap-3 md:grid-cols-3">
+            <StatCard icon="📊" title="本日" value={today} />
+            <StatCard icon="📅" title="今週" value={week} />
+            <StatCard icon="👑" title="累計" value={sales} />
+          </div>
+        </section>
+
+        {/* ===== 上部ナビ ===== */}
+        <nav className="sticky top-2 z-40 rounded-2xl border border-[#e3d4e3] bg-white/95 p-2 shadow-md backdrop-blur">
+          <div className="grid grid-cols-3 gap-2">
+            <a
+              href="#stores"
+              className="rounded-xl bg-[#f4e4f1] px-2 py-3.5 text-center text-sm font-bold text-[#68415f] transition hover:bg-[#ead2e5] md:text-base"
+            >
+              🏪 店舗を探す
+            </a>
+
+            <a
+              href="#report"
+              className="rounded-xl bg-[#eadff5] px-2 py-3.5 text-center text-sm font-bold text-[#654b78] transition hover:bg-[#dfceed] md:text-base"
+            >
+              ✍️ 在庫情報を投稿
+            </a>
+
+            <a
+              href="#latest"
+              className="rounded-xl bg-[#f5e7ef] px-2 py-3.5 text-center text-sm font-bold text-[#754e66] transition hover:bg-[#ecd6e2] md:text-base"
+            >
+              🕒 最新の在庫投稿
+            </a>
+          </div>
+        </nav>
+
+        {/* ===== 集計について ===== */}
+        <details className="rounded-2xl border border-[#e3d4e3] bg-white/90 shadow-sm">
+          <summary className="cursor-pointer list-none px-5 py-4 text-lg font-bold text-[#4f414d] md:px-6 md:text-xl">
+            <div className="flex items-center justify-between gap-4">
+              <span>📊 オリコン・Billboard集計について</span>
+              <span className="text-[#9b6c91]">∨</span>
+            </div>
+          </summary>
+
+          <div className="border-t border-[#eaddea] px-5 pb-5 pt-5 md:px-6 md:pb-6">
+            {/* オリコン */}
+            <div>
+              <div>
+  <div className="text-lg font-bold text-[#2c252b]">
+    オリコン
+  </div>
+
+  <div className="mt-3">
+    <span className="inline-block rounded-xl border border-[#bd4f88] bg-[#d9609b] px-3 py-1.5 text-sm font-bold text-white">
+      オリコン集計対象
+    </span>
+  </div>
+</div>
+
+              <p className="mt-3 text-base leading-7 text-[#2f2a2f]">
+                本サイトに掲載している実店舗は、基本的にオリコン
+                「CD・DVD/Blu-rayランキング調査協力店」として
+                確認できた店舗を掲載しています。
+              </p>
+
+              <a
+                href="https://biz.oricon.co.jp/coope.asp"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-block rounded-full bg-[#f1dfec] px-4 py-2.5 text-sm font-bold text-[#6d4966] transition hover:bg-[#e9d2e4] md:text-base"
+              >
+                オリコン 調査協力店一覧を確認する ↗
+              </a>
+            </div>
+
+            {/* Billboard */}
+            <div className="mt-6 border-t border-[#eaddea] pt-6">
+              <div className="text-lg font-bold text-[#2c252b]">
+                Billboard
+              </div>
+
+              <p className="mt-2 text-base leading-7 text-[#2f2a2f]">
+                店舗ごとに、以下の3種類で表示しています。
+              </p>
+
+              <div className="mt-4 space-y-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="rounded-xl border border-[#7250a5] bg-[#835ab3] px-3 py-1.5 text-sm font-bold text-white">
+                    Billboard集計対象
+                  </span>
+
+                  <span className="text-base text-[#2f2a2f]">
+                    集計対象として確認できた店舗
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="rounded-xl border border-[#a9a2a8] bg-[#ece9ec] px-3 py-1.5 text-sm font-bold text-[#595159]">
+                    Billboard 対象外
+                  </span>
+
+                  <span className="text-base text-[#2f2a2f]">
+                    集計対象外として確認した店舗
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="rounded-xl border border-[#9e85b8] bg-[#eee7f4] px-3 py-1.5 text-sm font-bold text-[#5b486b]">
+                    Billboard 要確認
+                  </span>
+
+                  <span className="text-base text-[#2f2a2f]">
+                    店舗ごとの確認が必要な店舗
+                  </span>
+                </div>
+              </div>
+
+              <a
+                href="https://www.billboard-japan.com/common/special/others/storelist/storelist.html"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-block rounded-full bg-[#eee7f4] px-4 py-2.5 text-sm font-bold text-[#5b486b] transition hover:bg-[#e5daee] md:text-base"
+              >
+                Billboard JAPAN 集計対象店を確認する ↗
+              </a>
+
+              {/* 注釈 */}
+              <div className="mt-5 rounded-xl bg-[#f8f4f7] p-4 text-sm leading-6 text-[#2f2a2f]">
+                <p>
+                  ※ TSUTAYAなどフランチャイズ店舗が多いチェーンでは、
+                  店舗によって集計対象状況が異なる場合があるため、
+                  「要確認」としている店舗があります。
+                </p>
+
+                <p className="mt-2">
+                  ※ 掲載情報は公式情報等をもとに可能な範囲で確認していますが、
+                  最新性・正確性やランキングへの集計を保証するものではありません。
+                  店舗の状況や集計条件が変更される場合もあるため、
+                  <strong className="text-[#4e454d]">
+                    購入前に各店舗・公式サイト等で最新情報をご自身でご確認ください。
+                  </strong>
+                </p>
+              </div>
+            </div>
+          </div>
+        </details>
+
+                {/* ===== 在庫情報について ===== */}
+        <details className="rounded-2xl border border-[#e3d4e3] bg-white/90 shadow-sm">
+          <summary className="cursor-pointer list-none px-5 py-4 text-lg font-bold text-[#4f414d] md:px-6 md:text-xl">
+            <div className="flex items-center justify-between gap-4">
+              <span>📦 在庫情報について</span>
+              <span className="text-[#9b6c91]">∨</span>
+            </div>
+          </summary>
+
+          <div className="border-t border-[#eaddea] px-5 pb-5 pt-5 text-base leading-7 text-[#2f2a2f] md:px-6 md:pb-6">
+            <p>
+              本サイトの在庫情報は、店舗・オンラインショップで確認した情報を
+              ユーザーが投稿し共有するものです。
+            </p>
+
+            <p className="mt-3">
+              在庫状況は投稿後に変動する場合があり、
+              表示されている在庫数や在庫の有無を保証するものではありません。
+              <br />また、店舗への取り置き・予約の可否についても、
+              各店舗へ直接ご確認ください。
+            </p>
+
+            <div className="mt-4 rounded-xl bg-[#f8f4f7] p-4 text-sm leading-6 text-[#2f2a2f]">
+              ※ 掲載情報は参考情報としてご利用ください。
+              <strong className="font-bold">購入・来店前には、ご自身で各店舗・オンラインショップ等へ
+              最新の在庫状況をご確認ください。</strong>
+            </div>
+          </div>
+        </details>
+
+        {/* ===== 店舗検索 ===== */}
+        <section
+          id="stores"
+          className="scroll-mt-24 rounded-[30px] border border-white/80 bg-white/90 p-5 shadow-sm md:p-8"
+        >
+          <div className="text-sm font-bold tracking-[0.12em] text-[#9b6c91]">
+            STOCK SEARCH
+          </div>
+
+          <h2 className="mt-1 text-2xl font-bold text-[#1d191d] md:text-3xl">
+            🏬 店舗を探す
+          </h2>
+
+          <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl bg-[#f6edf5] p-2">
+            <button
+              type="button"
+              onClick={() => setSearchMode("physical")}
+              className={`rounded-xl px-4 py-3.5 text-base font-bold transition ${
+                searchMode === "physical"
+                  ? "bg-[#211d21] text-white shadow-sm"
+                  : "text-[#715f6e]"
+              }`}
+            >
+              🏪 実店舗
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSearchMode("online")}
+              className={`rounded-xl px-4 py-3.5 text-base font-bold transition ${
+                searchMode === "online"
+                  ? "bg-[#211d21] text-white shadow-sm"
+                  : "text-[#715f6e]"
+              }`}
+            >
+              🛒 オンライン
+            </button>
+          </div>
+
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={
+              searchMode === "physical"
+                ? "店舗名・チェーン名・市区町村で検索"
+                : "オンラインショップ名で検索"
+            }
+            className="mt-4 w-full rounded-2xl border border-[#d9c9d8] bg-[#fdfafd] p-4 text-base outline-none focus:border-[#bb79a7] focus:ring-2 focus:ring-[#eedbea]"
+          />
+
+          {searchMode === "physical" && (
+            <div className="mt-7">
+              <div className="text-xl font-bold text-[#2c252b]">
+                📍 都道府県から探す
+              </div>
+
+              <button
+                onClick={() => setPrefecture("全国")}
+                className={`mt-4 rounded-full px-5 py-2.5 text-base font-bold ${
+                  prefecture === "全国"
+                    ? "bg-[#211d21] text-white"
+                    : "bg-[#f1dfed] text-[#68415f]"
+                }`}
+              >
+                全国
+              </button>
+
+              <div className="mt-6 space-y-5">
+                {PREFECTURE_GROUPS.map((group) => (
+                  <div key={group.region}>
+                    <div className="mb-2 text-base font-bold text-[#a26796]">
+                      {group.region}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {group.prefectures.map((pref) => (
+                        <button
+                          key={pref}
+                          onClick={() => setPrefecture(pref)}
+                          className={`rounded-full px-4 py-2 text-base font-bold ${
+                            prefecture === pref
+                              ? "bg-[#b96b9f] text-white shadow-sm"
+                              : "bg-[#f3e1ef] text-[#66475e]"
+                          }`}
+                        >
+                          {shortPrefectureName(pref)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-9 border-t border-[#eaddea] pt-7">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <div className="text-sm font-bold tracking-[0.12em] text-[#9b6c91]">
+                  STOCK LIST
+                </div>
+
+                <h3 className="mt-1 text-2xl font-bold text-[#1d191d] md:text-3xl">
+                  🎈{" "}
+                  {searchMode === "physical"
+                    ? "店舗別 在庫一覧"
+                    : "オンライン 在庫一覧"}
+                </h3>
+
+                {searchMode === "physical" &&
+                  prefecture !== "全国" && (
+                    <p className="mt-2 text-base text-[#766a75]">
+                      📍 {prefecture}
+                    </p>
+                  )}
+              </div>
+
+              {!loading && !dataError && (
+                <div className="rounded-full bg-[#f3dce9] px-4 py-2 text-base font-bold text-[#653b56]">
+                  {visibleStores.length.toLocaleString()}店舗
+                </div>
+              )}
+            </div>
+
+            {loading ? (
+              <LoadingBox text="店舗データを読み込み中…" />
+            ) : dataError ? (
+              <ErrorBox text={dataError} />
+            ) : visibleStores.length === 0 ? (
+              <EmptyBox text="該当する店舗がありません" />
+            ) : (
+              <div className="mt-6 space-y-5">
+                {visibleStores.map((store) => (
+                  <StoreCard
+                    key={store.id}
+                    store={store}
+                    products={products}
+                    getLatestReport={getLatestReport}
+                    formatDate={formatDate}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ===== 在庫投稿 ===== */}
+        <section
+          id="report"
+          className="scroll-mt-24 rounded-[30px] border border-white/80 bg-white/90 p-5 shadow-sm md:p-8"
+        >
+          <div className="text-sm font-bold tracking-[0.12em] text-[#9b6c91]">
+            REPORT STOCK
+          </div>
+
+          <h2 className="mt-1 text-2xl font-bold text-[#1d191d] md:text-3xl">
+            ✍️ 在庫情報を投稿
+          </h2>
+
+          <p className="mt-2 text-base text-[#766a75]">
+            実店舗・オンラインショップで確認した在庫を投稿できます。
+          </p>
+
+          <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl bg-[#f6edf5] p-2">
+            <button
+              type="button"
+              onClick={() => {
+                setReportMode("physical");
+                setReportStoreId("");
+                setReportStoreSearch("");
+              }}
+              className={`rounded-xl px-4 py-3.5 text-base font-bold ${
+                reportMode === "physical"
+                  ? "bg-[#211d21] text-white"
+                  : "text-[#715f6e]"
+              }`}
+            >
+              🏪 実店舗
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setReportMode("online");
+                setReportStoreId("");
+                setReportStoreSearch("");
+              }}
+              className={`rounded-xl px-4 py-3.5 text-base font-bold ${
+                reportMode === "online"
+                  ? "bg-[#211d21] text-white"
+                  : "text-[#715f6e]"
+              }`}
+            >
+              🛒 オンライン
+            </button>
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {reportMode === "physical" && (
+              <label className="space-y-2">
+                <span className="text-base font-bold">
+                  📍 都道府県
+                </span>
+
+                <select
+                  value={reportPrefecture}
+                  onChange={(e) => {
+                    setReportPrefecture(e.target.value);
+                    setReportStoreId("");
+                    setReportStoreSearch("");
+                  }}
+                  className="w-full rounded-2xl border border-[#d9c9d8] bg-[#fdfafd] p-3.5 text-base"
+                >
+                  {PREFECTURES.map((pref) => (
+                    <option key={pref} value={pref}>
+                      {pref}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            <label className="space-y-2">
+              <span className="text-base font-bold">
+                💿 商品
+              </span>
+
+              <select
+                value={reportProductId}
+                onChange={(e) =>
+                  setReportProductId(e.target.value)
+                }
+                className="w-full rounded-2xl border border-[#d9c9d8] bg-[#fdfafd] p-3.5 text-base"
+              >
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <label className="mt-5 block space-y-2">
+            <span className="text-base font-bold">
+              🔎{" "}
+              {reportMode === "online"
+                ? "オンラインショップを検索"
+                : "店舗を検索"}
+            </span>
+
+            <input
+              value={reportStoreSearch}
+              onChange={(e) => {
+                setReportStoreSearch(e.target.value);
+                setReportStoreId("");
+              }}
+              placeholder={
+                reportMode === "online"
+                  ? "ショップ名を入力"
+                  : "店舗名・チェーン名・市区町村を入力"
+              }
+              className="w-full rounded-2xl border border-[#d9c9d8] bg-[#fdfafd] p-3.5 text-base"
+            />
+          </label>
+
+          <div className="mt-3 max-h-72 overflow-y-auto rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-2">
+            {reportCandidates.length === 0 ? (
+              <div className="p-4 text-base text-[#837983]">
+                該当する店舗がありません
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {reportCandidates.slice(0, 30).map((store) => {
+                  const selected =
+                    String(store.id) === reportStoreId;
+
+                  return (
+                    <button
+                      key={store.id}
+                      type="button"
+                      onClick={() =>
+                        setReportStoreId(String(store.id))
+                      }
+                      className={`w-full rounded-xl border px-4 py-3 text-left ${
+                        selected
+                          ? "border-[#b96b9f] bg-[#f1deeb]"
+                          : "border-transparent bg-white"
+                      }`}
+                    >
+                      <div className="text-base font-bold">
+                        {getDisplayStoreName(store)}
+                      </div>
+
+                      <div className="mt-1 text-sm text-[#766a75]">
+                        {isOnlineStore(store)
+                          ? "🛒 オンライン"
+                          : store.city
+                            ? `📍 ${store.prefecture} ${store.city}`
+                            : `📍 ${store.prefecture}`}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {selectedReportStore && (
+            <div className="mt-3 rounded-2xl border border-[#d2b4ca] bg-[#f4e5f0] p-4">
+              <div className="text-sm font-bold text-[#986b8e]">
+                選択中
+              </div>
+
+              <div className="mt-1 text-base font-bold">
+                {getDisplayStoreName(selectedReportStore)}
+                {!isOnlineStore(selectedReportStore) &&
+                selectedReportStore.city
+                  ? ` (${selectedReportStore.city})`
+                  : ""}
+              </div>
+            </div>
+          )}
+
+          <label className="mt-5 block space-y-2">
+            <span className="text-base font-bold">
+              🔢 在庫枚数
+            </span>
+
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="off"
+              value={reportQuantity}
+              onChange={(e) => {
+                const value = e.target.value;
+
+                if (
+                  value === "" ||
+                  /^[0-9]{0,3}$/.test(value)
+                ) {
+                  setReportQuantity(value);
+                }
+              }}
+              placeholder="例: 5"
+              className="w-full rounded-2xl border border-[#d9c9d8] bg-[#fdfafd] p-3.5 text-base"
+            />
+          </label>
+
+          <label className="mt-5 block space-y-2">
+            <span className="text-base font-bold">
+              💬 コメント
+              <span className="ml-2 text-sm font-normal text-[#8a8089]">
+                任意・500文字まで
+              </span>
+            </span>
+
+            <textarea
+              rows={4}
+              maxLength={500}
+              value={reportComment}
+              onChange={(e) =>
+                setReportComment(e.target.value)
+              }
+              placeholder="例: 入荷予定なしとのこと"
+              className="w-full rounded-2xl border border-[#d9c9d8] bg-[#fdfafd] p-3.5 text-base"
+            />
+          </label>
+
+          {submitError && (
+            <div className="mt-4 rounded-2xl bg-[#fde7ec] p-4 text-base font-bold text-[#8a304a]">
+              {submitError}
+            </div>
+          )}
+
+          {submitMessage && (
+            <div className="mt-4 rounded-2xl bg-[#edf5ec] p-4 text-base font-bold text-[#456043]">
+              {submitMessage}
+            </div>
+          )}
+
+          <button
+            onClick={handleSubmitReport}
+            disabled={submitting}
+            className="mt-5 rounded-2xl bg-[#211d21] px-7 py-3.5 text-base font-bold text-white disabled:opacity-50"
+          >
+            {submitting ? "投稿中…" : "投稿する"}
+          </button>
+
+          {/* 店舗追加リクエスト */}
+          <div className="mt-4 rounded-2xl border border-[#eaddea] bg-[#fbf7fa] p-4">
+            <button
+              type="button"
+              onClick={() => {
+                setRequestOpen((current) => !current);
+                setRequestMessage("");
+                setRequestError("");
+              }}
+              className="flex w-full items-center justify-between gap-3 text-left"
+            >
+              <div>
+  <div className="text-sm font-bold tracking-[0.12em] text-[#9b6c91]">
+    STORE REQUEST
+  </div>
+
+  <div className="mt-1 text-xl font-bold text-[#2c252b] md:text-2xl">
+    🏪 店舗が見つからない場合
+  </div>
+
+  <div className="mt-2 text-base text-[#766a75]">
+    登録されていない店舗を追加リクエストできます。
+  </div>
+</div>
+
+              <span className="shrink-0 text-lg font-bold text-[#9d6c91]">
+                {requestOpen ? "∧" : "∨"}
+              </span>
+            </button>
+
+            {requestOpen && (
+              <div className="mt-5 border-t border-[#eaddea] pt-5">
+                <div className="mb-5 rounded-xl bg-[#f2e5f0] p-3 text-sm leading-6 text-[#64515f]">
+                  {reportMode === "online"
+                    ? "オンラインショップの追加リクエスト"
+                    : `追加先: ${reportPrefecture}`}
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+  <label className="block">
+    <div className="mb-2 text-base font-bold">
+      🏢 チェーン名
+      <span className="ml-2 text-sm font-normal text-[#8a8089]">
+        任意
+      </span>
+    </div>
+
+    <input
+      type="text"
+      maxLength={100}
+      value={requestChainName}
+      onChange={(e) => {
+        setRequestChainName(e.target.value);
+        setRequestMessage("");
+        setRequestError("");
+      }}
+      placeholder="例: タワーレコード"
+      className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3.5 text-base"
+    />
+  </label>
+
+  <label className="block">
+    <div className="mb-2 text-base font-bold">
+      {reportMode === "online"
+        ? "🛒 ショップ名"
+        : "🏪 店舗名"}
+      <span className="ml-1 text-sm text-[#c44f82]">
+        必須
+      </span>
+    </div>
+
+    <input
+      type="text"
+      maxLength={150}
+      value={requestName}
+      onChange={(e) => {
+        setRequestName(e.target.value);
+        setRequestMessage("");
+        setRequestError("");
+      }}
+      placeholder={
+        reportMode === "online"
+          ? "例: UNIVERSAL MUSIC STORE"
+          : "例: 札幌パルコ店"
+      }
+      className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3.5 text-base"
+    />
+  </label>
+</div>
+
+                {reportMode === "physical" && (
+                  <label className="mt-4 block">
+                    <div className="mb-2 text-base font-bold">
+                      📍 市区町村
+                      <span className="ml-2 text-sm font-normal text-[#8a8089]">
+                        任意
+                      </span>
+                    </div>
+
+                    <input
+                      type="text"
+                      maxLength={100}
+                      value={requestCity}
+                      onChange={(e) => {
+                        setRequestCity(e.target.value);
+                        setRequestMessage("");
+                        setRequestError("");
+                      }}
+                      placeholder="例: 札幌市中央区"
+                      className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3.5 text-base"
+                    />
+                  </label>
+                )}
+
+                <label className="mt-4 block">
+                  <div className="mb-2 text-base font-bold">
+                    💬 補足
+                    <span className="ml-2 text-sm font-normal text-[#8a8089]">
+                      任意・500文字まで
+                    </span>
+                  </div>
+
+                  <textarea
+                    rows={3}
+                    maxLength={500}
+                    value={requestComment}
+                    onChange={(e) => {
+                      setRequestComment(e.target.value);
+                      setRequestMessage("");
+                      setRequestError("");
+                    }}
+                    placeholder="例: 新しくオープンした店舗です。公式サイトでCD取扱いを確認しました。"
+                    className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3.5 text-base"
+                  />
+                </label>
+
+                {requestError && (
+                  <div className="mt-4 rounded-xl bg-[#fde7ec] p-4 text-sm font-bold text-[#8a304a]">
+                    {requestError}
+                  </div>
+                )}
+
+                {requestMessage && (
+                  <div className="mt-4 rounded-xl bg-[#edf5ec] p-4 text-sm font-bold leading-6 text-[#456043]">
+                    {requestMessage}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleStoreRequest}
+                  disabled={requestSubmitting}
+                  className="mt-4 rounded-xl bg-[#b65d92] px-6 py-3.5 text-base font-bold text-white transition hover:bg-[#a84e84] disabled:opacity-50"
+                >
+                  {requestSubmitting
+                    ? "送信中…"
+                    : "店舗追加をリクエスト"}
+                </button>
+              </div>
+            )}
+          </div>
+
+        </section>
+
+        {/* ===== 最新投稿 ===== */}
+        <section
+          id="latest"
+          className="scroll-mt-24 rounded-[30px] border border-white/80 bg-white/90 p-5 shadow-sm md:p-8"
+        >
+          <div className="text-sm font-bold tracking-[0.12em] text-[#9b6c91]">
+            LATEST REPORTS
+          </div>
+
+          <h2 className="mt-1 text-2xl font-bold text-[#1d191d] md:text-3xl">
+            🕒 最新の在庫投稿
+          </h2>
+
+          {latestFiveReports.length === 0 ? (
+            <EmptyBox text="まだ在庫投稿はありません" />
+          ) : (
+            <div className="mt-5 space-y-3">
+              {latestFiveReports.map((report) => (
+                <div
+                  key={report.id}
+                  className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-base font-bold text-[#241f24]">
+                        {getStoreName(report.store_id)}
+                      </div>
+
+                      <div className="mt-1 text-base text-[#766a75]">
+                        {getProductName(report.product_id)}
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="text-2xl font-bold">
+                        {report.quantity === 0
+                          ? "在庫なし"
+                          : `${report.quantity}枚`}
+                      </div>
+
+                      <div className="text-sm text-[#999098]">
+                        {formatDate(report.created_at)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {report.comment && (
+                    <div className="mt-3 rounded-xl bg-white p-3 text-base leading-6 text-[#605760]">
+                      {report.comment}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ===== FOOTER ===== */}
+        <footer className="pb-4 pt-5 text-center">
+          <div className="text-sm leading-6 text-[#403940]">
+            <p>
+              当サイトはファンによる非公式の在庫情報共有サイトです。
+              所属事務所・レコード会社・各販売店等とは無関係です。
+            </p>
+
+            <p className="mt-2 text-xs text-[#403940]">
+              King & Prince 在庫チェッカー
+            </p>
+          </div>
+        </footer>
+
+      </div>
+
+      {/* トップへ戻る */}
+      <a
+        href="#top"
+        aria-label="サイトトップに戻る"
+        className="fixed bottom-5 left-4 z-50 flex h-[82px] w-[82px] flex-col items-center justify-center rounded-full border-4 border-white bg-[#d95c9d] text-center text-white shadow-lg transition hover:-translate-y-1 hover:bg-[#c84d8d] md:bottom-7 md:left-7"
+      >
+        <span className="text-2xl leading-none">↑</span>
+        <span className="mt-1 text-[11px] font-bold leading-tight">
+          サイトトップ
+          <br />
+          に戻る
+        </span>
+      </a>
+    </main>
+  );
+}
+
+function StoreCard({
+  store,
+  products,
+  getLatestReport,
+  formatDate,
+}: {
+  store: Store;
+  products: Product[];
+  getLatestReport: (
+    storeId: number,
+    productId: number
+  ) => InventoryReport | null;
+  formatDate: (dateString: string) => string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const storeReports = products
+    .map((product) =>
+      getLatestReport(store.id, product.id)
+    )
+    .filter(
+      (report): report is InventoryReport =>
+        report !== null
+    );
+
+  const newestStoreReport =
+    storeReports.length > 0
+      ? storeReports.reduce((newest, current) =>
+          new Date(current.created_at).getTime() >
+          new Date(newest.created_at).getTime()
+            ? current
+            : newest
+        )
+      : null;
+
+  const online = isOnlineStore(store);
+
+  return (
+    <article className="rounded-3xl border border-[#e8d9e7] bg-white p-5 shadow-sm md:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-xl font-bold leading-snug text-[#1d191d] md:text-2xl">
+            {getDisplayStoreName(store)}
+          </h3>
+
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[#403940] md:text-base">
+            <span>
+              {online
+                ? "🛒 オンラインショップ"
+                : `📍 ${store.prefecture}${store.city ? ` ${store.city}` : ""}`}
+            </span>
+
+            {!online && store.business_hours && (
+              <span className="font-bold text-[#3e373e]">
+                🕒 営業時間: {formatBusinessHours(store.business_hours)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {store.oricon_target === true && (
+            <span className="rounded-xl border border-[#bd4f88] bg-[#d9609b] px-4 py-2 text-sm font-bold text-white shadow-sm md:text-base">
+              オリコン集計対象
+            </span>
+          )}
+
+          {store.billboard_status === "target" && (
+            <span className="rounded-xl border border-[#7250a5] bg-[#835ab3] px-4 py-2 text-sm font-bold text-white shadow-sm md:text-base">
+              Billboard集計対象
+            </span>
+          )}
+
+          {store.billboard_status === "check_store" && (
+            <span className="rounded-xl border border-[#9e85b8] bg-[#eee7f4] px-4 py-2 text-sm font-bold text-[#5b486b] md:text-base">
+              Billboard 要確認
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-2xl bg-[#f8f1f7] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-sm font-bold tracking-[0.12em] text-[#a36494]">
+            STOCK
+          </div>
+
+          {newestStoreReport && (
+            <div className="text-sm text-[#8e848d]">
+              最終更新{" "}
+              {formatDate(newestStoreReport.created_at)}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {products.map((product) => {
+            const report = getLatestReport(
+              store.id,
+              product.id
+            );
+
+            return (
+              <div
+                key={product.id}
+                className="flex flex-col rounded-2xl border border-[#e5d7e4] bg-white px-4 py-3"
+              >
+                <div className="min-h-[3rem] text-base font-bold leading-6 text-[#211c21] md:text-[17px]">
+                  {product.name}
+                </div>
+
+                {!report ? (
+                  <div className="mt-2 text-base font-bold text-[#625861]">
+                    情報なし
+                  </div>
+                ) : report.quantity === 0 ? (
+                  <div className="mt-4">
+                    <span className="inline-block rounded-full bg-[#2a252a] px-3 py-1.5 text-base font-bold text-white">
+                      在庫なし
+                    </span>
+                  </div>
+                ) : (
+                  <div className="mt-4 text-2xl font-bold text-[#bd568c]">
+                    {report.quantity}
+                    <span className="ml-1 text-base">
+                      枚
+                    </span>
+                  </div>
+                )}
+
+                {report && (
+                  <div className="mt-1 text-sm text-[#968d95]">
+                    {formatDate(report.created_at)}
+                  </div>
+                )}
+
+                {report?.comment && (
+                  <div className="mt-auto pt-3">
+                    <div className="rounded-xl bg-[#faedf4] px-3 py-2.5 text-sm leading-5 text-[#594d56] md:text-base md:leading-6">
+                      💬 {report.comment}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <button
+        onClick={() => setOpen((current) => !current)}
+        className="mt-4 rounded-full bg-[#f0dfec] px-4 py-2.5 text-base font-bold text-[#6d4966]"
+      >
+        {open
+          ? "店舗情報を閉じる ∧"
+          : "店舗情報を見る ∨"}
+      </button>
+
+      {open && (
+        <div className="mt-3 rounded-2xl border border-[#e8d9e7] bg-[#fcf9fc] p-4 md:p-5">
+          {online ? (
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="text-base font-bold">
+                🛒 オンラインショップ
+              </div>
+
+              {store.online_url && (
+                <a
+                  href={store.online_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full bg-[#211d21] px-5 py-2.5 text-base font-bold text-white"
+                >
+                  公式サイトを開く ↗
+                </a>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
+                <div>
+                  <div className="text-base font-bold text-[#2b252b]">
+                    📍 住所
+                  </div>
+
+                  <div className="mt-1 text-base leading-6 text-[#655c64]">
+                    {store.address || "情報なし"}
+                  </div>
+                </div>
+
+                <div className="md:border-l md:border-[#eaddea] md:pl-5">
+                  <div className="text-base font-bold text-[#2b252b]">
+                    ☎️ 電話番号
+                  </div>
+
+                  {store.phone ? (
+                    <a
+                      href={`tel:${store.phone}`}
+                      className="mt-1 inline-block text-base font-bold text-[#ad568a]"
+                    >
+                      {store.phone}
+                    </a>
+                  ) : (
+                    <div className="mt-1 text-base text-[#80777f]">
+                      情報なし
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {store.official_url && (
+                <div className="mt-4 border-t border-[#eaddea] pt-4">
+                  <a
+                    href={store.official_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block rounded-full bg-[#211d21] px-5 py-2.5 text-base font-bold text-white"
+                  >
+                    公式店舗ページを開く ↗
+                  </a>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </article>
+  );
+}
+
+function comparePhysicalStores(
+  a: Store,
+  b: Store,
+  selectedPrefecture: string
+) {
+  if (selectedPrefecture === "全国") {
+    const prefectureA =
+      PREFECTURE_ORDER.get(a.prefecture) ?? 999;
+
+    const prefectureB =
+      PREFECTURE_ORDER.get(b.prefecture) ?? 999;
+
+    if (prefectureA !== prefectureB) {
+      return prefectureA - prefectureB;
+    }
+  }
+
+  const rankA = getChainRank(a);
+  const rankB = getChainRank(b);
+
+  if (rankA !== rankB) {
+    return rankA - rankB;
+  }
+
+  const cityCompare = (a.city ?? "").localeCompare(
+    b.city ?? "",
+    "ja"
+  );
+
+  if (cityCompare !== 0) {
+    return cityCompare;
+  }
+
+  return getDisplayStoreName(a).localeCompare(
+    getDisplayStoreName(b),
+    "ja"
+  );
+}
+
+function compareOnlineStores(a: Store, b: Store) {
+  const nameA = normalizeStoreText(
+    `${a.chain_name ?? ""}${a.name}`
+  );
+
+  const nameB = normalizeStoreText(
+    `${b.chain_name ?? ""}${b.name}`
+  );
+
+  const universalA =
+    nameA.includes("universal") ? 0 : 1;
+
+  const universalB =
+    nameB.includes("universal") ? 0 : 1;
+
+  // UNIVERSALをオンラインの最上位にする
+  if (universalA !== universalB) {
+    return universalA - universalB;
+  }
+
+  // UNIVERSAL以外は今までの順番をそのまま維持
+  const rankA = getChainRank(a);
+  const rankB = getChainRank(b);
+
+  if (rankA !== rankB) {
+    return rankA - rankB;
+  }
+
+  return getDisplayStoreName(a).localeCompare(
+    getDisplayStoreName(b),
+    "ja"
+  );
+}
+
+function getChainRank(store: Store) {
+  const text = normalizeStoreText(
+    `${store.chain_name ?? ""}${store.name}`
+  );
+
+  const index = CHAIN_PRIORITY.findIndex((chain) =>
+    text.includes(normalizeStoreText(chain))
+  );
+
+  return index === -1
+    ? CHAIN_PRIORITY.length
+    : index;
+}
+
+function getDisplayStoreName(store: Store) {
+  const name = store.name.trim();
+  const chain = (store.chain_name ?? "").trim();
+
+  if (!chain) {
+    return name;
+  }
+
+  if (
+    storeNameAlreadyContainsBrand(
+      name,
+      chain
+    )
+  ) {
+    return name;
+  }
+
+  return `${chain} ${name}`;
+}
+
+function storeNameAlreadyContainsBrand(
+  name: string,
+  chain: string
+) {
+  const normalizedName =
+    normalizeStoreText(name);
+
+  const normalizedChain =
+    normalizeStoreText(chain);
+
+  if (
+    normalizedName.includes(
+      normalizedChain
+    )
+  ) {
+    return true;
+  }
+
+  const aliases: Record<string, string[]> = {
+    タワーレコード: [
+      "towerrecords",
+      "towerrecord",
+      "tower",
+      "タワレコ",
+    ],
+    hmv: ["hmv"],
+    新星堂: ["新星堂"],
+    紀伊國屋書店: [
+      "紀伊國屋",
+      "紀伊国屋",
+      "kinokuniya",
+    ],
+    tsutaya: [
+      "tsutaya",
+      "蔦屋書店",
+      "蔦屋",
+    ],
+    アニメイト: [
+      "アニメイト",
+      "animate",
+    ],
+    玉光堂: ["玉光堂"],
+    バンダレコード: [
+      "バンダレコード",
+      "vanda",
+    ],
+    くまざわ書店: [
+      "くまざわ書店",
+    ],
+    academia: ["academia"],
+  };
+
+  const normalizedChainLower =
+    normalizedChain.toLowerCase();
+
+  for (const [key, values] of Object.entries(aliases)) {
+    if (
+      normalizedChainLower.includes(
+        normalizeStoreText(key)
+      )
+    ) {
+      return values.some((alias) =>
+        normalizedName.includes(
+          normalizeStoreText(alias)
+        )
+      );
+    }
+  }
+
+  return false;
+}
+
+function normalizeStoreText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/[・･\-‐-–—―_]/g, "");
+}
+
+function isOnlineStore(store: Store) {
+  return (
+    store.store_type === "online" ||
+    store.prefecture === "オンライン"
+  );
+}
+function formatBusinessHours(value: string | null) {
+  if (!value) return "";
+
+  return value
+    // 10時30分 → 10:30
+    .replace(/(\d{1,2})時(\d{1,2})分/g, (_, h, m) => {
+      return `${h.padStart(2, "0")}:${m.padStart(2, "0")}`;
+    })
+
+    // 10時 → 10:00
+    .replace(/(\d{1,2})時/g, (_, h) => {
+      return `${h.padStart(2, "0")}:00`;
+    })
+
+    // 10:30 はそのまま。10:3 のような場合だけ 10:03 にする
+    .replace(/(\d{1,2}):(\d{1,2})/g, (_, h, m) => {
+      return `${h.padStart(2, "0")}:${m.padStart(2, "0")}`;
+    })
+
+    // 区切り記号を ～ に統一
+    .replace(/[〜~－―ー-]/g, "～")
+
+    .trim();
+}
+
+function shortPrefectureName(prefecture: string) {
+  if (prefecture === "北海道") {
+    return "北海道";
+  }
+
+  if (prefecture === "東京都") {
+    return "東京";
+  }
+
+  if (prefecture === "京都府") {
+    return "京都";
+  }
+
+  if (prefecture === "大阪府") {
+    return "大阪";
+  }
+
+  return prefecture.replace("県", "");
+}
+
+function StatCard({
+  icon,
+  title,
+  value,
+}: {
+  icon: string;
+  title: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-5">
+      <div className="flex items-center justify-center gap-4">
+        <div
+          className="shrink-0 text-5xl leading-none"
+          aria-hidden="true"
+        >
+          {icon}
+        </div>
+
+        <div className="text-left">
+          <div className="text-2xl font-bold text-[#9b6c91]">
+            {title}
+          </div>
+
+          <div className="mt-1 text-5xl font-bold text-[#171417]">
+            {value.toLocaleString()}
+            <span className="ml-1 text-base">
+              枚
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoadingBox({
+  text,
+}: {
+  text: string;
+}) {
+  return (
+    <div className="mt-6 rounded-2xl border border-dashed border-[#d8cad7] p-8 text-center text-base text-[#847a83]">
+      {text}
+    </div>
+  );
+}
+
+function ErrorBox({
+  text,
+}: {
+  text: string;
+}) {
+  return (
+    <div className="mt-6 rounded-2xl bg-[#fde7ec] p-6 text-base text-[#8a304a]">
+      {text}
+    </div>
+  );
+}
+
+function EmptyBox({
+  text,
+}: {
+  text: string;
+}) {
+  return (
+    <div className="mt-6 rounded-2xl border border-dashed border-[#d8cad7] p-8 text-center text-base text-[#847a83]">
+      {text}
+    </div>
+  );
+}
