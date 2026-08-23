@@ -716,9 +716,9 @@ async function handleStoreRequest() {
           "linear-gradient(180deg, #f9eef7 0%, #f2ebfa 42%, #fcf9fc 100%)",
       }}
     >
-      <div className="mx-auto w-full max-w-6xl space-y-4 md:space-y-5">
+      <div className="mx-auto w-full max-w-5xl space-y-4 md:space-y-5">
         {/* ===== HERO ===== */}
-        <section className="relative overflow-hidden rounded-[24px] border border-white/80 bg-white/90 p-4 shadow-sm md:rounded-[30px] md:p-8">
+        <section className="relative overflow-hidden rounded-[24px] border border-white/80 bg-white/90 p-4 shadow-sm md:rounded-[30px] md:p-6">
           <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-full bg-[#f4a8cc]/25" />
           <div className="pointer-events-none absolute left-[16%] -top-20 h-40 w-40 rounded-full bg-[#d5b5ed]/25" />
           <div className="pointer-events-none absolute right-[18%] -top-12 h-36 w-36 rounded-full bg-[#f6bfd9]/30" />
@@ -739,20 +739,20 @@ async function handleStoreRequest() {
                 <img
                   src="/so-honey-ribbon.png"
                   alt="So Honey EP"
-                  className="h-auto w-[300px] max-w-full translate-y-4 object-contain md:w-[500px] md:translate-y-7"
+                  className="h-auto w-[300px] max-w-full translate-y-4 object-contain md:w-[420px] md:translate-y-7"
                 />
               </div>
 
               {/* スマホ：タイトルの左右に蜂 */}
-              <div className="mx-auto mt-1 grid w-full max-w-[330px] grid-cols-[62px_minmax(0,1fr)_62px] items-center gap-0 md:block md:max-w-none">
+              <div className="mx-auto mt-1 grid w-full max-w-[360px] grid-cols-[78px_minmax(0,1fr)_78px] items-center gap-0 md:block md:max-w-none">
                 <img
                   src="/bee-ren.png"
                   alt=""
-                  className="h-auto w-full object-contain mix-blend-multiply md:hidden"
+                  className="h-auto w-full translate-x-2 scale-[1.6] object-contain mix-blend-multiply md:hidden"
                 />
 
                 <h1
-                  className="text-center text-[22px] font-bold leading-tight text-[#171417] sm:text-[24px] md:mt-6 md:text-[62px]"
+                  className="text-center text-[22px] font-bold leading-tight text-[#171417] sm:text-[24px] md:mt-6 md:text-[48px]"
                   style={{
                     fontFamily: '"Meiryo", "メイリオ", sans-serif',
                   }}
@@ -765,7 +765,7 @@ async function handleStoreRequest() {
                 <img
                   src="/bee-kaito.png"
                   alt=""
-                  className="h-auto w-full object-contain mix-blend-multiply md:hidden"
+                  className="h-auto w-full -translate-x-2 scale-[1.6] object-contain mix-blend-multiply md:hidden"
                 />
               </div>
 
@@ -894,9 +894,10 @@ async function handleStoreRequest() {
                 href="https://biz.oricon.co.jp/coope.asp"
                 target="_blank"
                 rel="noreferrer"
-                className="mt-2 inline-block rounded-full bg-[#f1dfec] px-3 py-2 text-[11px] font-bold text-[#6d4966] transition hover:bg-[#e9d2e4] md:mt-3 md:px-4 md:py-2.5 md:text-base"
+                className="mt-2 inline-flex items-center rounded-full bg-[#f1dfec] px-3 py-2 text-[11px] font-bold text-[#6d4966] transition hover:bg-[#e9d2e4] md:mt-3 md:px-4 md:py-2.5 md:text-base"
               >
-                オリコン 調査協力店一覧を確認する ↗
+                <span>オリコン 調査協力店一覧を確認する</span>
+                <ExternalArrow />
               </a>
             </div>
 
@@ -942,9 +943,10 @@ async function handleStoreRequest() {
                 href="https://www.billboard-japan.com/common/special/others/storelist/storelist.html"
                 target="_blank"
                 rel="noreferrer"
-                className="mt-3 inline-block rounded-full bg-[#eee7f4] px-3 py-2 text-[11px] font-bold text-[#5b486b] transition hover:bg-[#e5daee] md:mt-4 md:px-4 md:py-2.5 md:text-base"
+                className="mt-3 inline-flex items-center rounded-full bg-[#eee7f4] px-3 py-2 text-[11px] font-bold text-[#5b486b] transition hover:bg-[#e5daee] md:mt-4 md:px-4 md:py-2.5 md:text-base"
               >
-                Billboard JAPAN 集計対象店を確認する ↗
+                <span>Billboard JAPAN 集計対象店を確認する</span>
+                <ExternalArrow />
               </a>
 
               <div className="mt-4 rounded-lg bg-[#f8f4f7] p-3 text-[11px] leading-5 text-[#2f2a2f] md:mt-5 md:rounded-xl md:p-4 md:text-sm md:leading-6">
@@ -1003,7 +1005,7 @@ async function handleStoreRequest() {
         {/* ===== 店舗検索 ===== */}
         <section
           id="stores"
-          className="scroll-mt-24 rounded-[20px] border border-white/80 bg-white/90 p-3.5 shadow-sm md:rounded-[30px] md:p-8"
+          className="scroll-mt-24 rounded-[20px] border border-white/80 bg-white/90 p-3.5 shadow-sm md:rounded-[30px] md:p-6"
         >
           <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] md:text-sm">
             STOCK SEARCH
@@ -1149,7 +1151,7 @@ async function handleStoreRequest() {
         {/* ===== 在庫投稿 ===== */}
         <section
           id="report"
-          className="scroll-mt-24 rounded-[20px] border border-white/80 bg-white/90 p-3.5 shadow-sm md:rounded-[30px] md:p-8"
+          className="scroll-mt-24 rounded-[20px] border border-white/80 bg-white/90 p-3.5 shadow-sm md:rounded-[30px] md:p-6"
         >
           <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] md:text-sm">
             REPORT STOCK
@@ -1542,7 +1544,7 @@ async function handleStoreRequest() {
         {/* ===== 最新投稿 ===== */}
         <section
           id="latest"
-          className="scroll-mt-24 rounded-[20px] border border-white/80 bg-white/90 p-3.5 shadow-sm md:rounded-[30px] md:p-8"
+          className="scroll-mt-24 rounded-[20px] border border-white/80 bg-white/90 p-3.5 shadow-sm md:rounded-[30px] md:p-6"
         >
           <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] md:text-sm">
             LATEST REPORTS
@@ -1573,7 +1575,7 @@ async function handleStoreRequest() {
                     </div>
 
                     <div className="shrink-0 text-right">
-                      <div className="whitespace-nowrap text-[12px] font-bold leading-4 md:text-lg md:leading-normal">
+                      <div className="whitespace-nowrap text-[12px] font-bold leading-4 md:text-base md:leading-normal">
                         {report.quantity === 0
                           ? "在庫なし"
                           : `${report.quantity}枚`}
@@ -1809,9 +1811,10 @@ function StoreCard({
                   href={store.online_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-full bg-[#211d21] px-4 py-2 text-[11px] font-bold text-white md:px-5 md:py-2.5 md:text-base"
+                  className="inline-flex items-center rounded-full bg-[#211d21] px-4 py-2 text-[11px] font-bold text-white md:px-5 md:py-2.5 md:text-base"
                 >
-                  公式サイトを開く ↗
+                  <span>公式サイトを見る</span>
+                  <ExternalArrow />
                 </a>
               )}
             </div>
@@ -1854,9 +1857,10 @@ function StoreCard({
                     href={store.official_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-block rounded-full bg-[#211d21] px-4 py-2 text-[11px] font-bold text-white md:px-5 md:py-2.5 md:text-base"
+                    className="inline-flex items-center rounded-full bg-[#211d21] px-4 py-2 text-[11px] font-bold text-white md:px-5 md:py-2.5 md:text-base"
                   >
-                    公式店舗ページを開く ↗
+                    <span>公式ページを見る</span>
+                    <ExternalArrow />
                   </a>
                 </div>
               )}
@@ -2105,6 +2109,24 @@ function shortPrefectureName(prefecture: string) {
   return prefecture.replace("県", "");
 }
 
+function ExternalArrow() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      className="ml-1 inline-block h-[0.9em] w-[0.9em] align-[-0.08em]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5 11L11 5" />
+      <path d="M6.5 5H11V9.5" />
+    </svg>
+  );
+}
+
 function StatCard({
   icon,
   title,
@@ -2115,23 +2137,23 @@ function StatCard({
   value: number;
 }) {
   return (
-    <div className="rounded-xl border border-[#eaddea] bg-[#fcf9fc] px-1.5 py-2 md:rounded-2xl md:p-5">
-      <div className="flex flex-col items-center justify-center md:flex-row md:gap-4">
-        <div
-          className="shrink-0 text-lg leading-none md:text-5xl"
+    <div className="rounded-xl border border-[#eaddea] bg-[#fcf9fc] px-2 py-2 md:rounded-2xl md:px-3 md:py-3">
+      <div className="flex items-center justify-center gap-1.5 md:gap-2">
+        <span
+          className="shrink-0 text-lg leading-none md:text-2xl"
           aria-hidden="true"
         >
           {icon}
-        </div>
+        </span>
 
-        <div className="mt-0.5 text-center md:mt-0 md:text-left">
-          <div className="text-[10px] font-bold text-[#9b6c91] md:text-2xl">
+        <div className="min-w-0 text-left">
+          <div className="whitespace-nowrap text-[10px] font-bold leading-4 text-[#9b6c91] md:text-sm">
             {title}
           </div>
 
-          <div className="mt-0.5 whitespace-nowrap text-base font-bold text-[#171417] md:mt-1 md:text-5xl">
+          <div className="whitespace-nowrap text-base font-bold leading-5 text-[#171417] md:text-xl">
             {value.toLocaleString()}
-            <span className="ml-0.5 text-[9px] md:ml-1 md:text-base">
+            <span className="ml-0.5 text-[9px] md:text-xs">
               枚
             </span>
           </div>
@@ -2147,7 +2169,7 @@ function LoadingBox({
   text: string;
 }) {
   return (
-    <div className="mt-4 rounded-xl border border-dashed border-[#d8cad7] p-5 text-center text-[12px] text-[#847a83] md:mt-6 md:rounded-2xl md:p-8 md:text-base">
+    <div className="mt-4 rounded-xl border border-dashed border-[#d8cad7] p-5 text-center text-[12px] text-[#847a83] md:mt-6 md:rounded-2xl md:p-6 md:text-base">
       {text}
     </div>
   );
@@ -2171,7 +2193,7 @@ function EmptyBox({
   text: string;
 }) {
   return (
-    <div className="mt-4 rounded-xl border border-dashed border-[#d8cad7] p-5 text-center text-[12px] text-[#847a83] md:mt-6 md:rounded-2xl md:p-8 md:text-base">
+    <div className="mt-4 rounded-xl border border-dashed border-[#d8cad7] p-5 text-center text-[12px] text-[#847a83] md:mt-6 md:rounded-2xl md:p-6 md:text-base">
       {text}
     </div>
   );
