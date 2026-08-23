@@ -838,7 +838,7 @@ async function handleStoreRequest() {
             </div>
           </div>
 
-          <div className="relative z-10 mt-5 grid gap-3 md:grid-cols-3">
+          <div className="relative z-10 mt-5 grid grid-cols-3 gap-2 md:gap-3">
             <StatCard icon="📊" title="本日" value={today} />
             <StatCard icon="📅" title="今週" value={week} />
             <StatCard icon="👑" title="累計" value={sales} />
@@ -850,21 +850,21 @@ async function handleStoreRequest() {
           <div className="grid grid-cols-3 gap-2">
             <a
               href="#stores"
-              className="rounded-xl bg-[#f4e4f1] px-2 py-3.5 text-center text-sm font-bold text-[#68415f] transition hover:bg-[#ead2e5] md:text-base"
+              className="whitespace-nowrap rounded-xl bg-[#f4e4f1] px-1 py-3.5 text-center text-[11px] font-bold text-[#68415f] transition hover:bg-[#ead2e5] md:px-2 md:py-3.5 md:text-base"
             >
               🏪 店舗を探す
             </a>
 
             <a
               href="#report"
-              className="rounded-xl bg-[#eadff5] px-2 py-3.5 text-center text-sm font-bold text-[#654b78] transition hover:bg-[#dfceed] md:text-base"
+              className="whitespace-nowrap rounded-xl bg-[#eadff5] px-1 py-3.5 text-center text-[11px] font-bold text-[#654b78] transition hover:bg-[#dfceed] md:px-2 md:text-base"
             >
               ✍️ 在庫情報を投稿
             </a>
 
             <a
               href="#latest"
-              className="rounded-xl bg-[#f5e7ef] px-2 py-3.5 text-center text-sm font-bold text-[#754e66] transition hover:bg-[#ecd6e2] md:text-base"
+              className="whitespace-nowrap rounded-xl bg-[#f5e7ef] px-1 py-3.5 text-center text-[11px] font-bold text-[#754e66] transition hover:bg-[#ecd6e2] md:px-2 md:text-base"
             >
               🕒 最新の在庫投稿
             </a>
@@ -873,9 +873,9 @@ async function handleStoreRequest() {
 
         {/* ===== 集計について ===== */}
         <details className="rounded-2xl border border-[#e3d4e3] bg-white/90 shadow-sm">
-          <summary className="cursor-pointer list-none px-5 py-4 text-lg font-bold text-[#4f414d] md:px-6 md:text-xl">
+          <summary className="cursor-pointer list-none px-4 py-4 text-sm font-bold text-[#4f414d] md:px-6 md:text-xl">
             <div className="flex items-center justify-between gap-4">
-              <span>📊 オリコン・Billboard集計について</span>
+              <span className="whitespace-nowrap">📊 オリコン・Billboard集計について</span>
               <span className="text-[#9b6c91]">∨</span>
             </div>
           </summary>
@@ -895,7 +895,7 @@ async function handleStoreRequest() {
   </div>
 </div>
 
-              <p className="mt-3 text-base leading-7 text-[#2f2a2f]">
+              <p className="mt-3 text-sm leading-6 text-[#2f2a2f] md:text-base md:leading-7">
                 本サイトに掲載している実店舗は、基本的にオリコン
                 「CD・DVD/Blu-rayランキング調査協力店」として
                 確認できた店舗を掲載しています。
@@ -917,7 +917,7 @@ async function handleStoreRequest() {
                 Billboard
               </div>
 
-              <p className="mt-2 text-base leading-7 text-[#2f2a2f]">
+              <p className="mt-2 text-sm leading-6 text-[#2f2a2f] md:text-base md:leading-7">
                 店舗ごとに、以下の3種類で表示しています。
               </p>
 
@@ -927,7 +927,7 @@ async function handleStoreRequest() {
                     Billboard集計対象
                   </span>
 
-                  <span className="text-base text-[#2f2a2f]">
+                  <span className="text-sm text-[#2f2a2f] md:text-base">
                     集計対象として確認できた店舗
                   </span>
                 </div>
@@ -937,7 +937,7 @@ async function handleStoreRequest() {
                     Billboard 対象外
                   </span>
 
-                  <span className="text-base text-[#2f2a2f]">
+                  <span className="text-sm text-[#2f2a2f] md:text-base">
                     集計対象外として確認した店舗
                   </span>
                 </div>
@@ -947,7 +947,7 @@ async function handleStoreRequest() {
                     Billboard 要確認
                   </span>
 
-                  <span className="text-base text-[#2f2a2f]">
+                  <span className="text-sm text-[#2f2a2f] md:text-base">
                     店舗ごとの確認が必要な店舗
                   </span>
                 </div>
@@ -992,7 +992,7 @@ async function handleStoreRequest() {
             </div>
           </summary>
 
-          <div className="border-t border-[#eaddea] px-5 pb-5 pt-5 text-base leading-7 text-[#2f2a2f] md:px-6 md:pb-6">
+          <div className="border-t border-[#eaddea] px-5 pb-5 pt-5 text-sm leading-6 text-[#2f2a2f] md:px-6 md:pb-6 md:text-base md:leading-7">
             <p>
               本サイトの在庫情報は、店舗・オンラインショップで確認した情報を
               ユーザーが投稿し共有するものです。
@@ -1583,38 +1583,38 @@ async function handleStoreRequest() {
           {latestFiveReports.length === 0 ? (
             <EmptyBox text="まだ在庫投稿はありません" />
           ) : (
-            <div className="mt-5 space-y-3">
+            <div className="mt-4 space-y-2 md:mt-5 md:space-y-3">
               {latestFiveReports.map((report) => (
                 <div
                   key={report.id}
-                  className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"
+                  className="rounded-lg border border-[#eaddea] bg-[#fcf9fc] px-3 py-2 md:rounded-2xl md:p-4"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <div className="text-base font-bold text-[#241f24]">
+                      <div className="text-[12px] font-bold leading-4 text-[#241f24] md:text-base md:leading-normal">
                         {getStoreName(report.store_id)}
                       </div>
 
-                      <div className="mt-1 text-base text-[#766a75]">
+                      <div className="mt-0.5 text-[11px] leading-4 text-[#766a75] md:mt-1 md:text-base md:leading-normal">
                         {getProductName(report.product_id)}
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <div className="text-2xl font-bold">
+                      <div className="whitespace-nowrap text-[14px] font-bold leading-4 md:text-2xl md:leading-normal">
                         {report.quantity === 0
                           ? "在庫なし"
                           : `${report.quantity}枚`}
                       </div>
 
-                      <div className="text-sm text-[#999098]">
+                      <div className="mt-0.5 text-[10px] leading-3 text-[#999098] md:mt-0 md:text-sm md:leading-normal">
                         {formatDate(report.created_at)}
                       </div>
                     </div>
                   </div>
 
                   {report.comment && (
-                    <div className="mt-3 rounded-xl bg-white p-3 text-base leading-6 text-[#605760]">
+                    <div className="mt-1.5 rounded-md bg-white px-2.5 py-1.5 text-[11px] leading-4 text-[#605760] md:mt-3 md:rounded-xl md:p-3 md:text-base md:leading-6">
                       {report.comment}
                     </div>
                   )}
@@ -1626,15 +1626,15 @@ async function handleStoreRequest() {
 
         {/* ===== FOOTER ===== */}
         <footer className="pb-4 pt-5 text-center">
-          <div className="text-sm leading-6 text-[#403940]">
+          <div className="text-[11px] leading-5 text-[#403940] md:text-sm md:leading-6">
             <p>
               当サイトはファンによる非公式の在庫情報共有サイトです。
               所属事務所・レコード会社・各販売店等とは無関係です。
             </p>
 
-            <p className="mt-2 text-xs text-[#403940]">
-              King & Prince 在庫チェッカー
-            </p>
+            <p className="mt-1.5 text-[10px] text-[#6f686e] md:mt-2 md:text-xs md:text-[#403940]">
+  King & Prince 在庫チェッカー
+</p>
           </div>
         </footer>
 
@@ -1696,43 +1696,47 @@ function StoreCard({
 
   return (
     <article className="rounded-3xl border border-[#e8d9e7] bg-white p-5 shadow-sm md:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <h3 className="text-xl font-bold leading-snug text-[#1d191d] md:text-2xl">
-            {getDisplayStoreName(store)}
-          </h3>
+            <div>
+        {/* 店舗名 */}
+        <h3 className="text-xl font-bold leading-snug text-[#1d191d] md:text-2xl">
+          {getDisplayStoreName(store)}
+        </h3>
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[#403940] md:text-base">
-            <span>
-              {online
-                ? "🛒 オンラインショップ"
-                : `📍 ${store.prefecture}${store.city ? ` ${store.city}` : ""}`}
+        {/* 所在地・営業時間・集計対象 */}
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-[#403940] md:text-base">
+          <span className="whitespace-nowrap">
+            {online
+              ? "🛒 オンラインショップ"
+              : `📍 ${store.prefecture}${store.city ? ` ${store.city}` : ""}`}
+          </span>
+
+          {!online && store.business_hours && (
+            <span className="whitespace-nowrap font-bold text-[#3e373e]">
+              🕒 営業時間: {formatBusinessHours(store.business_hours)}
             </span>
+          )}
 
-            {!online && store.business_hours && (
-              <span className="font-bold text-[#3e373e]">
-                🕒 営業時間: {formatBusinessHours(store.business_hours)}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
           {store.oricon_target === true && (
-            <span className="rounded-xl border border-[#bd4f88] bg-[#d9609b] px-4 py-2 text-sm font-bold text-white shadow-sm md:text-base">
+            <span className="whitespace-nowrap rounded-xl border border-[#bd4f88] bg-[#d9609b] px-2.5 py-1 text-xs font-bold text-white shadow-sm">
               オリコン集計対象
             </span>
           )}
 
           {store.billboard_status === "target" && (
-            <span className="rounded-xl border border-[#7250a5] bg-[#835ab3] px-4 py-2 text-sm font-bold text-white shadow-sm md:text-base">
+            <span className="whitespace-nowrap rounded-xl border border-[#7250a5] bg-[#835ab3] px-2.5 py-1 text-xs font-bold text-white shadow-sm">
               Billboard集計対象
             </span>
           )}
 
           {store.billboard_status === "check_store" && (
-            <span className="rounded-xl border border-[#9e85b8] bg-[#eee7f4] px-4 py-2 text-sm font-bold text-[#5b486b] md:text-base">
+            <span className="whitespace-nowrap rounded-xl border border-[#9e85b8] bg-[#eee7f4] px-2.5 py-1 text-xs font-bold text-[#5b486b]">
               Billboard 要確認
+            </span>
+          )}
+
+          {store.billboard_status === "not_target" && (
+            <span className="whitespace-nowrap rounded-xl border border-[#a9a2a8] bg-[#ece9ec] px-2.5 py-1 text-xs font-bold text-[#595159]">
+              Billboard 対象外
             </span>
           )}
         </div>
@@ -1752,7 +1756,7 @@ function StoreCard({
           )}
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           {products.map((product) => {
             const report = getLatestReport(
               store.id,
@@ -1761,15 +1765,15 @@ function StoreCard({
 
             return (
               <div
-                key={product.id}
-                className="flex flex-col rounded-2xl border border-[#e5d7e4] bg-white px-4 py-3"
-              >
-                <div className="min-h-[3rem] text-base font-bold leading-6 text-[#211c21] md:text-[17px]">
+  key={product.id}
+  className="flex flex-col rounded-xl border border-[#e5d7e4] bg-white px-3 py-2.5 md:rounded-2xl md:px-4 md:py-3"
+>
+                <div className="text-sm font-bold leading-5 text-[#211c21] md:min-h-[3rem] md:text-[17px] md:leading-6">
                   {product.name}
                 </div>
 
                 {!report ? (
-                  <div className="mt-2 text-base font-bold text-[#625861]">
+                  <div className="mt-2 text-sm font-bold text-[#625861] md:text-base">
                     情報なし
                   </div>
                 ) : report.quantity === 0 ? (
@@ -2134,23 +2138,23 @@ function StatCard({
   value: number;
 }) {
   return (
-    <div className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-5">
-      <div className="flex items-center justify-center gap-4">
+    <div className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] px-2 py-3 md:p-5">
+      <div className="flex flex-col items-center justify-center md:flex-row md:gap-4">
         <div
-          className="shrink-0 text-5xl leading-none"
+          className="shrink-0 text-2xl leading-none md:text-5xl"
           aria-hidden="true"
         >
           {icon}
         </div>
 
-        <div className="text-left">
-          <div className="text-2xl font-bold text-[#9b6c91]">
+        <div className="mt-1 text-center md:mt-0 md:text-left">
+          <div className="text-sm font-bold text-[#9b6c91] md:text-2xl">
             {title}
           </div>
 
-          <div className="mt-1 text-5xl font-bold text-[#171417]">
+          <div className="mt-0.5 whitespace-nowrap text-xl font-bold text-[#171417] md:mt-1 md:text-5xl">
             {value.toLocaleString()}
-            <span className="ml-1 text-base">
+            <span className="ml-0.5 text-xs md:ml-1 md:text-base">
               枚
             </span>
           </div>
