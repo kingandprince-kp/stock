@@ -203,6 +203,14 @@ export default function Home() {
   const [salesData, setSalesData] =
   useState<SalesSummary | null>(null);
 
+  // Android Chromium系ブラウザだけ、半透明の白背景・backdrop-filterを避ける
+  // PC / iPhone / iPad では false のままなので、従来の見た目を維持する
+  const [isAndroid, setIsAndroid] = useState(false);
+
+  useEffect(() => {
+    setIsAndroid(/Android/i.test(navigator.userAgent));
+  }, []);
+
  const sales = salesData?.total_sales ?? 0;
 const today = salesData?.today_sales ?? 0;
 const week = salesData?.weekly_sales ?? 0;
@@ -718,7 +726,11 @@ async function handleStoreRequest() {
     >
       <div className="mx-auto w-full max-w-5xl space-y-4 md:space-y-5">
         {/* ===== HERO ===== */}
-        <section className="relative overflow-hidden rounded-[24px] border border-white/80 bg-white/90 p-4 shadow-sm md:rounded-[30px] md:p-6">
+        <section
+          className={`relative overflow-hidden rounded-[24px] border border-white/80 p-4 shadow-sm md:rounded-[30px] md:p-6 ${
+            isAndroid ? "bg-white" : "bg-white/90"
+          }`}
+        >
           <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-full bg-[#f4a8cc]/25" />
           <div className="pointer-events-none absolute left-[16%] -top-20 h-40 w-40 rounded-full bg-[#d5b5ed]/25" />
           <div className="pointer-events-none absolute right-[18%] -top-12 h-36 w-36 rounded-full bg-[#f6bfd9]/30" />
@@ -836,7 +848,11 @@ async function handleStoreRequest() {
         </section>
 
         {/* ===== 上部ナビ ===== */}
-        <nav className="sticky top-2 z-40 rounded-xl border border-[#e3d4e3] bg-white/95 p-1.5 shadow-md backdrop-blur md:rounded-2xl md:p-2">
+        <nav
+          className={`sticky top-2 z-40 rounded-xl border border-[#e3d4e3] p-1.5 shadow-md md:rounded-2xl md:p-2 ${
+            isAndroid ? "bg-white" : "bg-white/95 backdrop-blur"
+          }`}
+        >
           <div className="grid grid-cols-3 gap-1.5 md:gap-2">
             <a
               href="#stores"
@@ -862,7 +878,11 @@ async function handleStoreRequest() {
         </nav>
 
         {/* ===== 集計について ===== */}
-        <details className="rounded-xl border border-[#e3d4e3] bg-white/90 shadow-sm md:rounded-2xl">
+        <details
+          className={`rounded-xl border border-[#e3d4e3] shadow-sm md:rounded-2xl ${
+            isAndroid ? "bg-white" : "bg-white/90"
+          }`}
+        >
           <summary className="cursor-pointer list-none px-4 py-3 text-[12px] font-bold text-[#4f414d] md:px-6 md:py-4 md:text-xl">
             <div className="flex items-center justify-between gap-2">
               <span className="whitespace-nowrap">
@@ -913,7 +933,7 @@ async function handleStoreRequest() {
               <div className="mt-3 space-y-2 md:mt-4 md:space-y-3">
                 <div className="flex flex-wrap items-center gap-2 md:gap-3">
                   <span className="rounded-lg border border-[#7250a5] bg-[#835ab3] px-2.5 py-1 text-[11px] font-bold text-white md:rounded-xl md:px-3 md:py-1.5 md:text-sm">
-                    Billboard 対象
+                    Billboard対象
                   </span>
                   <span className="text-[12px] text-[#2f2a2f] md:text-base">
                     集計対象として確認できた店舗
@@ -970,7 +990,11 @@ async function handleStoreRequest() {
         </details>
 
         {/* ===== 在庫情報について ===== */}
-        <details className="rounded-xl border border-[#e3d4e3] bg-white/90 shadow-sm md:rounded-2xl">
+        <details
+          className={`rounded-xl border border-[#e3d4e3] shadow-sm md:rounded-2xl ${
+            isAndroid ? "bg-white" : "bg-white/90"
+          }`}
+        >
           <summary className="cursor-pointer list-none px-4 py-3 text-[12px] font-bold text-[#4f414d] md:px-6 md:py-4 md:text-xl">
             <div className="flex items-center justify-between gap-2">
               <span>📦 在庫情報について</span>
@@ -1005,7 +1029,9 @@ async function handleStoreRequest() {
         {/* ===== 店舗検索 ===== */}
         <section
           id="stores"
-          className="scroll-mt-24 rounded-[20px] border border-white/80 bg-white/90 p-3.5 shadow-sm md:rounded-[30px] md:p-6"
+          className={`scroll-mt-24 rounded-[20px] border border-white/80 p-3.5 shadow-sm md:rounded-[30px] md:p-6 ${
+            isAndroid ? "bg-white" : "bg-white/90"
+          }`}
         >
           <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] md:text-sm">
             STOCK SEARCH
@@ -1151,7 +1177,9 @@ async function handleStoreRequest() {
         {/* ===== 在庫投稿 ===== */}
         <section
           id="report"
-          className="scroll-mt-24 rounded-[20px] border border-white/80 bg-white/90 p-3.5 shadow-sm md:rounded-[30px] md:p-6"
+          className={`scroll-mt-24 rounded-[20px] border border-white/80 p-3.5 shadow-sm md:rounded-[30px] md:p-6 ${
+            isAndroid ? "bg-white" : "bg-white/90"
+          }`}
         >
           <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] md:text-sm">
             REPORT STOCK
@@ -1544,7 +1572,9 @@ async function handleStoreRequest() {
         {/* ===== 最新投稿 ===== */}
         <section
           id="latest"
-          className="scroll-mt-24 rounded-[20px] border border-white/80 bg-white/90 p-3.5 shadow-sm md:rounded-[30px] md:p-6"
+          className={`scroll-mt-24 rounded-[20px] border border-white/80 p-3.5 shadow-sm md:rounded-[30px] md:p-6 ${
+            isAndroid ? "bg-white" : "bg-white/90"
+          }`}
         >
           <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] md:text-sm">
             LATEST REPORTS
@@ -1703,7 +1733,7 @@ function StoreCard({
 
           {store.billboard_status === "target" && (
             <span className="whitespace-nowrap rounded-md border border-[#7250a5] bg-[#835ab3] px-2 py-0.5 text-[9px] font-bold text-white md:rounded-xl md:px-4 md:py-2 md:text-base">
-              Billboard 対象
+              Billboard対象
             </span>
           )}
 
