@@ -709,96 +709,86 @@ async function handleStoreRequest() {
   return (
     <main
       id="top"
-      className="min-h-screen w-full max-w-full overflow-x-hidden p-3 pb-24 md:p-6 md:pb-24"
+      className="min-h-screen w-full max-w-full overflow-x-clip p-2.5 pb-20 md:p-6 md:pb-24"
       style={{
         fontFamily: '"Meiryo", "メイリオ", sans-serif',
-        fontSize: "16px",
         background:
           "linear-gradient(180deg, #f9eef7 0%, #f2ebfa 42%, #fcf9fc 100%)",
       }}
     >
-      <div className="mx-auto w-full max-w-6xl space-y-5">
-
+      <div className="mx-auto w-full max-w-6xl space-y-4 md:space-y-5">
         {/* ===== HERO ===== */}
-        <section className="relative overflow-hidden rounded-[30px] border border-white/80 bg-white/90 p-5 shadow-sm md:p-8">
-
-          {/* 淡い風船・丸モチーフ */}
+        <section className="relative overflow-hidden rounded-[24px] border border-white/80 bg-white/90 p-4 shadow-sm md:rounded-[30px] md:p-8">
           <div className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-full bg-[#f4a8cc]/25" />
           <div className="pointer-events-none absolute left-[16%] -top-20 h-40 w-40 rounded-full bg-[#d5b5ed]/25" />
           <div className="pointer-events-none absolute right-[18%] -top-12 h-36 w-36 rounded-full bg-[#f6bfd9]/30" />
           <div className="pointer-events-none absolute -right-16 top-8 h-52 w-52 rounded-full bg-[#cdb0ea]/25" />
           <div className="pointer-events-none absolute right-[37%] bottom-3 h-20 w-20 rounded-full bg-[#f6cfdf]/30" />
 
-          {/* So Honey メインビジュアル */}
           <div className="relative z-10 mx-auto flex max-w-4xl items-center justify-center gap-2 md:gap-6">
-
-            {/* 左の蜂 */}
-            <div className="hidden w-[150px] shrink-0 md:block lg:w-[190px]">
+            <div className="hidden w-[180px] shrink-0 md:block lg:w-[220px]">
               <img
-                src="/bee-ren.jpg"
+                src="/bee-ren.png"
                 alt=""
                 className="h-auto w-full object-contain mix-blend-multiply"
               />
             </div>
 
-            {/* 中央 */}
-            <div className="flex-1 text-center">
-
-           {/* So Honey EP リボン */}
-<div className="mx-auto flex w-full justify-center">
-  <img
-    src="/so-honey-ribbon.png"
-    alt="So Honey EP"
-    className="h-auto w-[360px] max-w-full -translate-x-0 translate-y-7 object-contain md:w-[500px]"
-  />
-</div>
-
-              {/* スマホ時の蜂2匹 */}
-              <div className="mt-1 flex items-center justify-center gap-4 md:hidden">
+            <div className="min-w-0 flex-1 text-center">
+              <div className="mx-auto flex w-full justify-center">
                 <img
-                  src="/bee-ren.jpg"
-                  alt=""
-                  className="h-16 w-16 object-contain mix-blend-multiply"
-                />
-                <img
-                  src="/bee-kaito.jpg"
-                  alt=""
-                  className="h-16 w-16 object-contain mix-blend-multiply"
+                  src="/so-honey-ribbon.png"
+                  alt="So Honey EP"
+                  className="h-auto w-[300px] max-w-full translate-y-4 object-contain md:w-[500px] md:translate-y-7"
                 />
               </div>
 
-              <h1
-  className="mt-2 text-3xl font-bold leading-tight text-[#171417] md:mt-6 md:text-[62px]"
-  style={{
-    fontFamily: '"Meiryo", "メイリオ", sans-serif',
-  }}
->
-  <span className="whitespace-nowrap">King & Prince</span>
+              {/* スマホ：タイトルの左右に蜂 */}
+              <div className="mx-auto mt-1 grid w-full max-w-[330px] grid-cols-[62px_minmax(0,1fr)_62px] items-center gap-0 md:block md:max-w-none">
+                <img
+                  src="/bee-ren.png"
+                  alt=""
+                  className="h-auto w-full object-contain mix-blend-multiply md:hidden"
+                />
+
+                <h1
+                  className="text-center text-[22px] font-bold leading-tight text-[#171417] sm:text-[24px] md:mt-6 md:text-[62px]"
+                  style={{
+                    fontFamily: '"Meiryo", "メイリオ", sans-serif',
+                  }}
+                >
+                  <span className="whitespace-nowrap">King & Prince</span>
+                  <br />
+                  <span className="whitespace-nowrap">在庫チェッカー</span>
+                </h1>
+
+                <img
+                  src="/bee-kaito.png"
+                  alt=""
+                  className="h-auto w-full object-contain mix-blend-multiply md:hidden"
+                />
+              </div>
+
+              <div className="mt-3 flex items-center justify-center gap-2 text-[12px] font-medium leading-5 text-[#655b64] md:mt-4 md:gap-3 md:text-lg md:leading-7">
+                <span className="text-base md:text-2xl" aria-hidden="true">
+                  🍯
+                </span>
+
+                <p className="whitespace-nowrap">
+  全国の実店舗・オンラインショップの在庫を
   <br />
-  <span className="whitespace-nowrap">在庫チェッカー</span>
-</h1>
+  7形態まとめて確認できます。
+</p>
 
-              <div className="mt-4 flex items-center justify-center gap-3 text-base font-medium leading-7 text-[#655b64] md:text-lg">
-  <span className="text-2xl" aria-hidden="true">
-    🍯
-  </span>
-
-  <p>
-    全国の実店舗・オンラインショップの在庫を
-    <br className="hidden md:block" />
-    7形態まとめて確認できます。
-  </p>
-
-  <span className="text-2xl" aria-hidden="true">
-    🍯
-  </span>
-</div>
+                <span className="text-base md:text-2xl" aria-hidden="true">
+                  🍯
+                </span>
+              </div>
             </div>
 
-            {/* 右の蜂 */}
-            <div className="hidden w-[150px] shrink-0 md:block lg:w-[190px]">
+            <div className="hidden w-[180px] shrink-0 md:block lg:w-[220px]">
               <img
-                src="/bee-kaito.jpg"
+                src="/bee-kaito.png"
                 alt=""
                 className="h-auto w-full object-contain mix-blend-multiply"
               />
@@ -806,31 +796,31 @@ async function handleStoreRequest() {
           </div>
 
           {/* 売上 */}
-          <div className="relative z-10 mt-8 rounded-3xl bg-[#211d21] p-6 text-white md:p-7">
-            <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="relative z-10 mt-5 rounded-2xl bg-[#211d21] p-4 text-white md:mt-8 md:rounded-3xl md:p-7">
+            <div className="flex items-end justify-between gap-3">
               <div>
-                <div className="text-sm font-bold tracking-[0.12em] text-[#e8cfe3]">
+                <div className="text-[10px] font-bold tracking-[0.12em] text-[#e8cfe3] md:text-sm">
                   TOTAL SALES
                 </div>
 
-                <div className="mt-2 text-4xl font-bold md:text-5xl">
+                <div className="mt-1 text-3xl font-bold md:mt-2 md:text-5xl">
                   {sales.toLocaleString()}
-                  <span className="ml-1 text-xl">枚</span>
+                  <span className="ml-1 text-sm md:text-xl">枚</span>
                 </div>
               </div>
 
               <div className="text-right">
-                <div className="text-base text-[#d9cfd8]">
+                <div className="text-xs text-[#d9cfd8] md:text-base">
                   達成率 {percent.toFixed(1)}%
                 </div>
 
-                <div className="mt-1 text-lg font-bold text-[#efcbe7]">
+                <div className="mt-0.5 text-sm font-bold text-[#efcbe7] md:mt-1 md:text-lg">
                   あと {remain.toLocaleString()}枚
                 </div>
               </div>
             </div>
 
-            <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/15">
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/15 md:mt-5 md:h-3">
               <div
                 className="h-full rounded-full bg-[#dc82c4]"
                 style={{ width: `${percent}%` }}
@@ -838,7 +828,7 @@ async function handleStoreRequest() {
             </div>
           </div>
 
-          <div className="relative z-10 mt-5 grid grid-cols-3 gap-2 md:gap-3">
+          <div className="relative z-10 mt-3 grid grid-cols-3 gap-1.5 md:mt-5 md:gap-3">
             <StatCard icon="📊" title="本日" value={today} />
             <StatCard icon="📅" title="今週" value={week} />
             <StatCard icon="👑" title="累計" value={sales} />
@@ -846,25 +836,25 @@ async function handleStoreRequest() {
         </section>
 
         {/* ===== 上部ナビ ===== */}
-        <nav className="sticky top-2 z-40 rounded-2xl border border-[#e3d4e3] bg-white/95 p-2 shadow-md backdrop-blur">
-          <div className="grid grid-cols-3 gap-2">
+        <nav className="sticky top-2 z-40 rounded-xl border border-[#e3d4e3] bg-white/95 p-1.5 shadow-md backdrop-blur md:rounded-2xl md:p-2">
+          <div className="grid grid-cols-3 gap-1.5 md:gap-2">
             <a
               href="#stores"
-              className="whitespace-nowrap rounded-xl bg-[#f4e4f1] px-1 py-3.5 text-center text-[11px] font-bold text-[#68415f] transition hover:bg-[#ead2e5] md:px-2 md:py-3.5 md:text-base"
+              className="whitespace-nowrap rounded-lg bg-[#f4e4f1] px-1 py-2.5 text-center text-[10px] font-bold text-[#68415f] transition hover:bg-[#ead2e5] md:rounded-xl md:px-2 md:py-3.5 md:text-base"
             >
               🏪 店舗を探す
             </a>
 
             <a
               href="#report"
-              className="whitespace-nowrap rounded-xl bg-[#eadff5] px-1 py-3.5 text-center text-[11px] font-bold text-[#654b78] transition hover:bg-[#dfceed] md:px-2 md:text-base"
+              className="whitespace-nowrap rounded-lg bg-[#eadff5] px-1 py-2.5 text-center text-[10px] font-bold text-[#654b78] transition hover:bg-[#dfceed] md:rounded-xl md:px-2 md:py-3.5 md:text-base"
             >
               ✍️ 在庫情報を投稿
             </a>
 
             <a
               href="#latest"
-              className="whitespace-nowrap rounded-xl bg-[#f5e7ef] px-1 py-3.5 text-center text-[11px] font-bold text-[#754e66] transition hover:bg-[#ecd6e2] md:px-2 md:text-base"
+              className="whitespace-nowrap rounded-lg bg-[#f5e7ef] px-1 py-2.5 text-center text-[10px] font-bold text-[#754e66] transition hover:bg-[#ecd6e2] md:rounded-xl md:px-2 md:py-3.5 md:text-base"
             >
               🕒 最新の在庫投稿
             </a>
@@ -872,30 +862,29 @@ async function handleStoreRequest() {
         </nav>
 
         {/* ===== 集計について ===== */}
-        <details className="rounded-2xl border border-[#e3d4e3] bg-white/90 shadow-sm">
-          <summary className="cursor-pointer list-none px-4 py-4 text-sm font-bold text-[#4f414d] md:px-6 md:text-xl">
-            <div className="flex items-center justify-between gap-4">
-              <span className="whitespace-nowrap">📊 オリコン・Billboard集計について</span>
+        <details className="rounded-xl border border-[#e3d4e3] bg-white/90 shadow-sm md:rounded-2xl">
+          <summary className="cursor-pointer list-none px-4 py-3 text-[12px] font-bold text-[#4f414d] md:px-6 md:py-4 md:text-xl">
+            <div className="flex items-center justify-between gap-2">
+              <span className="whitespace-nowrap">
+                📊 オリコン・Billboard集計について
+              </span>
               <span className="text-[#9b6c91]">∨</span>
             </div>
           </summary>
 
-          <div className="border-t border-[#eaddea] px-5 pb-5 pt-5 md:px-6 md:pb-6">
-            {/* オリコン */}
+          <div className="border-t border-[#eaddea] px-4 pb-4 pt-4 md:px-6 md:pb-6 md:pt-5">
             <div>
-              <div>
-  <div className="text-lg font-bold text-[#2c252b]">
-    オリコン
-  </div>
+              <div className="text-base font-bold text-[#2c252b] md:text-lg">
+                オリコン
+              </div>
 
-  <div className="mt-3">
-    <span className="inline-block rounded-xl border border-[#bd4f88] bg-[#d9609b] px-3 py-1.5 text-sm font-bold text-white">
-      オリコン集計対象
-    </span>
-  </div>
-</div>
+              <div className="mt-2">
+                <span className="inline-block rounded-lg border border-[#bd4f88] bg-[#d9609b] px-2.5 py-1 text-[11px] font-bold text-white md:rounded-xl md:px-3 md:py-1.5 md:text-sm">
+                  オリコン対象
+                </span>
+              </div>
 
-              <p className="mt-3 text-sm leading-6 text-[#2f2a2f] md:text-base md:leading-7">
+              <p className="mt-2 text-[12px] leading-5 text-[#2f2a2f] md:mt-3 md:text-base md:leading-7">
                 本サイトに掲載している実店舗は、基本的にオリコン
                 「CD・DVD/Blu-rayランキング調査協力店」として
                 確認できた店舗を掲載しています。
@@ -905,49 +894,45 @@ async function handleStoreRequest() {
                 href="https://biz.oricon.co.jp/coope.asp"
                 target="_blank"
                 rel="noreferrer"
-                className="mt-3 inline-block rounded-full bg-[#f1dfec] px-4 py-2.5 text-sm font-bold text-[#6d4966] transition hover:bg-[#e9d2e4] md:text-base"
+                className="mt-2 inline-block rounded-full bg-[#f1dfec] px-3 py-2 text-[11px] font-bold text-[#6d4966] transition hover:bg-[#e9d2e4] md:mt-3 md:px-4 md:py-2.5 md:text-base"
               >
                 オリコン 調査協力店一覧を確認する ↗
               </a>
             </div>
 
-            {/* Billboard */}
-            <div className="mt-6 border-t border-[#eaddea] pt-6">
-              <div className="text-lg font-bold text-[#2c252b]">
+            <div className="mt-5 border-t border-[#eaddea] pt-5 md:mt-6 md:pt-6">
+              <div className="text-base font-bold text-[#2c252b] md:text-lg">
                 Billboard
               </div>
 
-              <p className="mt-2 text-sm leading-6 text-[#2f2a2f] md:text-base md:leading-7">
+              <p className="mt-1.5 text-[12px] leading-5 text-[#2f2a2f] md:mt-2 md:text-base md:leading-7">
                 店舗ごとに、以下の3種類で表示しています。
               </p>
 
-              <div className="mt-4 space-y-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="rounded-xl border border-[#7250a5] bg-[#835ab3] px-3 py-1.5 text-sm font-bold text-white">
-                    Billboard集計対象
+              <div className="mt-3 space-y-2 md:mt-4 md:space-y-3">
+                <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                  <span className="rounded-lg border border-[#7250a5] bg-[#835ab3] px-2.5 py-1 text-[11px] font-bold text-white md:rounded-xl md:px-3 md:py-1.5 md:text-sm">
+                    Billboard対象
                   </span>
-
-                  <span className="text-sm text-[#2f2a2f] md:text-base">
+                  <span className="text-[12px] text-[#2f2a2f] md:text-base">
                     集計対象として確認できた店舗
                   </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="rounded-xl border border-[#a9a2a8] bg-[#ece9ec] px-3 py-1.5 text-sm font-bold text-[#595159]">
+                <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                  <span className="rounded-lg border border-[#a9a2a8] bg-[#ece9ec] px-2.5 py-1 text-[11px] font-bold text-[#595159] md:rounded-xl md:px-3 md:py-1.5 md:text-sm">
                     Billboard 対象外
                   </span>
-
-                  <span className="text-sm text-[#2f2a2f] md:text-base">
+                  <span className="text-[12px] text-[#2f2a2f] md:text-base">
                     集計対象外として確認した店舗
                   </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="rounded-xl border border-[#9e85b8] bg-[#eee7f4] px-3 py-1.5 text-sm font-bold text-[#5b486b]">
+                <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                  <span className="rounded-lg border border-[#9e85b8] bg-[#eee7f4] px-2.5 py-1 text-[11px] font-bold text-[#5b486b] md:rounded-xl md:px-3 md:py-1.5 md:text-sm">
                     Billboard 要確認
                   </span>
-
-                  <span className="text-sm text-[#2f2a2f] md:text-base">
+                  <span className="text-[12px] text-[#2f2a2f] md:text-base">
                     店舗ごとの確認が必要な店舗
                   </span>
                 </div>
@@ -957,13 +942,12 @@ async function handleStoreRequest() {
                 href="https://www.billboard-japan.com/common/special/others/storelist/storelist.html"
                 target="_blank"
                 rel="noreferrer"
-                className="mt-4 inline-block rounded-full bg-[#eee7f4] px-4 py-2.5 text-sm font-bold text-[#5b486b] transition hover:bg-[#e5daee] md:text-base"
+                className="mt-3 inline-block rounded-full bg-[#eee7f4] px-3 py-2 text-[11px] font-bold text-[#5b486b] transition hover:bg-[#e5daee] md:mt-4 md:px-4 md:py-2.5 md:text-base"
               >
                 Billboard JAPAN 集計対象店を確認する ↗
               </a>
 
-              {/* 注釈 */}
-              <div className="mt-5 rounded-xl bg-[#f8f4f7] p-4 text-sm leading-6 text-[#2f2a2f]">
+              <div className="mt-4 rounded-lg bg-[#f8f4f7] p-3 text-[11px] leading-5 text-[#2f2a2f] md:mt-5 md:rounded-xl md:p-4 md:text-sm md:leading-6">
                 <p>
                   ※ TSUTAYAなどフランチャイズ店舗が多いチェーンでは、
                   店舗によって集計対象状況が異なる場合があるため、
@@ -983,32 +967,35 @@ async function handleStoreRequest() {
           </div>
         </details>
 
-                {/* ===== 在庫情報について ===== */}
-        <details className="rounded-2xl border border-[#e3d4e3] bg-white/90 shadow-sm">
-          <summary className="cursor-pointer list-none px-5 py-4 text-lg font-bold text-[#4f414d] md:px-6 md:text-xl">
-            <div className="flex items-center justify-between gap-4">
+        {/* ===== 在庫情報について ===== */}
+        <details className="rounded-xl border border-[#e3d4e3] bg-white/90 shadow-sm md:rounded-2xl">
+          <summary className="cursor-pointer list-none px-4 py-3 text-[12px] font-bold text-[#4f414d] md:px-6 md:py-4 md:text-xl">
+            <div className="flex items-center justify-between gap-2">
               <span>📦 在庫情報について</span>
               <span className="text-[#9b6c91]">∨</span>
             </div>
           </summary>
 
-          <div className="border-t border-[#eaddea] px-5 pb-5 pt-5 text-sm leading-6 text-[#2f2a2f] md:px-6 md:pb-6 md:text-base md:leading-7">
+          <div className="border-t border-[#eaddea] px-4 pb-4 pt-4 text-[12px] leading-5 text-[#2f2a2f] md:px-6 md:pb-6 md:pt-5 md:text-base md:leading-7">
             <p>
               本サイトの在庫情報は、店舗・オンラインショップで確認した情報を
               ユーザーが投稿し共有するものです。
             </p>
 
-            <p className="mt-3">
+            <p className="mt-2 md:mt-3">
               在庫状況は投稿後に変動する場合があり、
               表示されている在庫数や在庫の有無を保証するものではありません。
-              <br />また、店舗への取り置き・予約の可否についても、
+              <br />
+              また、店舗への取り置き・予約の可否についても、
               各店舗へ直接ご確認ください。
             </p>
 
-            <div className="mt-4 rounded-xl bg-[#f8f4f7] p-4 text-sm leading-6 text-[#2f2a2f]">
+            <div className="mt-3 rounded-lg bg-[#f8f4f7] p-3 text-[11px] leading-5 text-[#2f2a2f] md:mt-4 md:rounded-xl md:p-4 md:text-sm md:leading-6">
               ※ 掲載情報は参考情報としてご利用ください。
-              <strong className="font-bold">購入・来店前には、ご自身で各店舗・オンラインショップ等へ
-              最新の在庫状況をご確認ください。</strong>
+              <strong className="font-bold">
+                購入・来店前には、ご自身で各店舗・オンラインショップ等へ
+                最新の在庫状況をご確認ください。
+              </strong>
             </div>
           </div>
         </details>
@@ -1016,21 +1003,21 @@ async function handleStoreRequest() {
         {/* ===== 店舗検索 ===== */}
         <section
           id="stores"
-          className="scroll-mt-24 rounded-[30px] border border-white/80 bg-white/90 p-5 shadow-sm md:p-8"
+          className="scroll-mt-24 rounded-[20px] border border-white/80 bg-white/90 p-3.5 shadow-sm md:rounded-[30px] md:p-8"
         >
-          <div className="text-sm font-bold tracking-[0.12em] text-[#9b6c91]">
+          <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] md:text-sm">
             STOCK SEARCH
           </div>
 
-          <h2 className="mt-1 text-2xl font-bold text-[#1d191d] md:text-3xl">
+          <h2 className="mt-1 text-lg font-bold text-[#1d191d] md:text-3xl">
             🏬 店舗を探す
           </h2>
 
-          <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl bg-[#f6edf5] p-2">
+          <div className="mt-3 grid grid-cols-2 gap-1.5 rounded-xl bg-[#f6edf5] p-1.5 md:mt-5 md:gap-2 md:rounded-2xl md:p-2">
             <button
               type="button"
               onClick={() => setSearchMode("physical")}
-              className={`rounded-xl px-4 py-3.5 text-base font-bold transition ${
+              className={`rounded-lg px-3 py-2 text-[12px] font-bold transition md:rounded-xl md:px-4 md:py-3.5 md:text-base ${
                 searchMode === "physical"
                   ? "bg-[#211d21] text-white shadow-sm"
                   : "text-[#715f6e]"
@@ -1042,7 +1029,7 @@ async function handleStoreRequest() {
             <button
               type="button"
               onClick={() => setSearchMode("online")}
-              className={`rounded-xl px-4 py-3.5 text-base font-bold transition ${
+              className={`rounded-lg px-3 py-2 text-[12px] font-bold transition md:rounded-xl md:px-4 md:py-3.5 md:text-base ${
                 searchMode === "online"
                   ? "bg-[#211d21] text-white shadow-sm"
                   : "text-[#715f6e]"
@@ -1060,18 +1047,18 @@ async function handleStoreRequest() {
                 ? "店舗名・チェーン名・市区町村で検索"
                 : "オンラインショップ名で検索"
             }
-            className="mt-4 w-full rounded-2xl border border-[#d9c9d8] bg-[#fdfafd] p-4 text-base outline-none focus:border-[#bb79a7] focus:ring-2 focus:ring-[#eedbea]"
+            className="mt-3 w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] outline-none focus:border-[#bb79a7] focus:ring-2 focus:ring-[#eedbea] md:mt-4 md:rounded-2xl md:p-4 md:text-base"
           />
 
           {searchMode === "physical" && (
-            <div className="mt-7">
-              <div className="text-xl font-bold text-[#2c252b]">
+            <div className="mt-4 md:mt-7">
+              <div className="text-sm font-bold text-[#2c252b] md:text-xl">
                 📍 都道府県から探す
               </div>
 
               <button
                 onClick={() => setPrefecture("全国")}
-                className={`mt-4 rounded-full px-5 py-2.5 text-base font-bold ${
+                className={`mt-2.5 rounded-full px-3.5 py-1.5 text-[12px] font-bold md:mt-4 md:px-5 md:py-2.5 md:text-base ${
                   prefecture === "全国"
                     ? "bg-[#211d21] text-white"
                     : "bg-[#f1dfed] text-[#68415f]"
@@ -1080,19 +1067,19 @@ async function handleStoreRequest() {
                 全国
               </button>
 
-              <div className="mt-6 space-y-5">
+              <div className="mt-3 space-y-2.5 md:mt-6 md:space-y-5">
                 {PREFECTURE_GROUPS.map((group) => (
                   <div key={group.region}>
-                    <div className="mb-2 text-base font-bold text-[#a26796]">
+                    <div className="mb-1 text-[11px] font-bold text-[#a26796] md:mb-2 md:text-base">
                       {group.region}
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5 md:gap-2">
                       {group.prefectures.map((pref) => (
                         <button
                           key={pref}
                           onClick={() => setPrefecture(pref)}
-                          className={`rounded-full px-4 py-2 text-base font-bold ${
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-bold md:px-4 md:py-2 md:text-base ${
                             prefecture === pref
                               ? "bg-[#b96b9f] text-white shadow-sm"
                               : "bg-[#f3e1ef] text-[#66475e]"
@@ -1108,14 +1095,14 @@ async function handleStoreRequest() {
             </div>
           )}
 
-          <div className="mt-9 border-t border-[#eaddea] pt-7">
-            <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="mt-5 border-t border-[#eaddea] pt-4 md:mt-9 md:pt-7">
+            <div className="flex flex-wrap items-end justify-between gap-2 md:gap-3">
               <div>
-                <div className="text-sm font-bold tracking-[0.12em] text-[#9b6c91]">
+                <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] md:text-sm">
                   STOCK LIST
                 </div>
 
-                <h3 className="mt-1 text-2xl font-bold text-[#1d191d] md:text-3xl">
+                <h3 className="mt-1 text-lg font-bold text-[#1d191d] md:text-3xl">
                   🎈{" "}
                   {searchMode === "physical"
                     ? "店舗別 在庫一覧"
@@ -1124,14 +1111,14 @@ async function handleStoreRequest() {
 
                 {searchMode === "physical" &&
                   prefecture !== "全国" && (
-                    <p className="mt-2 text-base text-[#766a75]">
+                    <p className="mt-1 text-[12px] text-[#766a75] md:mt-2 md:text-base">
                       📍 {prefecture}
                     </p>
                   )}
               </div>
 
               {!loading && !dataError && (
-                <div className="rounded-full bg-[#f3dce9] px-4 py-2 text-base font-bold text-[#653b56]">
+                <div className="rounded-full bg-[#f3dce9] px-2.5 py-1 text-[11px] font-bold text-[#653b56] md:px-4 md:py-2 md:text-base">
                   {visibleStores.length.toLocaleString()}店舗
                 </div>
               )}
@@ -1144,7 +1131,7 @@ async function handleStoreRequest() {
             ) : visibleStores.length === 0 ? (
               <EmptyBox text="該当する店舗がありません" />
             ) : (
-              <div className="mt-6 space-y-5">
+              <div className="mt-3 space-y-3 md:mt-6 md:space-y-5">
                 {visibleStores.map((store) => (
                   <StoreCard
                     key={store.id}
@@ -1162,21 +1149,21 @@ async function handleStoreRequest() {
         {/* ===== 在庫投稿 ===== */}
         <section
           id="report"
-          className="scroll-mt-24 rounded-[30px] border border-white/80 bg-white/90 p-5 shadow-sm md:p-8"
+          className="scroll-mt-24 rounded-[20px] border border-white/80 bg-white/90 p-3.5 shadow-sm md:rounded-[30px] md:p-8"
         >
-          <div className="text-sm font-bold tracking-[0.12em] text-[#9b6c91]">
+          <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] md:text-sm">
             REPORT STOCK
           </div>
 
-          <h2 className="mt-1 text-2xl font-bold text-[#1d191d] md:text-3xl">
+          <h2 className="mt-1 text-lg font-bold text-[#1d191d] md:text-3xl">
             ✍️ 在庫情報を投稿
           </h2>
 
-          <p className="mt-2 text-base text-[#766a75]">
+          <p className="mt-1 text-[12px] text-[#766a75] md:mt-2 md:text-base">
             実店舗・オンラインショップで確認した在庫を投稿できます。
           </p>
 
-          <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl bg-[#f6edf5] p-2">
+          <div className="mt-3 grid grid-cols-2 gap-1.5 rounded-xl bg-[#f6edf5] p-1.5 md:mt-5 md:gap-2 md:rounded-2xl md:p-2">
             <button
               type="button"
               onClick={() => {
@@ -1184,7 +1171,7 @@ async function handleStoreRequest() {
                 setReportStoreId("");
                 setReportStoreSearch("");
               }}
-              className={`rounded-xl px-4 py-3.5 text-base font-bold ${
+              className={`rounded-lg px-3 py-2 text-[12px] font-bold md:rounded-xl md:px-4 md:py-3.5 md:text-base ${
                 reportMode === "physical"
                   ? "bg-[#211d21] text-white"
                   : "text-[#715f6e]"
@@ -1200,7 +1187,7 @@ async function handleStoreRequest() {
                 setReportStoreId("");
                 setReportStoreSearch("");
               }}
-              className={`rounded-xl px-4 py-3.5 text-base font-bold ${
+              className={`rounded-lg px-3 py-2 text-[12px] font-bold md:rounded-xl md:px-4 md:py-3.5 md:text-base ${
                 reportMode === "online"
                   ? "bg-[#211d21] text-white"
                   : "text-[#715f6e]"
@@ -1210,10 +1197,10 @@ async function handleStoreRequest() {
             </button>
           </div>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div className="mt-3 grid gap-3 md:mt-5 md:grid-cols-2 md:gap-4">
             {reportMode === "physical" && (
-              <label className="space-y-2">
-                <span className="text-base font-bold">
+              <label className="space-y-1.5 md:space-y-2">
+                <span className="text-[12px] font-bold md:text-base">
                   📍 都道府県
                 </span>
 
@@ -1224,7 +1211,7 @@ async function handleStoreRequest() {
                     setReportStoreId("");
                     setReportStoreSearch("");
                   }}
-                  className="w-full rounded-2xl border border-[#d9c9d8] bg-[#fdfafd] p-3.5 text-base"
+                  className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] md:rounded-2xl md:p-3.5 md:text-base"
                 >
                   {PREFECTURES.map((pref) => (
                     <option key={pref} value={pref}>
@@ -1235,8 +1222,8 @@ async function handleStoreRequest() {
               </label>
             )}
 
-            <label className="space-y-2">
-              <span className="text-base font-bold">
+            <label className="space-y-1.5 md:space-y-2">
+              <span className="text-[12px] font-bold md:text-base">
                 💿 商品
               </span>
 
@@ -1245,7 +1232,7 @@ async function handleStoreRequest() {
                 onChange={(e) =>
                   setReportProductId(e.target.value)
                 }
-                className="w-full rounded-2xl border border-[#d9c9d8] bg-[#fdfafd] p-3.5 text-base"
+                className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] md:rounded-2xl md:p-3.5 md:text-base"
               >
                 {products.map((product) => (
                   <option key={product.id} value={product.id}>
@@ -1256,8 +1243,8 @@ async function handleStoreRequest() {
             </label>
           </div>
 
-          <label className="mt-5 block space-y-2">
-            <span className="text-base font-bold">
+          <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
+            <span className="text-[12px] font-bold md:text-base">
               🔎{" "}
               {reportMode === "online"
                 ? "オンラインショップを検索"
@@ -1275,17 +1262,17 @@ async function handleStoreRequest() {
                   ? "ショップ名を入力"
                   : "店舗名・チェーン名・市区町村を入力"
               }
-              className="w-full rounded-2xl border border-[#d9c9d8] bg-[#fdfafd] p-3.5 text-base"
+              className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] md:rounded-2xl md:p-3.5 md:text-base"
             />
           </label>
 
-          <div className="mt-3 max-h-72 overflow-y-auto rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-2">
+          <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-[#eaddea] bg-[#fcf9fc] p-1.5 md:mt-3 md:max-h-72 md:rounded-2xl md:p-2">
             {reportCandidates.length === 0 ? (
-              <div className="p-4 text-base text-[#837983]">
+              <div className="p-3 text-[12px] text-[#837983] md:p-4 md:text-base">
                 該当する店舗がありません
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5 md:space-y-2">
                 {reportCandidates.slice(0, 30).map((store) => {
                   const selected =
                     String(store.id) === reportStoreId;
@@ -1297,23 +1284,13 @@ async function handleStoreRequest() {
                       onClick={() =>
                         setReportStoreId(String(store.id))
                       }
-                      className={`w-full rounded-xl border px-4 py-3 text-left ${
+                      className={`w-full rounded-lg border px-3 py-2 text-left text-[12px] font-bold md:rounded-xl md:px-4 md:py-3 md:text-base ${
                         selected
                           ? "border-[#b96b9f] bg-[#f1deeb]"
                           : "border-transparent bg-white"
                       }`}
                     >
-                      <div className="text-base font-bold">
-                        {getDisplayStoreName(store)}
-                      </div>
-
-                      <div className="mt-1 text-sm text-[#766a75]">
-                        {isOnlineStore(store)
-                          ? "🛒 オンライン"
-                          : store.city
-                            ? `📍 ${store.prefecture} ${store.city}`
-                            : `📍 ${store.prefecture}`}
-                      </div>
+                      {getDisplayStoreName(store)}
                     </button>
                   );
                 })}
@@ -1322,23 +1299,19 @@ async function handleStoreRequest() {
           </div>
 
           {selectedReportStore && (
-            <div className="mt-3 rounded-2xl border border-[#d2b4ca] bg-[#f4e5f0] p-4">
-              <div className="text-sm font-bold text-[#986b8e]">
+            <div className="mt-2 rounded-xl border border-[#d2b4ca] bg-[#f4e5f0] p-3 md:mt-3 md:rounded-2xl md:p-4">
+              <div className="text-[10px] font-bold text-[#986b8e] md:text-sm">
                 選択中
               </div>
 
-              <div className="mt-1 text-base font-bold">
+              <div className="mt-0.5 text-[12px] font-bold md:mt-1 md:text-base">
                 {getDisplayStoreName(selectedReportStore)}
-                {!isOnlineStore(selectedReportStore) &&
-                selectedReportStore.city
-                  ? ` (${selectedReportStore.city})`
-                  : ""}
               </div>
             </div>
           )}
 
-          <label className="mt-5 block space-y-2">
-            <span className="text-base font-bold">
+          <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
+            <span className="text-[12px] font-bold md:text-base">
               🔢 在庫枚数
             </span>
 
@@ -1359,38 +1332,38 @@ async function handleStoreRequest() {
                 }
               }}
               placeholder="例: 5"
-              className="w-full rounded-2xl border border-[#d9c9d8] bg-[#fdfafd] p-3.5 text-base"
+              className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] md:rounded-2xl md:p-3.5 md:text-base"
             />
           </label>
 
-          <label className="mt-5 block space-y-2">
-            <span className="text-base font-bold">
+          <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
+            <span className="text-[12px] font-bold md:text-base">
               💬 コメント
-              <span className="ml-2 text-sm font-normal text-[#8a8089]">
+              <span className="ml-2 text-[11px] font-normal text-[#8a8089] md:text-sm">
                 任意・500文字まで
               </span>
             </span>
 
             <textarea
-              rows={4}
+              rows={3}
               maxLength={500}
               value={reportComment}
               onChange={(e) =>
                 setReportComment(e.target.value)
               }
               placeholder="例: 入荷予定なしとのこと"
-              className="w-full rounded-2xl border border-[#d9c9d8] bg-[#fdfafd] p-3.5 text-base"
+              className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] md:rounded-2xl md:p-3.5 md:text-base"
             />
           </label>
 
           {submitError && (
-            <div className="mt-4 rounded-2xl bg-[#fde7ec] p-4 text-base font-bold text-[#8a304a]">
+            <div className="mt-3 rounded-xl bg-[#fde7ec] p-3 text-[12px] font-bold text-[#8a304a] md:mt-4 md:rounded-2xl md:p-4 md:text-base">
               {submitError}
             </div>
           )}
 
           {submitMessage && (
-            <div className="mt-4 rounded-2xl bg-[#edf5ec] p-4 text-base font-bold text-[#456043]">
+            <div className="mt-3 rounded-xl bg-[#edf5ec] p-3 text-[12px] font-bold text-[#456043] md:mt-4 md:rounded-2xl md:p-4 md:text-base">
               {submitMessage}
             </div>
           )}
@@ -1398,13 +1371,13 @@ async function handleStoreRequest() {
           <button
             onClick={handleSubmitReport}
             disabled={submitting}
-            className="mt-5 rounded-2xl bg-[#211d21] px-7 py-3.5 text-base font-bold text-white disabled:opacity-50"
+            className="mt-3 rounded-xl bg-[#211d21] px-5 py-2.5 text-[12px] font-bold text-white disabled:opacity-50 md:mt-5 md:rounded-2xl md:px-7 md:py-3.5 md:text-base"
           >
             {submitting ? "投稿中…" : "投稿する"}
           </button>
 
           {/* 店舗追加リクエスト */}
-          <div className="mt-4 rounded-2xl border border-[#eaddea] bg-[#fbf7fa] p-4">
+          <div className="mt-3 rounded-xl border border-[#eaddea] bg-[#fbf7fa] p-3 md:mt-4 md:rounded-2xl md:p-4">
             <button
               type="button"
               onClick={() => {
@@ -1412,92 +1385,92 @@ async function handleStoreRequest() {
                 setRequestMessage("");
                 setRequestError("");
               }}
-              className="flex w-full items-center justify-between gap-3 text-left"
+              className="flex w-full items-center justify-between gap-2 text-left md:gap-3"
             >
               <div>
-  <div className="text-sm font-bold tracking-[0.12em] text-[#9b6c91]">
-    STORE REQUEST
-  </div>
+                <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] md:text-sm">
+                  STORE REQUEST
+                </div>
 
-  <div className="mt-1 text-xl font-bold text-[#2c252b] md:text-2xl">
-    🏪 店舗が見つからない場合
-  </div>
+                <div className="mt-0.5 text-sm font-bold text-[#2c252b] md:mt-1 md:text-2xl">
+                  🏪 店舗が見つからない場合
+                </div>
 
-  <div className="mt-2 text-base text-[#766a75]">
-    登録されていない店舗を追加リクエストできます。
-  </div>
-</div>
+                <div className="mt-1 text-[11px] text-[#766a75] md:mt-2 md:text-base">
+                  登録されていない店舗を追加リクエストできます。
+                </div>
+              </div>
 
-              <span className="shrink-0 text-lg font-bold text-[#9d6c91]">
+              <span className="shrink-0 text-base font-bold text-[#9d6c91] md:text-lg">
                 {requestOpen ? "∧" : "∨"}
               </span>
             </button>
 
             {requestOpen && (
-              <div className="mt-5 border-t border-[#eaddea] pt-5">
-                <div className="mb-5 rounded-xl bg-[#f2e5f0] p-3 text-sm leading-6 text-[#64515f]">
+              <div className="mt-4 border-t border-[#eaddea] pt-4 md:mt-5 md:pt-5">
+                <div className="mb-3 rounded-lg bg-[#f2e5f0] p-2.5 text-[11px] leading-5 text-[#64515f] md:mb-5 md:rounded-xl md:p-3 md:text-sm md:leading-6">
                   {reportMode === "online"
                     ? "オンラインショップの追加リクエスト"
                     : `追加先: ${reportPrefecture}`}
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-  <label className="block">
-    <div className="mb-2 text-base font-bold">
-      🏢 チェーン名
-      <span className="ml-2 text-sm font-normal text-[#8a8089]">
-        任意
-      </span>
-    </div>
+                <div className="grid gap-3 md:grid-cols-2 md:gap-4">
+                  <label className="block">
+                    <div className="mb-1.5 text-[12px] font-bold md:mb-2 md:text-base">
+                      🏢 チェーン名
+                      <span className="ml-2 text-[11px] font-normal text-[#8a8089] md:text-sm">
+                        任意
+                      </span>
+                    </div>
 
-    <input
-      type="text"
-      maxLength={100}
-      value={requestChainName}
-      onChange={(e) => {
-        setRequestChainName(e.target.value);
-        setRequestMessage("");
-        setRequestError("");
-      }}
-      placeholder="例: タワーレコード"
-      className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3.5 text-base"
-    />
-  </label>
+                    <input
+                      type="text"
+                      maxLength={100}
+                      value={requestChainName}
+                      onChange={(e) => {
+                        setRequestChainName(e.target.value);
+                        setRequestMessage("");
+                        setRequestError("");
+                      }}
+                      placeholder="例: タワーレコード"
+                      className="w-full rounded-lg border border-[#d9c9d8] bg-white p-2.5 text-[12px] md:rounded-xl md:p-3.5 md:text-base"
+                    />
+                  </label>
 
-  <label className="block">
-    <div className="mb-2 text-base font-bold">
-      {reportMode === "online"
-        ? "🛒 ショップ名"
-        : "🏪 店舗名"}
-      <span className="ml-1 text-sm text-[#c44f82]">
-        必須
-      </span>
-    </div>
+                  <label className="block">
+                    <div className="mb-1.5 text-[12px] font-bold md:mb-2 md:text-base">
+                      {reportMode === "online"
+                        ? "🛒 ショップ名"
+                        : "🏪 店舗名"}
+                      <span className="ml-1 text-[11px] text-[#c44f82] md:text-sm">
+                        必須
+                      </span>
+                    </div>
 
-    <input
-      type="text"
-      maxLength={150}
-      value={requestName}
-      onChange={(e) => {
-        setRequestName(e.target.value);
-        setRequestMessage("");
-        setRequestError("");
-      }}
-      placeholder={
-        reportMode === "online"
-          ? "例: UNIVERSAL MUSIC STORE"
-          : "例: 札幌パルコ店"
-      }
-      className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3.5 text-base"
-    />
-  </label>
-</div>
+                    <input
+                      type="text"
+                      maxLength={150}
+                      value={requestName}
+                      onChange={(e) => {
+                        setRequestName(e.target.value);
+                        setRequestMessage("");
+                        setRequestError("");
+                      }}
+                      placeholder={
+                        reportMode === "online"
+                          ? "例: UNIVERSAL MUSIC STORE"
+                          : "例: 札幌パルコ店"
+                      }
+                      className="w-full rounded-lg border border-[#d9c9d8] bg-white p-2.5 text-[12px] md:rounded-xl md:p-3.5 md:text-base"
+                    />
+                  </label>
+                </div>
 
                 {reportMode === "physical" && (
-                  <label className="mt-4 block">
-                    <div className="mb-2 text-base font-bold">
+                  <label className="mt-3 block md:mt-4">
+                    <div className="mb-1.5 text-[12px] font-bold md:mb-2 md:text-base">
                       📍 市区町村
-                      <span className="ml-2 text-sm font-normal text-[#8a8089]">
+                      <span className="ml-2 text-[11px] font-normal text-[#8a8089] md:text-sm">
                         任意
                       </span>
                     </div>
@@ -1512,15 +1485,15 @@ async function handleStoreRequest() {
                         setRequestError("");
                       }}
                       placeholder="例: 札幌市中央区"
-                      className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3.5 text-base"
+                      className="w-full rounded-lg border border-[#d9c9d8] bg-white p-2.5 text-[12px] md:rounded-xl md:p-3.5 md:text-base"
                     />
                   </label>
                 )}
 
-                <label className="mt-4 block">
-                  <div className="mb-2 text-base font-bold">
+                <label className="mt-3 block md:mt-4">
+                  <div className="mb-1.5 text-[12px] font-bold md:mb-2 md:text-base">
                     💬 補足
-                    <span className="ml-2 text-sm font-normal text-[#8a8089]">
+                    <span className="ml-2 text-[11px] font-normal text-[#8a8089] md:text-sm">
                       任意・500文字まで
                     </span>
                   </div>
@@ -1535,18 +1508,18 @@ async function handleStoreRequest() {
                       setRequestError("");
                     }}
                     placeholder="例: 新しくオープンした店舗です。公式サイトでCD取扱いを確認しました。"
-                    className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3.5 text-base"
+                    className="w-full rounded-lg border border-[#d9c9d8] bg-white p-2.5 text-[12px] md:rounded-xl md:p-3.5 md:text-base"
                   />
                 </label>
 
                 {requestError && (
-                  <div className="mt-4 rounded-xl bg-[#fde7ec] p-4 text-sm font-bold text-[#8a304a]">
+                  <div className="mt-3 rounded-lg bg-[#fde7ec] p-3 text-[11px] font-bold text-[#8a304a] md:mt-4 md:rounded-xl md:p-4 md:text-sm">
                     {requestError}
                   </div>
                 )}
 
                 {requestMessage && (
-                  <div className="mt-4 rounded-xl bg-[#edf5ec] p-4 text-sm font-bold leading-6 text-[#456043]">
+                  <div className="mt-3 rounded-lg bg-[#edf5ec] p-3 text-[11px] font-bold leading-5 text-[#456043] md:mt-4 md:rounded-xl md:p-4 md:text-sm md:leading-6">
                     {requestMessage}
                   </div>
                 )}
@@ -1555,7 +1528,7 @@ async function handleStoreRequest() {
                   type="button"
                   onClick={handleStoreRequest}
                   disabled={requestSubmitting}
-                  className="mt-4 rounded-xl bg-[#b65d92] px-6 py-3.5 text-base font-bold text-white transition hover:bg-[#a84e84] disabled:opacity-50"
+                  className="mt-3 rounded-lg bg-[#b65d92] px-5 py-2.5 text-[12px] font-bold text-white transition hover:bg-[#a84e84] disabled:opacity-50 md:mt-4 md:rounded-xl md:px-6 md:py-3.5 md:text-base"
                 >
                   {requestSubmitting
                     ? "送信中…"
@@ -1564,57 +1537,56 @@ async function handleStoreRequest() {
               </div>
             )}
           </div>
-
         </section>
 
         {/* ===== 最新投稿 ===== */}
         <section
           id="latest"
-          className="scroll-mt-24 rounded-[30px] border border-white/80 bg-white/90 p-5 shadow-sm md:p-8"
+          className="scroll-mt-24 rounded-[20px] border border-white/80 bg-white/90 p-3.5 shadow-sm md:rounded-[30px] md:p-8"
         >
-          <div className="text-sm font-bold tracking-[0.12em] text-[#9b6c91]">
+          <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] md:text-sm">
             LATEST REPORTS
           </div>
 
-          <h2 className="mt-1 text-2xl font-bold text-[#1d191d] md:text-3xl">
+          <h2 className="mt-1 text-lg font-bold text-[#1d191d] md:text-3xl">
             🕒 最新の在庫投稿
           </h2>
 
           {latestFiveReports.length === 0 ? (
             <EmptyBox text="まだ在庫投稿はありません" />
           ) : (
-            <div className="mt-4 space-y-2 md:mt-5 md:space-y-3">
+            <div className="mt-3 space-y-1.5 md:mt-5 md:space-y-3">
               {latestFiveReports.map((report) => (
                 <div
                   key={report.id}
-                  className="rounded-lg border border-[#eaddea] bg-[#fcf9fc] px-3 py-2 md:rounded-2xl md:p-4"
+                  className="rounded-lg border border-[#eaddea] bg-[#fcf9fc] px-2.5 py-2 md:rounded-2xl md:p-4"
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="text-[12px] font-bold leading-4 text-[#241f24] md:text-base md:leading-normal">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-[11px] font-bold leading-4 text-[#241f24] md:text-base md:leading-normal">
                         {getStoreName(report.store_id)}
                       </div>
 
-                      <div className="mt-0.5 text-[11px] leading-4 text-[#766a75] md:mt-1 md:text-base md:leading-normal">
+                      <div className="mt-0.5 truncate text-[10px] leading-4 text-[#766a75] md:mt-1 md:text-base md:leading-normal">
                         {getProductName(report.product_id)}
                       </div>
                     </div>
 
-                    <div className="text-right">
-                      <div className="whitespace-nowrap text-[14px] font-bold leading-4 md:text-2xl md:leading-normal">
+                    <div className="shrink-0 text-right">
+                      <div className="whitespace-nowrap text-[12px] font-bold leading-4 md:text-lg md:leading-normal">
                         {report.quantity === 0
                           ? "在庫なし"
                           : `${report.quantity}枚`}
                       </div>
 
-                      <div className="mt-0.5 text-[10px] leading-3 text-[#999098] md:mt-0 md:text-sm md:leading-normal">
+                      <div className="mt-0.5 text-[9px] leading-3 text-[#999098] md:mt-0 md:text-sm md:leading-normal">
                         {formatDate(report.created_at)}
                       </div>
                     </div>
                   </div>
 
                   {report.comment && (
-                    <div className="mt-1.5 rounded-md bg-white px-2.5 py-1.5 text-[11px] leading-4 text-[#605760] md:mt-3 md:rounded-xl md:p-3 md:text-base md:leading-6">
+                    <div className="mt-1 rounded-md bg-white px-2 py-1.5 text-[10px] leading-4 text-[#605760] md:mt-3 md:rounded-xl md:p-3 md:text-base md:leading-6">
                       {report.comment}
                     </div>
                   )}
@@ -1625,29 +1597,29 @@ async function handleStoreRequest() {
         </section>
 
         {/* ===== FOOTER ===== */}
-        <footer className="pb-4 pt-5 text-center">
-          <div className="text-[11px] leading-5 text-[#403940] md:text-sm md:leading-6">
+        <footer className="pb-3 pt-4 text-center md:pb-4 md:pt-5">
+          <div className="text-[10px] leading-4 text-[#403940] md:text-sm md:leading-6">
             <p>
-              当サイトはファンによる非公式の在庫情報共有サイトです。
-              所属事務所・レコード会社・各販売店等とは無関係です。
-            </p>
-
-            <p className="mt-1.5 text-[10px] text-[#6f686e] md:mt-2 md:text-xs md:text-[#403940]">
-  King & Prince 在庫チェッカー
+  当サイトはファンによる非公式の在庫情報共有サイトです。
+  <br className="md:hidden" />
+  所属事務所・レコード会社・各販売店等とは無関係です。
 </p>
+
+            <p className="mt-1 text-[9px] text-[#6f686e] md:mt-2 md:text-xs md:text-[#403940]">
+              King & Prince 在庫チェッカー
+            </p>
           </div>
         </footer>
-
       </div>
 
       {/* トップへ戻る */}
       <a
         href="#top"
         aria-label="サイトトップに戻る"
-        className="fixed bottom-5 left-4 z-50 flex h-[82px] w-[82px] flex-col items-center justify-center rounded-full border-4 border-white bg-[#d95c9d] text-center text-white shadow-lg transition hover:-translate-y-1 hover:bg-[#c84d8d] md:bottom-7 md:left-7"
+        className="fixed bottom-4 left-3 z-50 flex h-[56px] w-[56px] flex-col items-center justify-center rounded-full border-[3px] border-white bg-[#d95c9d] text-center text-white shadow-lg transition hover:-translate-y-1 hover:bg-[#c84d8d] md:bottom-7 md:left-7 md:h-[82px] md:w-[82px] md:border-4"
       >
-        <span className="text-2xl leading-none">↑</span>
-        <span className="mt-1 text-[11px] font-bold leading-tight">
+        <span className="text-base leading-none md:text-2xl">↑</span>
+        <span className="mt-0.5 text-[8px] font-bold leading-tight md:mt-1 md:text-[11px]">
           サイトトップ
           <br />
           に戻る
@@ -1695,75 +1667,73 @@ function StoreCard({
   const online = isOnlineStore(store);
 
   return (
-    <article className="rounded-3xl border border-[#e8d9e7] bg-white p-5 shadow-sm md:p-6">
-            <div>
-        {/* 店舗名 */}
-        <h3 className="text-xl font-bold leading-snug text-[#1d191d] md:text-2xl">
-          {getDisplayStoreName(store)}
-        </h3>
+    <article className="rounded-2xl border border-[#e8d9e7] bg-white p-3.5 shadow-sm md:rounded-3xl md:p-6">
+            {/* 店舗基本情報 ＋ 集計対象 */}
+      <div className="md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-4">
+        {/* 左：店舗名・所在地・営業時間 */}
+        <div className="min-w-0">
+          <h3 className="text-base font-bold leading-5 text-[#1d191d] md:text-2xl md:leading-snug">
+            {getDisplayStoreName(store)}
+          </h3>
 
-        {/* 所在地・営業時間・集計対象 */}
-        <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 md:flex md:flex-wrap md:items-center md:gap-x-4 md:gap-y-2">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#403940] md:text-sm">
+            <span className="whitespace-nowrap">
+              {online
+                ? "🛒 オンラインショップ"
+                : `📍 ${store.prefecture}${store.city ? ` ${store.city}` : ""}`}
+            </span>
 
-  {/* 左：所在地・営業時間 */}
-  <div className="min-w-0 space-y-1 text-[12px] text-[#403940] md:flex md:flex-wrap md:items-center md:gap-x-4 md:gap-y-2 md:space-y-0 md:text-base">
-    <div className="whitespace-nowrap">
-      {online
-        ? "🛒 オンラインショップ"
-        : `📍 ${store.prefecture}${store.city ? ` ${store.city}` : ""}`}
-    </div>
+            {!online && store.business_hours && (
+              <span className="whitespace-nowrap font-bold text-[#3e373e]">
+                🕒 営業時間: {formatBusinessHours(store.business_hours)}
+              </span>
+            )}
+          </div>
+        </div>
 
-    {!online && store.business_hours && (
-      <div className="whitespace-nowrap font-bold text-[#3e373e]">
-        🕒 営業時間: {formatBusinessHours(store.business_hours)}
-      </div>
-    )}
-  </div>
+        {/* スマホ：下 / PC：右 */}
+        <div className="mt-1.5 flex flex-wrap items-center gap-1 md:mt-0 md:justify-end md:gap-2">
+          {store.oricon_target === true && (
+            <span className="whitespace-nowrap rounded-md border border-[#bd4f88] bg-[#d9609b] px-2 py-0.5 text-[9px] font-bold text-white md:rounded-xl md:px-4 md:py-2 md:text-base">
+              オリコン対象
+            </span>
+          )}
 
-  {/* 右：集計対象 */}
-  <div className="flex shrink-0 flex-col items-end gap-1 md:flex-row md:flex-wrap md:gap-2">
-    {store.oricon_target === true && (
-      <span className="whitespace-nowrap rounded-xl border border-[#bd4f88] bg-[#d9609b] px-2 py-1 text-[10px] font-bold text-white shadow-sm md:px-4 md:py-2 md:text-base">
-        オリコン集計対象
-      </span>
-    )}
+          {store.billboard_status === "target" && (
+            <span className="whitespace-nowrap rounded-md border border-[#7250a5] bg-[#835ab3] px-2 py-0.5 text-[9px] font-bold text-white md:rounded-xl md:px-4 md:py-2 md:text-base">
+              Billboard対象
+            </span>
+          )}
 
-    {store.billboard_status === "target" && (
-      <span className="whitespace-nowrap rounded-xl border border-[#7250a5] bg-[#835ab3] px-2 py-1 text-[10px] font-bold text-white shadow-sm md:px-4 md:py-2 md:text-base">
-        Billboard集計対象
-      </span>
-    )}
+          {store.billboard_status === "check_store" && (
+            <span className="whitespace-nowrap rounded-md border border-[#9e85b8] bg-[#eee7f4] px-2 py-0.5 text-[9px] font-bold text-[#5b486b] md:rounded-xl md:px-4 md:py-2 md:text-base">
+              Billboard 要確認
+            </span>
+          )}
 
-    {store.billboard_status === "check_store" && (
-      <span className="whitespace-nowrap rounded-xl border border-[#9e85b8] bg-[#eee7f4] px-2 py-1 text-[10px] font-bold text-[#5b486b] md:px-4 md:py-2 md:text-base">
-        Billboard 要確認
-      </span>
-    )}
-
-    {store.billboard_status === "not_target" && (
-      <span className="whitespace-nowrap rounded-xl border border-[#a9a2a8] bg-[#ece9ec] px-2 py-1 text-[10px] font-bold text-[#595159] md:px-4 md:py-2 md:text-base">
-        Billboard 対象外
-      </span>
-    )}
-  </div>
-</div>
+          {store.billboard_status === "not_target" && (
+            <span className="whitespace-nowrap rounded-md border border-[#a9a2a8] bg-[#ece9ec] px-2 py-0.5 text-[9px] font-bold text-[#595159] md:rounded-xl md:px-4 md:py-2 md:text-base">
+              Billboard 対象外
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="mt-5 rounded-2xl bg-[#f8f1f7] p-4">
+      {/* 在庫 */}
+      <div className="mt-3 rounded-xl bg-[#f8f1f7] p-2.5 md:mt-5 md:rounded-2xl md:p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="text-sm font-bold tracking-[0.12em] text-[#a36494]">
+          <div className="text-[10px] font-bold tracking-[0.12em] text-[#a36494] md:text-sm">
             STOCK
           </div>
 
           {newestStoreReport && (
-            <div className="text-sm text-[#8e848d]">
-              最終更新{" "}
-              {formatDate(newestStoreReport.created_at)}
+            <div className="text-[9px] text-[#8e848d] md:text-sm">
+              最終更新 {formatDate(newestStoreReport.created_at)}
             </div>
           )}
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+        <div className="mt-2 grid grid-cols-2 gap-1.5 sm:gap-2 lg:mt-4 lg:grid-cols-4 lg:gap-3">
           {products.map((product) => {
             const report = getLatestReport(
               store.id,
@@ -1772,41 +1742,41 @@ function StoreCard({
 
             return (
               <div
-  key={product.id}
-  className="flex flex-col rounded-xl border border-[#e5d7e4] bg-white px-3 py-2.5 md:rounded-2xl md:px-4 md:py-3"
->
-                <div className="text-sm font-bold leading-5 text-[#211c21] md:min-h-[3rem] md:text-[17px] md:leading-6">
+                key={product.id}
+                className="flex min-w-0 flex-col rounded-lg border border-[#e5d7e4] bg-white px-2.5 py-2 md:rounded-2xl md:px-4 md:py-3"
+              >
+                <div className="text-[11px] font-bold leading-4 text-[#211c21] md:min-h-[3rem] md:text-[17px] md:leading-6">
                   {product.name}
                 </div>
 
                 {!report ? (
-                  <div className="mt-2 text-sm font-bold text-[#625861] md:text-base">
+                  <div className="mt-1.5 text-[11px] font-bold text-[#625861] md:mt-2 md:text-base">
                     情報なし
                   </div>
                 ) : report.quantity === 0 ? (
-                  <div className="mt-4">
-                    <span className="inline-block rounded-full bg-[#2a252a] px-3 py-1.5 text-base font-bold text-white">
+                  <div className="mt-1.5 md:mt-4">
+                    <span className="inline-block rounded-full bg-[#2a252a] px-2 py-0.5 text-[10px] font-bold text-white md:px-3 md:py-1.5 md:text-base">
                       在庫なし
                     </span>
                   </div>
                 ) : (
-                  <div className="mt-4 text-2xl font-bold text-[#bd568c]">
+                  <div className="mt-1.5 text-base font-bold text-[#bd568c] md:mt-4 md:text-2xl">
                     {report.quantity}
-                    <span className="ml-1 text-base">
+                    <span className="ml-0.5 text-[10px] md:ml-1 md:text-base">
                       枚
                     </span>
                   </div>
                 )}
 
                 {report && (
-                  <div className="mt-1 text-sm text-[#968d95]">
+                  <div className="mt-0.5 text-[9px] text-[#968d95] md:mt-1 md:text-sm">
                     {formatDate(report.created_at)}
                   </div>
                 )}
 
                 {report?.comment && (
-                  <div className="mt-auto pt-3">
-                    <div className="rounded-xl bg-[#faedf4] px-3 py-2.5 text-sm leading-5 text-[#594d56] md:text-base md:leading-6">
+                  <div className="mt-auto pt-2 md:pt-3">
+                    <div className="rounded-md bg-[#faedf4] px-2 py-1.5 text-[10px] leading-4 text-[#594d56] md:rounded-xl md:px-3 md:py-2.5 md:text-base md:leading-6">
                       💬 {report.comment}
                     </div>
                   </div>
@@ -1819,7 +1789,7 @@ function StoreCard({
 
       <button
         onClick={() => setOpen((current) => !current)}
-        className="mt-4 rounded-full bg-[#f0dfec] px-4 py-2.5 text-base font-bold text-[#6d4966]"
+        className="mt-2.5 rounded-full bg-[#f0dfec] px-3 py-1.5 text-[11px] font-bold text-[#6d4966] md:mt-4 md:px-4 md:py-2.5 md:text-base"
       >
         {open
           ? "店舗情報を閉じる ∧"
@@ -1827,10 +1797,10 @@ function StoreCard({
       </button>
 
       {open && (
-        <div className="mt-3 rounded-2xl border border-[#e8d9e7] bg-[#fcf9fc] p-4 md:p-5">
+        <div className="mt-2 rounded-xl border border-[#e8d9e7] bg-[#fcf9fc] p-3 md:mt-3 md:rounded-2xl md:p-5">
           {online ? (
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="text-base font-bold">
+            <div className="flex flex-wrap items-center justify-between gap-3 md:gap-4">
+              <div className="text-[12px] font-bold md:text-base">
                 🛒 オンラインショップ
               </div>
 
@@ -1839,7 +1809,7 @@ function StoreCard({
                   href={store.online_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-full bg-[#211d21] px-5 py-2.5 text-base font-bold text-white"
+                  className="rounded-full bg-[#211d21] px-4 py-2 text-[11px] font-bold text-white md:px-5 md:py-2.5 md:text-base"
                 >
                   公式サイトを開く ↗
                 </a>
@@ -1847,31 +1817,31 @@ function StoreCard({
             </div>
           ) : (
             <>
-              <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
+              <div className="grid gap-3 md:grid-cols-[2fr_1fr] md:gap-4">
                 <div>
-                  <div className="text-base font-bold text-[#2b252b]">
+                  <div className="text-[11px] font-bold text-[#2b252b] md:text-base">
                     📍 住所
                   </div>
 
-                  <div className="mt-1 text-base leading-6 text-[#655c64]">
+                  <div className="mt-0.5 text-[11px] leading-5 text-[#655c64] md:mt-1 md:text-base md:leading-6">
                     {store.address || "情報なし"}
                   </div>
                 </div>
 
                 <div className="md:border-l md:border-[#eaddea] md:pl-5">
-                  <div className="text-base font-bold text-[#2b252b]">
+                  <div className="text-[11px] font-bold text-[#2b252b] md:text-base">
                     ☎️ 電話番号
                   </div>
 
                   {store.phone ? (
                     <a
                       href={`tel:${store.phone}`}
-                      className="mt-1 inline-block text-base font-bold text-[#ad568a]"
+                      className="mt-0.5 inline-block text-[11px] font-bold text-[#ad568a] md:mt-1 md:text-base"
                     >
                       {store.phone}
                     </a>
                   ) : (
-                    <div className="mt-1 text-base text-[#80777f]">
+                    <div className="mt-0.5 text-[11px] text-[#80777f] md:mt-1 md:text-base">
                       情報なし
                     </div>
                   )}
@@ -1879,12 +1849,12 @@ function StoreCard({
               </div>
 
               {store.official_url && (
-                <div className="mt-4 border-t border-[#eaddea] pt-4">
+                <div className="mt-3 border-t border-[#eaddea] pt-3 md:mt-4 md:pt-4">
                   <a
                     href={store.official_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-block rounded-full bg-[#211d21] px-5 py-2.5 text-base font-bold text-white"
+                    className="inline-block rounded-full bg-[#211d21] px-4 py-2 text-[11px] font-bold text-white md:px-5 md:py-2.5 md:text-base"
                   >
                     公式店舗ページを開く ↗
                   </a>
@@ -2145,23 +2115,23 @@ function StatCard({
   value: number;
 }) {
   return (
-    <div className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] px-2 py-3 md:p-5">
+    <div className="rounded-xl border border-[#eaddea] bg-[#fcf9fc] px-1.5 py-2 md:rounded-2xl md:p-5">
       <div className="flex flex-col items-center justify-center md:flex-row md:gap-4">
         <div
-          className="shrink-0 text-2xl leading-none md:text-5xl"
+          className="shrink-0 text-lg leading-none md:text-5xl"
           aria-hidden="true"
         >
           {icon}
         </div>
 
-        <div className="mt-1 text-center md:mt-0 md:text-left">
-          <div className="text-sm font-bold text-[#9b6c91] md:text-2xl">
+        <div className="mt-0.5 text-center md:mt-0 md:text-left">
+          <div className="text-[10px] font-bold text-[#9b6c91] md:text-2xl">
             {title}
           </div>
 
-          <div className="mt-0.5 whitespace-nowrap text-xl font-bold text-[#171417] md:mt-1 md:text-5xl">
+          <div className="mt-0.5 whitespace-nowrap text-base font-bold text-[#171417] md:mt-1 md:text-5xl">
             {value.toLocaleString()}
-            <span className="ml-0.5 text-xs md:ml-1 md:text-base">
+            <span className="ml-0.5 text-[9px] md:ml-1 md:text-base">
               枚
             </span>
           </div>
@@ -2177,7 +2147,7 @@ function LoadingBox({
   text: string;
 }) {
   return (
-    <div className="mt-6 rounded-2xl border border-dashed border-[#d8cad7] p-8 text-center text-base text-[#847a83]">
+    <div className="mt-4 rounded-xl border border-dashed border-[#d8cad7] p-5 text-center text-[12px] text-[#847a83] md:mt-6 md:rounded-2xl md:p-8 md:text-base">
       {text}
     </div>
   );
@@ -2189,7 +2159,7 @@ function ErrorBox({
   text: string;
 }) {
   return (
-    <div className="mt-6 rounded-2xl bg-[#fde7ec] p-6 text-base text-[#8a304a]">
+    <div className="mt-4 rounded-xl bg-[#fde7ec] p-4 text-[12px] text-[#8a304a] md:mt-6 md:rounded-2xl md:p-6 md:text-base">
       {text}
     </div>
   );
@@ -2201,7 +2171,7 @@ function EmptyBox({
   text: string;
 }) {
   return (
-    <div className="mt-6 rounded-2xl border border-dashed border-[#d8cad7] p-8 text-center text-base text-[#847a83]">
+    <div className="mt-4 rounded-xl border border-dashed border-[#d8cad7] p-5 text-center text-[12px] text-[#847a83] md:mt-6 md:rounded-2xl md:p-8 md:text-base">
       {text}
     </div>
   );
