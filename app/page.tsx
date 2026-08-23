@@ -709,7 +709,7 @@ async function handleStoreRequest() {
   return (
     <main
       id="top"
-      className="min-h-screen p-3 pb-24 md:p-6 md:pb-24"
+      className="min-h-screen w-full max-w-full overflow-x-hidden p-3 pb-24 md:p-6 md:pb-24"
       style={{
         fontFamily: '"Meiryo", "メイリオ", sans-serif',
         fontSize: "16px",
@@ -717,7 +717,7 @@ async function handleStoreRequest() {
           "linear-gradient(180deg, #f9eef7 0%, #f2ebfa 42%, #fcf9fc 100%)",
       }}
     >
-      <div className="mx-auto max-w-6xl space-y-5">
+      <div className="mx-auto w-full max-w-6xl space-y-5">
 
         {/* ===== HERO ===== */}
         <section className="relative overflow-hidden rounded-[30px] border border-white/80 bg-white/90 p-5 shadow-sm md:p-8">
@@ -754,21 +754,21 @@ async function handleStoreRequest() {
 </div>
 
               {/* スマホ時の蜂2匹 */}
-              <div className="mt-2 flex items-center justify-center gap-3 md:hidden">
+              <div className="mt-1 flex items-center justify-center gap-4 md:hidden">
                 <img
                   src="/bee-ren.jpg"
                   alt=""
-                  className="h-24 w-24 object-contain mix-blend-multiply"
+                  className="h-16 w-16 object-contain mix-blend-multiply"
                 />
                 <img
                   src="/bee-kaito.jpg"
                   alt=""
-                  className="h-24 w-24 object-contain mix-blend-multiply"
+                  className="h-16 w-16 object-contain mix-blend-multiply"
                 />
               </div>
 
               <h1
-  className="mt-4 text-3xl font-bold leading-tight text-[#171417] md:mt-6 md:text-[62px]"
+  className="mt-2 text-3xl font-bold leading-tight text-[#171417] md:mt-6 md:text-[62px]"
   style={{
     fontFamily: '"Meiryo", "メイリオ", sans-serif',
   }}
@@ -1703,43 +1703,50 @@ function StoreCard({
         </h3>
 
         {/* 所在地・営業時間・集計対象 */}
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-[#403940] md:text-base">
-          <span className="whitespace-nowrap">
-            {online
-              ? "🛒 オンラインショップ"
-              : `📍 ${store.prefecture}${store.city ? ` ${store.city}` : ""}`}
-          </span>
+        <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 md:flex md:flex-wrap md:items-center md:gap-x-4 md:gap-y-2">
 
-          {!online && store.business_hours && (
-            <span className="whitespace-nowrap font-bold text-[#3e373e]">
-              🕒 営業時間: {formatBusinessHours(store.business_hours)}
-            </span>
-          )}
+  {/* 左：所在地・営業時間 */}
+  <div className="min-w-0 space-y-1 text-[12px] text-[#403940] md:flex md:flex-wrap md:items-center md:gap-x-4 md:gap-y-2 md:space-y-0 md:text-base">
+    <div className="whitespace-nowrap">
+      {online
+        ? "🛒 オンラインショップ"
+        : `📍 ${store.prefecture}${store.city ? ` ${store.city}` : ""}`}
+    </div>
 
-          {store.oricon_target === true && (
-            <span className="whitespace-nowrap rounded-xl border border-[#bd4f88] bg-[#d9609b] px-2.5 py-1 text-xs font-bold text-white shadow-sm">
-              オリコン集計対象
-            </span>
-          )}
+    {!online && store.business_hours && (
+      <div className="whitespace-nowrap font-bold text-[#3e373e]">
+        🕒 営業時間: {formatBusinessHours(store.business_hours)}
+      </div>
+    )}
+  </div>
 
-          {store.billboard_status === "target" && (
-            <span className="whitespace-nowrap rounded-xl border border-[#7250a5] bg-[#835ab3] px-2.5 py-1 text-xs font-bold text-white shadow-sm">
-              Billboard集計対象
-            </span>
-          )}
+  {/* 右：集計対象 */}
+  <div className="flex shrink-0 flex-col items-end gap-1 md:flex-row md:flex-wrap md:gap-2">
+    {store.oricon_target === true && (
+      <span className="whitespace-nowrap rounded-xl border border-[#bd4f88] bg-[#d9609b] px-2 py-1 text-[10px] font-bold text-white shadow-sm md:px-4 md:py-2 md:text-base">
+        オリコン集計対象
+      </span>
+    )}
 
-          {store.billboard_status === "check_store" && (
-            <span className="whitespace-nowrap rounded-xl border border-[#9e85b8] bg-[#eee7f4] px-2.5 py-1 text-xs font-bold text-[#5b486b]">
-              Billboard 要確認
-            </span>
-          )}
+    {store.billboard_status === "target" && (
+      <span className="whitespace-nowrap rounded-xl border border-[#7250a5] bg-[#835ab3] px-2 py-1 text-[10px] font-bold text-white shadow-sm md:px-4 md:py-2 md:text-base">
+        Billboard集計対象
+      </span>
+    )}
 
-          {store.billboard_status === "not_target" && (
-            <span className="whitespace-nowrap rounded-xl border border-[#a9a2a8] bg-[#ece9ec] px-2.5 py-1 text-xs font-bold text-[#595159]">
-              Billboard 対象外
-            </span>
-          )}
-        </div>
+    {store.billboard_status === "check_store" && (
+      <span className="whitespace-nowrap rounded-xl border border-[#9e85b8] bg-[#eee7f4] px-2 py-1 text-[10px] font-bold text-[#5b486b] md:px-4 md:py-2 md:text-base">
+        Billboard 要確認
+      </span>
+    )}
+
+    {store.billboard_status === "not_target" && (
+      <span className="whitespace-nowrap rounded-xl border border-[#a9a2a8] bg-[#ece9ec] px-2 py-1 text-[10px] font-bold text-[#595159] md:px-4 md:py-2 md:text-base">
+        Billboard 対象外
+      </span>
+    )}
+  </div>
+</div>
       </div>
 
       <div className="mt-5 rounded-2xl bg-[#f8f1f7] p-4">
