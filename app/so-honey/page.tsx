@@ -933,7 +933,7 @@ async function handleStoreRequest() {
               <div className="mt-3 space-y-2 md:mt-4 md:space-y-3">
                 <div className="flex flex-wrap items-center gap-2 md:gap-3">
                   <span className="rounded-lg border border-[#7250a5] bg-[#835ab3] px-2.5 py-1 text-[11px] font-bold text-white md:rounded-xl md:px-3 md:py-1.5 md:text-sm">
-                    Billboard対象
+                    Billboard 対象
                   </span>
                   <span className="text-[12px] text-[#2f2a2f] md:text-base">
                     集計対象として確認できた店舗
@@ -1729,7 +1729,7 @@ function StoreCard({
 
           {store.billboard_status === "target" && (
             <span className="whitespace-nowrap rounded-md border border-[#7250a5] bg-[#835ab3] px-2 py-0.5 text-[9px] font-bold text-white md:rounded-xl md:px-4 md:py-2 md:text-base">
-              Billboard対象
+              Billboard 対象
             </span>
           )}
 
