@@ -9,6 +9,7 @@ import {
 import { supabase } from "@/app/lib/supabase";
 
 const GOAL = 300000;
+const SHOW_GOAL_PROGRESS = false;
 
 const PREFECTURE_GROUPS = [
   {
@@ -821,23 +822,27 @@ async function handleStoreRequest() {
                 </div>
               </div>
 
-              <div className="text-right">
-                <div className="text-xs text-[#d9cfd8] md:text-base">
-                  達成率 {percent.toFixed(1)}%
-                </div>
+              {SHOW_GOAL_PROGRESS && (
+  <div className="text-right">
+    <div className="text-xs text-[#d9cfd8] md:text-base">
+      達成率 {percent.toFixed(1)}%
+    </div>
 
-                <div className="mt-0.5 text-sm font-bold text-[#efcbe7] md:mt-1 md:text-lg">
-                  あと {remain.toLocaleString()}枚
-                </div>
-              </div>
+    <div className="mt-0.5 text-sm font-bold text-[#efcbe7] md:mt-1 md:text-lg">
+      あと {remain.toLocaleString()}枚
+    </div>
+  </div>
+)}
             </div>
 
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/15 md:mt-5 md:h-3">
-              <div
-                className="h-full rounded-full bg-[#dc82c4]"
-                style={{ width: `${percent}%` }}
-              />
-            </div>
+            {SHOW_GOAL_PROGRESS && (
+  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/15 md:mt-5 md:h-3">
+    <div
+      className="h-full rounded-full bg-[#dc82c4]"
+      style={{ width: `${percent}%` }}
+    />
+  </div>
+)}
           </div>
 
           <div className="relative z-10 mt-3 grid grid-cols-3 gap-1.5 md:mt-5 md:gap-3">
@@ -975,11 +980,11 @@ async function handleStoreRequest() {
                 </p>
 
                 <p className="mt-2">
-                  ※ 掲載情報は公式情報等をもとに可能な範囲で確認していますが、最新性・正確性やランキングへの集計を保証するものではありません。店舗の状況や集計条件が変更される場合もあるため、<strong className="text-[#4e454d]">購入前に各店舗・公式サイト等で最新情報をご自身でご確認ください。</strong>
-                  <strong className="text-[#4e454d]">
-                    購入前に各店舗・公式サイト等で最新情報をご自身でご確認ください。
-                  </strong>
-                </p>
+  ※掲載情報は公式情報等をもとに可能な範囲で確認していますが、最新性・正確性やランキングへの集計を保証するものではありません。店舗の状況や集計条件が変更される場合もあるため、
+  <span className="font-bold text-[#4e454d]">
+    購入前に各店舗・公式サイト等で最新情報をご自身でご確認ください。
+  </span>
+</p>
               </div>
             </div>
           </div>
