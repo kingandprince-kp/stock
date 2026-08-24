@@ -809,41 +809,40 @@ async function handleStoreRequest() {
           </div>
 
           {/* 売上 */}
-          <div className="relative z-10 mt-5 rounded-2xl bg-[#211d21] p-4 text-white md:mt-8 md:rounded-3xl md:p-7">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <div className="text-[10px] font-bold tracking-[0.12em] text-[#e8cfe3] md:text-sm">
-                  TOTAL SALES
-                </div>
-
-                <div className="mt-1 text-3xl font-bold md:mt-2 md:text-5xl">
-                  {sales.toLocaleString()}
-                  <span className="ml-1 text-sm md:text-xl">枚</span>
-                </div>
-              </div>
-
-              {SHOW_GOAL_PROGRESS && (
-  <div className="text-right">
-    <div className="text-xs text-[#d9cfd8] md:text-base">
-      達成率 {percent.toFixed(1)}%
+          {/* 売上 */}
+<div className="relative z-10 mt-5 rounded-2xl bg-[#211d21] p-4 text-white md:mt-8 md:rounded-3xl md:p-7">
+  <div className="flex flex-col items-center justify-center text-center">
+    <div className="text-[10px] font-bold tracking-[0.12em] text-[#e8cfe3] md:text-sm">
+      TOTAL SALES
     </div>
 
-    <div className="mt-0.5 text-sm font-bold text-[#efcbe7] md:mt-1 md:text-lg">
-      あと {remain.toLocaleString()}枚
+    <div className="mt-1 text-3xl font-bold md:mt-2 md:text-5xl">
+      {sales.toLocaleString()}
+      <span className="ml-1 text-sm md:text-xl">枚</span>
     </div>
   </div>
-)}
-            </div>
 
-            {SHOW_GOAL_PROGRESS && (
-  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/15 md:mt-5 md:h-3">
-    <div
-      className="h-full rounded-full bg-[#dc82c4]"
-      style={{ width: `${percent}%` }}
-    />
-  </div>
-)}
-          </div>
+  {SHOW_GOAL_PROGRESS && (
+    <>
+      <div className="mt-3 text-center">
+        <div className="text-xs text-[#d9cfd8] md:text-base">
+          達成率 {percent.toFixed(1)}%
+        </div>
+
+        <div className="mt-0.5 text-sm font-bold text-[#efcbe7] md:mt-1 md:text-lg">
+          あと {remain.toLocaleString()}枚
+        </div>
+      </div>
+
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/15 md:mt-5 md:h-3">
+        <div
+          className="h-full rounded-full bg-[#dc82c4]"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </>
+  )}
+</div>
 
           <div className="relative z-10 mt-3 grid grid-cols-3 gap-1.5 md:mt-5 md:gap-3">
             <StatCard icon="📊" title="本日" value={today} />
