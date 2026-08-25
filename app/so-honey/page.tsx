@@ -203,6 +203,22 @@ export default function Home() {
   const [requestError, setRequestError] = useState("");
   const [salesData, setSalesData] =
   useState<SalesSummary | null>(null);
+  const [bugReportOpen, setBugReportOpen] = useState(false);
+const [bugDescription, setBugDescription] = useState("");
+const [bugDeviceType, setBugDeviceType] = useState("");
+const [bugDeviceModel, setBugDeviceModel] = useState("");
+const [bugOsType, setBugOsType] = useState("");
+const [bugOsVersion, setBugOsVersion] = useState("");
+const [bugOsDisplay, setBugOsDisplay] = useState("");
+const [bugBrowser, setBugBrowser] = useState("");
+const [bugBrowserOther, setBugBrowserOther] = useState("");
+const [bugBrowserVersion, setBugBrowserVersion] = useState("");
+const [bugImages, setBugImages] = useState<File[]>([]);
+
+const [bugSubmitting, setBugSubmitting] = useState(false);
+const [bugMessage, setBugMessage] = useState("");
+const [bugError, setBugError] = useState("");
+const [bugAutoDetect, setBugAutoDetect] = useState(false);
 
   // Android Chromium系ブラウザだけ、半透明の白背景・backdrop-filterを避ける
   // PC / iPhone / iPad では false のままなので、従来の見た目を維持する
@@ -712,6 +728,332 @@ async function handleStoreRequest() {
     );
   } finally {
     setRequestSubmitting(false);
+  }
+}
+
+function handleBugOsDisplayChange(value: string) {
+  setBugOsDisplay(value);
+
+  const trimmed = value.trim();
+
+  if (trimmed === "") {
+    setBugOsType("");
+    setBugOsVersion("");
+    return;
+  }
+
+  const patterns: Array<[RegExp, string]> = [
+    [/^iPadOS\s*/i, "iPadOS"],
+    [/^iOS\s*/i, "iOS"],
+    [/^Android\s*/i, "Android"],
+    [/^Windows\s*/i, "Windows"],
+    [/^macOS\s*/i, "macOS"],
+    [/^Ubuntu\s*/i, "Ubuntu"],
+    [/^Linux\s*/i, "Linux"],
+  ];
+
+  for (const [pattern, osType] of patterns) {
+    if (pattern.test(trimmed)) {
+      setBugOsType(osType);
+      setBugOsVersion(trimmed.replace(pattern, "").trim());
+      return;
+    }
+  }
+
+  setBugOsType("その他");
+  setBugOsVersion(trimmed);
+}
+
+async function detectBugEnvironment() {
+  if (typeof window === "undefined") return;
+
+  const ua = navigator.userAgent;
+  let browserVersion = "";
+
+  // 端末種類・機種名
+  if (/iPhone/i.test(ua)) {
+    setBugDeviceType("iPhone");
+    // iPhoneはブラウザ情報だけでは具体的なモデル名を判定できないことが多い
+    setBugDeviceModel((current) => current || "iPhone");
+  } else if (/iPad/i.test(ua)) {
+    setBugDeviceType("iPad");
+    setBugDeviceModel((current) => current || "iPad");
+  } else if (/Android/i.test(ua)) {
+    setBugDeviceType("Android");
+
+    const modelMatch = ua.match(
+      /Android\s[^;)]*;\s*([^;)]+?)(?:\s+Build\/|\))/i
+    );
+
+    const model = modelMatch?.[1]
+      ?.replace(/^\s*(?:[a-z]{2}(?:-[A-Z]{2})?;\s*)?/i, "")
+      .trim();
+
+    setBugDeviceModel(model ?? "");
+  } else {
+    setBugDeviceType("PC");
+    setBugDeviceModel("");
+  }
+
+  // OS・OSバージョン
+  if (/iPhone/i.test(ua)) {
+    const match = ua.match(/OS (\d+[_\d]*)/);
+    const version = match ? match[1].replace(/_/g, ".") : "";
+    setBugOsType("iOS");
+    setBugOsVersion(version);
+    setBugOsDisplay(`iOS${version ? ` ${version}` : ""}`);
+  } else if (/iPad/i.test(ua)) {
+    const match = ua.match(/OS (\d+[_\d]*)/);
+    const version = match ? match[1].replace(/_/g, ".") : "";
+    setBugOsType("iPadOS");
+    setBugOsVersion(version);
+    setBugOsDisplay(`iPadOS${version ? ` ${version}` : ""}`);
+  } else if (/Android/i.test(ua)) {
+    const match = ua.match(/Android ([\d.]+)/);
+    const version = match ? match[1] : "";
+    setBugOsType("Android");
+    setBugOsVersion(version);
+    setBugOsDisplay(`Android${version ? ` ${version}` : ""}`);
+  } else if (/Windows/i.test(ua)) {
+    setBugOsType("Windows");
+    setBugOsVersion("");
+    setBugOsDisplay("Windows");
+  } else if (/Mac OS X/i.test(ua)) {
+    const match = ua.match(/Mac OS X (\d+[_\d]*)/);
+    const version = match ? match[1].replace(/_/g, ".") : "";
+    setBugOsType("macOS");
+    setBugOsVersion(version);
+    setBugOsDisplay(`macOS${version ? ` ${version}` : ""}`);
+  } else if (/Linux/i.test(ua)) {
+    setBugOsType("Linux");
+    setBugOsVersion("");
+    setBugOsDisplay("Linux");
+  } else {
+    setBugOsType("");
+    setBugOsVersion("");
+    setBugOsDisplay("");
+  }
+
+  // ブラウザ・ブラウザバージョン
+  const braveNavigator = navigator as Navigator & {
+    brave?: {
+      isBrave?: () => Promise<boolean>;
+    };
+  };
+
+  let isBraveBrowser = false;
+
+  try {
+    if (braveNavigator.brave?.isBrave) {
+      isBraveBrowser =
+        await braveNavigator.brave.isBrave();
+    }
+  } catch {
+    isBraveBrowser = false;
+  }
+
+  if (isBraveBrowser) {
+    setBugBrowser("Brave");
+
+    const match = ua.match(/Chrome\/([\d.]+)/i);
+    browserVersion = match?.[1] ?? "";
+  } else if (/EdgA|EdgiOS|Edg/i.test(ua)) {
+    setBugBrowser("Edge");
+
+    const match = ua.match(
+      /(?:EdgA|EdgiOS|Edg)\/([\d.]+)/i
+    );
+    browserVersion = match?.[1] ?? "";
+  } else if (/OPR|Opera/i.test(ua)) {
+    setBugBrowser("Opera");
+
+    const match = ua.match(/(?:OPR|Opera)\/([\d.]+)/i);
+    browserVersion = match?.[1] ?? "";
+  } else if (/FxiOS|Firefox/i.test(ua)) {
+    setBugBrowser("Firefox");
+
+    const match = ua.match(
+      /(?:FxiOS|Firefox)\/([\d.]+)/i
+    );
+    browserVersion = match?.[1] ?? "";
+  } else if (/CriOS|Chrome/i.test(ua)) {
+    setBugBrowser("Chrome");
+
+    const match = ua.match(
+      /(?:CriOS|Chrome)\/([\d.]+)/i
+    );
+    browserVersion = match?.[1] ?? "";
+  } else if (/Safari/i.test(ua)) {
+    setBugBrowser("Safari");
+
+    const match = ua.match(/Version\/([\d.]+)/i);
+    browserVersion = match?.[1] ?? "";
+  } else {
+    setBugBrowser("その他");
+  }
+
+  setBugBrowserVersion(browserVersion);
+}
+async function handleBugReport() {
+  setBugMessage("");
+  setBugError("");
+
+  if (bugDescription.trim() === "") {
+    setBugError("不具合内容を入力してください。");
+    return;
+  }
+
+  if (bugDeviceType.trim() === "") {
+    setBugError("端末種類を選択してください。");
+    return;
+  }
+
+  if (bugOsType.trim() === "") {
+    setBugError("OS種類を選択してください。");
+    return;
+  }
+
+  if (
+    bugBrowser === "その他" &&
+    bugBrowserOther.trim() === ""
+  ) {
+    setBugError("ブラウザ名を入力してください。");
+    return;
+  }
+
+  if (bugImages.length > 5) {
+    setBugError("画像は5枚まで添付できます。");
+    return;
+  }
+
+  const allowedTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+  ];
+
+  for (const image of bugImages) {
+    if (image.size > 5 * 1024 * 1024) {
+      setBugError("画像は1枚につき5MB以内で添付してください。");
+      return;
+    }
+
+    if (
+      image.type &&
+      !allowedTypes.includes(image.type)
+    ) {
+      setBugError(
+        "画像はJPEG・PNG・WebP・HEIC形式で添付してください。"
+      );
+      return;
+    }
+  }
+
+  setBugSubmitting(true);
+
+  try {
+    const imagePaths: string[] = [];
+
+    for (const image of bugImages) {
+      const extension =
+        image.name.split(".").pop()?.toLowerCase() || "jpg";
+
+      const fileName =
+        `${Date.now()}-${crypto.randomUUID()}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("bug-report-images")
+        .upload(fileName, image, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error(
+          "bug image upload error:",
+          uploadError
+        );
+
+        setBugError(
+          "画像のアップロードに失敗しました。画像を減らすか、画像なしで再度お試しください。"
+        );
+        return;
+      }
+
+      imagePaths.push(fileName);
+    }
+
+    const browserName =
+      bugBrowser === "その他"
+        ? bugBrowserOther.trim()
+        : bugBrowser.trim();
+
+    const { error } = await supabase
+      .from("bug_reports")
+      .insert({
+        issue_description: bugDescription.trim(),
+        device_type: bugDeviceType.trim(),
+        device_model:
+          bugDeviceModel.trim() === ""
+            ? null
+            : bugDeviceModel.trim(),
+        os_type: bugOsType.trim(),
+        os_version:
+          bugOsVersion.trim() === ""
+            ? null
+            : bugOsVersion.trim(),
+        browser:
+          browserName === ""
+            ? null
+            : browserName,
+        browser_other:
+          bugBrowser === "その他" &&
+          bugBrowserOther.trim() !== ""
+            ? bugBrowserOther.trim()
+            : null,
+        browser_version:
+          bugBrowserVersion.trim() === ""
+            ? null
+            : bugBrowserVersion.trim(),
+        image_url: imagePaths[0] ?? null,
+        image_urls:
+          imagePaths.length > 0
+            ? imagePaths
+            : null,
+        supplemental_comment: null,
+        page_path:
+          typeof window !== "undefined"
+            ? window.location.pathname
+            : "/so-honey",
+      });
+
+    if (error) {
+      console.error("bug_reports insert error:", error);
+
+      setBugError(
+        "送信に失敗しました。少し時間をおいてからもう一度お試しください。"
+      );
+      return;
+    }
+
+    setBugMessage(
+      "不具合報告を送信しました。ありがとうございます。"
+    );
+
+    setBugDescription("");
+    setBugDeviceModel("");
+    setBugBrowserOther("");
+    setBugImages([]);
+  } catch (error) {
+    console.error(error);
+
+    setBugError(
+      "送信中にエラーが発生しました。もう一度お試しください。"
+    );
+  } finally {
+    setBugSubmitting(false);
   }
 }
 
@@ -1629,6 +1971,299 @@ async function handleStoreRequest() {
         </section>
 
         {/* ===== FOOTER ===== */}
+        {/* ===== 不具合報告 ===== */}
+        <section className="rounded-xl border border-[#cdbdca] bg-white p-3 shadow-sm md:rounded-2xl md:p-4">
+          <button
+            type="button"
+            onClick={() => {
+              setBugReportOpen((current) => !current);
+              setBugMessage("");
+              setBugError("");
+            }}
+            className="flex w-full items-center justify-between gap-3 text-left"
+          >
+            <span className="text-[11px] font-bold text-[#40363e] md:text-sm">
+              ⚠️ 不具合を報告する
+            </span>
+
+            <span className="text-xs font-bold text-[#6d5968]">
+              {bugReportOpen ? "∧" : "∨"}
+            </span>
+          </button>
+
+          {bugReportOpen && (
+            <div className="mt-3 border-t border-[#d8cad6] pt-3 text-[#352f34]">
+              <p className="text-[10px] font-medium leading-4 text-[#4f454d] md:text-xs md:leading-5">
+                いただいた内容は確認し、可能な範囲で改善に努めます。内容やご利用環境によっては、すべての不具合に対応できない場合があります。
+              </p>
+
+              <label className="mt-3 block">
+                <div className="mb-1 text-[11px] font-bold text-[#352f34] md:text-sm">
+                  不具合内容
+                  <span className="ml-1 text-[#b83f75]">必須</span>
+                </div>
+
+                <textarea
+                  rows={3}
+                  maxLength={1000}
+                  value={bugDescription}
+                  onChange={(e) =>
+                    setBugDescription(e.target.value)
+                  }
+                  placeholder="例: 店舗をタップしても反応しない"
+                  className="w-full rounded-lg border border-[#cdbdca] bg-white px-3 py-2 text-[12px] text-[#2f292e] outline-none placeholder:text-[#766c74] focus:border-[#a95e92] focus:ring-1 focus:ring-[#e7cfe0] md:text-sm"
+                />
+              </label>
+
+              <div className="mt-3 rounded-lg border border-[#cdbdca] bg-[#f8f3f7] p-3">
+                <div className="text-[10px] font-medium leading-4 text-[#4b4249] md:text-xs md:leading-5">
+                  端末・OS・ブラウザ情報は手動で入力できます。自動入力を利用したい場合だけ、下のチェックを入れてください。
+                  <br />
+                  <span className="font-bold text-[#382f36]">
+                    チェックを入れるまで、不具合報告用の表示環境情報は自動入力しません。自動入力した内容も、「不具合報告を送信」を押すまで送信されません。
+                  </span>
+                  <br />
+                  <span className="font-bold text-[#382f36]">
+                    取得する情報は表示環境に関するもののみです。不具合の確認・改善以外の目的には使用しません。
+                  </span>
+                </div>
+
+                <label className="mt-2 flex cursor-pointer items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={bugAutoDetect}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setBugAutoDetect(checked);
+
+                      if (checked) {
+                        void detectBugEnvironment();
+                      }
+                    }}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[#8c557c]"
+                  />
+
+                  <span className="text-[11px] font-bold leading-4 text-[#382f36] md:text-sm md:leading-5">
+                    端末・機種名・OS・ブラウザ情報を自動入力する
+                  </span>
+                </label>
+
+                {bugAutoDetect && (
+                  <p className="mt-1.5 text-[9px] font-medium leading-4 text-[#514850] md:text-[11px]">
+                    ブラウザから確認できる範囲で入力します。機種名やバージョンなど、一部の情報は端末によって取得できない場合があります。自動入力後も修正できます。
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+                <label>
+                  <div className="mb-1 text-[10px] font-bold text-[#352f34] md:text-xs">
+                    端末種類
+                    <span className="ml-1 text-[#b83f75]">必須</span>
+                  </div>
+
+                  <select
+                    value={bugDeviceType}
+                    onChange={(e) =>
+                      setBugDeviceType(e.target.value)
+                    }
+                    className="w-full rounded-lg border border-[#cdbdca] bg-white px-2 py-2 text-[11px] text-[#2f292e] md:text-sm"
+                  >
+                    <option value="">選択</option>
+                    <option value="iPhone">iPhone</option>
+                    <option value="iPad">iPad</option>
+                    <option value="Android">Android</option>
+                    <option value="PC">PC</option>
+                    <option value="その他">その他</option>
+                  </select>
+                </label>
+
+                <label>
+                  <div className="mb-1 text-[10px] font-bold text-[#352f34] md:text-xs">
+                    機種名
+                    <span className="ml-1 font-normal text-[#514850]">任意</span>
+                  </div>
+
+                  <input
+                    type="text"
+                    maxLength={100}
+                    value={bugDeviceModel}
+                    onChange={(e) =>
+                      setBugDeviceModel(e.target.value)
+                    }
+                    placeholder="例: Pixel 9 / AQUOS sense9"
+                    className="w-full rounded-lg border border-[#cdbdca] bg-white px-2 py-2 text-[11px] text-[#2f292e] placeholder:text-[#766c74] md:text-sm"
+                  />
+                </label>
+
+                <label className="col-span-2 md:col-span-2">
+                  <div className="mb-1 text-[10px] font-bold text-[#352f34] md:text-xs">
+                    OS・バージョン
+                    <span className="ml-1 text-[#b83f75]">必須</span>
+                  </div>
+
+                  <input
+                    type="text"
+                    value={bugOsDisplay}
+                    onChange={(e) =>
+                      handleBugOsDisplayChange(e.target.value)
+                    }
+                    placeholder="例: iOS 18.6 / Android 15 / Windows 11 / macOS 15.6"
+                    className="w-full rounded-lg border border-[#cdbdca] bg-white px-2 py-2 text-[11px] text-[#2f292e] placeholder:text-[#766c74] md:text-sm"
+                  />
+                </label>
+
+                <label className="md:col-span-2">
+                  <div className="mb-1 text-[10px] font-bold text-[#352f34] md:text-xs">
+                    ブラウザ
+                    <span className="ml-1 font-normal text-[#514850]">任意</span>
+                  </div>
+
+                  <select
+                    value={bugBrowser}
+                    onChange={(e) => {
+                      setBugBrowser(e.target.value);
+
+                      if (e.target.value !== "その他") {
+                        setBugBrowserOther("");
+                      }
+                    }}
+                    className="w-full rounded-lg border border-[#cdbdca] bg-white px-2 py-2 text-[11px] text-[#2f292e] md:text-sm"
+                  >
+                    <option value="">選択</option>
+                    <option value="Chrome">Chrome</option>
+                    <option value="Safari">Safari</option>
+                    <option value="Brave">Brave</option>
+                    <option value="Edge">Edge</option>
+                    <option value="Opera">Opera</option>
+                    <option value="Firefox">Firefox</option>
+                    <option value="その他">その他</option>
+                  </select>
+                </label>
+
+                {bugBrowser === "その他" && (
+                  <label className="md:col-span-2">
+                    <div className="mb-1 text-[10px] font-bold text-[#352f34] md:text-xs">
+                      ブラウザ名
+                      <span className="ml-1 text-[#b83f75]">必須</span>
+                    </div>
+
+                    <input
+                      type="text"
+                      maxLength={100}
+                      value={bugBrowserOther}
+                      onChange={(e) =>
+                        setBugBrowserOther(e.target.value)
+                      }
+                      placeholder="ブラウザ名を入力"
+                      className="w-full rounded-lg border border-[#cdbdca] bg-white px-2 py-2 text-[11px] text-[#2f292e] placeholder:text-[#766c74] md:text-sm"
+                    />
+                  </label>
+                )}
+
+                {bugBrowserVersion && (
+                  <div className="col-span-2 text-[10px] font-medium text-[#4f454d] md:col-span-4 md:text-xs">
+                    ブラウザバージョン: {bugBrowserVersion}
+                    <span className="ml-1">
+                      (自動入力で取得できた場合のみ表示)
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <details className="mt-3 rounded-lg border border-[#cdbdca] bg-[#faf7f9]">
+                <summary className="cursor-pointer list-none px-3 py-2 text-[10px] font-bold text-[#40363e] md:text-xs">
+                  端末・OS情報の確認方法を見る ∨
+                </summary>
+
+                <div className="border-t border-[#d8cad6] px-3 py-2 text-[10px] font-medium leading-4 text-[#4b4249] md:text-xs md:leading-5">
+                  <p>
+                    <strong>iPhone / iPad</strong>
+                    <br />
+                    設定 → 一般 → 情報 → iOSバージョン / iPadOSバージョン
+                  </p>
+
+                  <p className="mt-2">
+                    <strong>Android</strong>
+                    <br />
+                    設定 → デバイス情報 / 端末情報 → Androidバージョン
+                    <br />
+                    ※機種によって「デバイス情報」「端末情報」など表示名が異なります。
+                  </p>
+
+                  <p className="mt-2">
+                    <strong>機種名</strong>
+                    <br />
+                    Androidは設定 → デバイス情報 / 端末情報などで確認できます。iPhone / iPadは設定 → 一般 → 情報の「機種名」で確認できます。
+                  </p>
+
+                  <p className="mt-2">
+                    <strong>ブラウザ</strong>
+                    <br />
+                    現在このページを開いているChrome / Safari / Brave / Edge / Operaなどを選択してください。
+                  </p>
+                </div>
+              </details>
+
+              <label className="mt-3 block">
+                <div className="mb-1 text-[10px] font-bold text-[#352f34] md:text-xs">
+                  スクリーンショット
+                  <span className="ml-1 font-normal text-[#514850]">
+                    任意・最大5枚・1枚5MBまで
+                  </span>
+                </div>
+
+                <input
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+
+                    if (files.length > 5) {
+                      setBugError("画像は5枚まで添付できます。");
+                      setBugImages(files.slice(0, 5));
+                      return;
+                    }
+
+                    setBugError("");
+                    setBugImages(files);
+                  }}
+                  className="block w-full text-[10px] font-medium text-[#40363e] file:mr-2 file:rounded-full file:border-0 file:bg-[#ead8e6] file:px-3 file:py-2 file:text-[10px] file:font-bold file:text-[#533e4d] md:text-xs md:file:text-xs"
+                />
+
+                {bugImages.length > 0 && (
+                  <div className="mt-1.5 text-[10px] font-medium text-[#4f454d] md:text-xs">
+                    選択中: {bugImages.length}枚
+                  </div>
+                )}
+              </label>
+
+              {bugError && (
+                <div className="mt-3 rounded-lg bg-[#fde7ec] px-3 py-2 text-[10px] font-bold leading-4 text-[#7d263f] md:text-xs">
+                  {bugError}
+                </div>
+              )}
+
+              {bugMessage && (
+                <div className="mt-3 rounded-lg bg-[#edf5ec] px-3 py-2 text-[10px] font-bold leading-4 text-[#365234] md:text-xs">
+                  {bugMessage}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleBugReport}
+                disabled={bugSubmitting}
+                className="mt-3 rounded-lg bg-[#5e4b59] px-4 py-2 text-[11px] font-bold text-white transition hover:bg-[#4f3f4b] disabled:opacity-50 md:text-sm"
+              >
+                {bugSubmitting
+                  ? "送信中…"
+                  : "不具合報告を送信"}
+              </button>
+            </div>
+          )}
+        </section>
         <footer className="pb-3 pt-4 text-center md:pb-4 md:pt-5">
           <div className="text-[10px] leading-4 text-[#403940] md:text-sm md:leading-6">
             <p>
