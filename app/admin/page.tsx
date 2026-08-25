@@ -46,6 +46,23 @@ type StoreRequest = {
   approved_store_id: number | null;
 };
 
+type BugReport = {
+  id: number;
+  issue_description: string;
+  device_type: string;
+  device_model: string | null;
+  os_type: string;
+  os_version: string | null;
+  browser: string | null;
+  browser_other: string | null;
+  browser_version: string | null;
+  image_url: string | null;
+  image_urls: string[] | null;
+  supplemental_comment: string | null;
+  page_path: string | null;
+  created_at: string;
+};
+
 type Store = {
   id: number;
   name: string;
@@ -72,6 +89,7 @@ type AdminTab =
   | "reports"
   | "deletions"
   | "requests"
+  | "bugs"
   | "sales";
 
 type RequestEdit = {
@@ -102,6 +120,9 @@ export default function AdminPage() {
 
   const [storeRequests, setStoreRequests] =
     useState<StoreRequest[]>([]);
+
+  const [bugReports, setBugReports] =
+    useState<BugReport[]>([]);
 
   const [stores, setStores] =
     useState<Store[]>([]);
@@ -216,6 +237,44 @@ export default function AdminPage() {
       setStoreRequests(
         (data ?? []) as StoreRequest[]
       );
+    }, []);
+
+  // =========================================
+  // 不具合報告
+  // =========================================
+
+  const loadBugReports =
+    useCallback(async () => {
+      const { data, error } = await supabase
+        .from("bug_reports")
+        .select(`
+          id,
+          issue_description,
+          device_type,
+          device_model,
+          os_type,
+          os_version,
+          browser,
+          browser_other,
+          browser_version,
+          image_url,
+          image_urls,
+          supplemental_comment,
+          page_path,
+          created_at
+        `)
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      if (error) {
+        console.error(error);
+        setErrorMessage(
+          `不具合報告を取得できませんでした: ${error.message}`
+        );
+        return;
+      }
+
+      setBugReports((data ?? []) as BugReport[]);
     }, []);
 
   // =========================================
@@ -352,6 +411,7 @@ export default function AdminPage() {
       await Promise.all([
         loadDeletionHistory(),
         loadStoreRequests(),
+        loadBugReports(),
         loadSalesData(),
       ]);
 
@@ -359,6 +419,7 @@ export default function AdminPage() {
     }, [
       loadDeletionHistory,
       loadStoreRequests,
+      loadBugReports,
       loadSalesData,
     ]);
 
@@ -401,6 +462,7 @@ export default function AdminPage() {
             setReports([]);
             setDeletions([]);
             setStoreRequests([]);
+            setBugReports([]);
             setSalesData(null);
           }
         }
@@ -966,6 +1028,8 @@ export default function AdminPage() {
       [storeRequests]
     );
 
+  const bugReportCount = bugReports.length;
+
   if (loginLoading) {
     return (
       <main
@@ -1094,8 +1158,8 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* 4タブ */}
-          <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-4">
+          {/* 5タブ */}
+          <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-5">
             <AdminTabButton
               active={
                 activeTab === "reports"
@@ -1139,6 +1203,22 @@ export default function AdminPage() {
                   {
                     pendingRequestCount
                   }
+                </span>
+              )}
+            </AdminTabButton>
+
+            <AdminTabButton
+              active={
+                activeTab === "bugs"
+              }
+              onClick={() =>
+                setActiveTab("bugs")
+              }
+            >
+              🐞 不具合報告
+              {bugReportCount > 0 && (
+                <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
+                  {bugReportCount}
                 </span>
               )}
             </AdminTabButton>
@@ -1236,6 +1316,12 @@ export default function AdminPage() {
                 formatDate
               }
             />
+          ) : activeTab ===
+            "bugs" ? (
+            <BugReportsTab
+              reports={bugReports}
+              formatDate={formatDate}
+            />
           ) : (
             <SalesTab
               salesData={salesData}
@@ -1277,6 +1363,232 @@ export default function AdminPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function BugReportsTab({
+  reports,
+  formatDate,
+}: {
+  reports: BugReport[];
+  formatDate: (value: string) => string;
+}) {
+  const [imageUrls, setImageUrls] =
+    useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadImageUrls() {
+      const paths = Array.from(
+        new Set(
+          reports.flatMap((report) => {
+            if (
+              Array.isArray(report.image_urls) &&
+              report.image_urls.length > 0
+            ) {
+              return report.image_urls;
+            }
+
+            return report.image_url
+              ? [report.image_url]
+              : [];
+          })
+        )
+      );
+
+      if (paths.length === 0) {
+        setImageUrls({});
+        return;
+      }
+
+      const next: Record<string, string> = {};
+
+      await Promise.all(
+        paths.map(async (path) => {
+          const { data, error } =
+            await supabase.storage
+              .from("bug-report-images")
+              .createSignedUrl(path, 60 * 60);
+
+          if (!error && data?.signedUrl) {
+            next[path] = data.signedUrl;
+          }
+        })
+      );
+
+      if (!cancelled) {
+        setImageUrls(next);
+      }
+    }
+
+    loadImageUrls();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reports]);
+
+  if (reports.length === 0) {
+    return (
+      <div className="mt-8 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
+        不具合報告はありません。
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6">
+      <div className="mb-5">
+        <h2 className="text-2xl font-bold">
+          🐞 不具合報告
+        </h2>
+        <p className="mt-2 text-gray-500">
+          本番サイトの不具合報告フォームから届いた内容です。
+        </p>
+      </div>
+
+      <div className="space-y-5">
+        {reports.map((report) => {
+          const paths =
+            Array.isArray(report.image_urls) &&
+            report.image_urls.length > 0
+              ? report.image_urls
+              : report.image_url
+                ? [report.image_url]
+                : [];
+
+          return (
+            <article
+              key={report.id}
+              className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-5"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="text-sm font-bold text-[#9b6c91]">
+                    報告 #{report.id}
+                  </div>
+                  <div className="mt-1 text-sm text-gray-500">
+                    {formatDate(report.created_at)}
+                  </div>
+                </div>
+
+                {report.page_path && (
+                  <span className="rounded-full bg-[#f0dfec] px-3 py-1 text-xs font-bold text-[#6d4966]">
+                    {report.page_path}
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-4 rounded-xl bg-white p-4">
+                <div className="text-sm font-bold text-gray-500">
+                  不具合内容
+                </div>
+                <div className="mt-2 whitespace-pre-wrap text-base leading-7">
+                  {report.issue_description}
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <BugInfo
+                  label="端末種類"
+                  value={report.device_type}
+                />
+                <BugInfo
+                  label="機種名"
+                  value={report.device_model}
+                />
+                <BugInfo
+                  label="OS"
+                  value={[
+                    report.os_type,
+                    report.os_version,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                />
+                <BugInfo
+                  label="ブラウザ"
+                  value={[
+                    report.browser,
+                    report.browser_version,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                />
+              </div>
+
+              {report.supplemental_comment && (
+                <div className="mt-4 rounded-xl bg-white p-4">
+                  <div className="text-sm font-bold text-gray-500">
+                    補足
+                  </div>
+                  <div className="mt-2 whitespace-pre-wrap">
+                    {report.supplemental_comment}
+                  </div>
+                </div>
+              )}
+
+              {paths.length > 0 && (
+                <div className="mt-5">
+                  <div className="mb-3 font-bold">
+                    📷 添付画像 ({paths.length}枚)
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {paths.map((path, index) => {
+                      const url = imageUrls[path];
+
+                      return url ? (
+                        <a
+                          key={path}
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block overflow-hidden rounded-xl border border-[#eaddea] bg-white"
+                        >
+                          <img
+                            src={url}
+                            alt={`不具合報告 ${report.id} 添付画像 ${index + 1}`}
+                            className="h-56 w-full object-contain"
+                          />
+                        </a>
+                      ) : (
+                        <div
+                          key={path}
+                          className="flex h-32 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white p-3 text-center text-sm text-gray-500"
+                        >
+                          画像URLを取得中…
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function BugInfo({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null;
+}) {
+  return (
+    <div className="rounded-xl bg-white p-3">
+      <div className="text-xs font-bold text-gray-500">
+        {label}
+      </div>
+      <div className="mt-1 font-bold">
+        {value || "情報なし"}
+      </div>
+    </div>
   );
 }
 
