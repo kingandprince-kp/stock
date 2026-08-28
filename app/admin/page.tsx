@@ -61,6 +61,7 @@ type BugReport = {
   supplemental_comment: string | null;
   page_path: string | null;
   created_at: string;
+  checked_at: string | null;
 };
 
 type Store = {
@@ -123,6 +124,9 @@ export default function AdminPage() {
 
   const [bugReports, setBugReports] =
     useState<BugReport[]>([]);
+
+  const [bugCheckingId, setBugCheckingId] =
+    useState<number | null>(null);
 
   const [stores, setStores] =
     useState<Store[]>([]);
@@ -261,7 +265,8 @@ export default function AdminPage() {
           image_urls,
           supplemental_comment,
           page_path,
-          created_at
+          created_at,
+          checked_at
         `)
         .order("created_at", { ascending: false })
         .limit(500);
@@ -276,6 +281,47 @@ export default function AdminPage() {
 
       setBugReports((data ?? []) as BugReport[]);
     }, []);
+
+  // =========================================
+  // 不具合報告を確認済みにする
+  // =========================================
+
+  async function handleCheckBugReport(
+    report: BugReport
+  ) {
+    const confirmed = window.confirm(
+      `報告 #${report.id} を確認済みにしますか？`
+    );
+
+    if (!confirmed) return;
+
+    setBugCheckingId(report.id);
+    setMessage("");
+    setErrorMessage("");
+
+    const { error } = await supabase.rpc(
+      "mark_bug_report_checked_admin",
+      {
+        p_report_id: report.id,
+      }
+    );
+
+    if (error) {
+      console.error(error);
+      setErrorMessage(
+        `確認済みにできませんでした: ${error.message}`
+      );
+      setBugCheckingId(null);
+      return;
+    }
+
+    await loadBugReports();
+
+    setMessage(
+      `不具合報告 #${report.id} を確認済みにしました。`
+    );
+    setBugCheckingId(null);
+  }
 
   // =========================================
   // 売上
@@ -1028,7 +1074,14 @@ export default function AdminPage() {
       [storeRequests]
     );
 
-  const bugReportCount = bugReports.length;
+  const uncheckedBugReportCount =
+    useMemo(
+      () =>
+        bugReports.filter(
+          (report) => !report.checked_at
+        ).length,
+      [bugReports]
+    );
 
   if (loginLoading) {
     return (
@@ -1215,10 +1268,10 @@ export default function AdminPage() {
                 setActiveTab("bugs")
               }
             >
-              🐞 不具合報告
-              {bugReportCount > 0 && (
+              ⚠️ 不具合報告
+              {uncheckedBugReportCount > 0 && (
                 <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
-                  {bugReportCount}
+                  {uncheckedBugReportCount}
                 </span>
               )}
             </AdminTabButton>
@@ -1320,6 +1373,8 @@ export default function AdminPage() {
             "bugs" ? (
             <BugReportsTab
               reports={bugReports}
+              checkingId={bugCheckingId}
+              onCheck={handleCheckBugReport}
               formatDate={formatDate}
             />
           ) : (
@@ -1368,13 +1423,33 @@ export default function AdminPage() {
 
 function BugReportsTab({
   reports,
+  checkingId,
+  onCheck,
   formatDate,
 }: {
   reports: BugReport[];
+  checkingId: number | null;
+  onCheck: (report: BugReport) => void;
   formatDate: (value: string) => string;
 }) {
   const [imageUrls, setImageUrls] =
     useState<Record<string, string>>({});
+
+  const uncheckedReports = useMemo(
+    () =>
+      reports.filter(
+        (report) => !report.checked_at
+      ),
+    [reports]
+  );
+
+  const checkedReports = useMemo(
+    () =>
+      reports.filter(
+        (report) => Boolean(report.checked_at)
+      ),
+    [reports]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -1441,135 +1516,250 @@ function BugReportsTab({
     <div className="mt-6">
       <div className="mb-5">
         <h2 className="text-2xl font-bold">
-          🐞 不具合報告
+          ⚠️ 不具合報告
         </h2>
         <p className="mt-2 text-gray-500">
-          本番サイトの不具合報告フォームから届いた内容です。
+          未確認の報告だけを上に表示します。確認後は「確認済みにする」を押してください。
         </p>
       </div>
 
-      <div className="space-y-5">
-        {reports.map((report) => {
-          const paths =
-            Array.isArray(report.image_urls) &&
-            report.image_urls.length > 0
-              ? report.image_urls
-              : report.image_url
-                ? [report.image_url]
-                : [];
-
-          return (
-            <article
+      {uncheckedReports.length === 0 ? (
+        <div className="rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">
+          未確認の不具合報告はありません。
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {uncheckedReports.map((report) => (
+            <BugReportCard
               key={report.id}
-              className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-5"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <div className="text-sm font-bold text-[#9b6c91]">
-                    報告 #{report.id}
-                  </div>
-                  <div className="mt-1 text-sm text-gray-500">
-                    {formatDate(report.created_at)}
-                  </div>
-                </div>
+              report={report}
+              imageUrls={imageUrls}
+              checked={false}
+              checking={
+                checkingId === report.id
+              }
+              onCheck={() => onCheck(report)}
+              formatDate={formatDate}
+            />
+          ))}
+        </div>
+      )}
 
-                {report.page_path && (
-                  <span className="rounded-full bg-[#f0dfec] px-3 py-1 text-xs font-bold text-[#6d4966]">
-                    {report.page_path}
-                  </span>
-                )}
-              </div>
+      {checkedReports.length > 0 && (
+        <details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50">
+          <summary className="cursor-pointer select-none px-5 py-4 font-bold text-gray-600">
+            ✓ 確認済みの報告 ({checkedReports.length}件)
+          </summary>
 
-              <div className="mt-4 rounded-xl bg-white p-4">
-                <div className="text-sm font-bold text-gray-500">
-                  不具合内容
-                </div>
-                <div className="mt-2 whitespace-pre-wrap text-base leading-7">
-                  {report.issue_description}
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <BugInfo
-                  label="端末種類"
-                  value={report.device_type}
-                />
-                <BugInfo
-                  label="機種名"
-                  value={report.device_model}
-                />
-                <BugInfo
-                  label="OS"
-                  value={[
-                    report.os_type,
-                    report.os_version,
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                />
-                <BugInfo
-                  label="ブラウザ"
-                  value={[
-                    report.browser,
-                    report.browser_version,
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                />
-              </div>
-
-              {report.supplemental_comment && (
-                <div className="mt-4 rounded-xl bg-white p-4">
-                  <div className="text-sm font-bold text-gray-500">
-                    補足
-                  </div>
-                  <div className="mt-2 whitespace-pre-wrap">
-                    {report.supplemental_comment}
-                  </div>
-                </div>
-              )}
-
-              {paths.length > 0 && (
-                <div className="mt-5">
-                  <div className="mb-3 font-bold">
-                    📷 添付画像 ({paths.length}枚)
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {paths.map((path, index) => {
-                      const url = imageUrls[path];
-
-                      return url ? (
-                        <a
-                          key={path}
-                          href={url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="block overflow-hidden rounded-xl border border-[#eaddea] bg-white"
-                        >
-                          <img
-                            src={url}
-                            alt={`不具合報告 ${report.id} 添付画像 ${index + 1}`}
-                            className="h-56 w-full object-contain"
-                          />
-                        </a>
-                      ) : (
-                        <div
-                          key={path}
-                          className="flex h-32 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white p-3 text-center text-sm text-gray-500"
-                        >
-                          画像URLを取得中…
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </article>
-          );
-        })}
-      </div>
+          <div className="space-y-3 border-t border-gray-200 p-4">
+            {checkedReports.map((report) => (
+              <BugReportCard
+                key={report.id}
+                report={report}
+                imageUrls={imageUrls}
+                checked
+                checking={false}
+                onCheck={() => {}}
+                formatDate={formatDate}
+              />
+            ))}
+          </div>
+        </details>
+      )}
     </div>
+  );
+}
+
+function BugReportCard({
+  report,
+  imageUrls,
+  checked,
+  checking,
+  onCheck,
+  formatDate,
+}: {
+  report: BugReport;
+  imageUrls: Record<string, string>;
+  checked: boolean;
+  checking: boolean;
+  onCheck: () => void;
+  formatDate: (value: string) => string;
+}) {
+  const paths =
+    Array.isArray(report.image_urls) &&
+    report.image_urls.length > 0
+      ? report.image_urls
+      : report.image_url
+        ? [report.image_url]
+        : [];
+
+  const browserName =
+    report.browser === "その他" &&
+    report.browser_other
+      ? report.browser_other
+      : report.browser;
+
+  return (
+    <details
+      className={`rounded-2xl border ${
+        checked
+          ? "border-gray-200 bg-white/60 text-gray-600"
+          : "border-[#e0c9db] bg-[#fcf9fc]"
+      }`}
+    >
+      <summary className="cursor-pointer select-none list-none p-4 [&::-webkit-details-marker]:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`font-bold ${
+                checked ? "text-gray-600" : "text-[#6d4966]"
+              }`}>
+                報告 #{report.id}
+              </span>
+
+              {checked ? (
+                <span className="rounded-full bg-gray-200 px-2.5 py-1 text-xs font-bold text-gray-600">
+                  確認済み
+                </span>
+              ) : (
+                <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-bold text-red-700">
+                  未確認
+                </span>
+              )}
+            </div>
+
+            <div className="mt-1 text-sm text-gray-500">
+              {formatDate(report.created_at)}
+            </div>
+
+            <div className="mt-2 line-clamp-2 font-bold">
+              {report.issue_description}
+            </div>
+          </div>
+
+          <div className="text-sm font-bold text-gray-500">
+            タップして開く ▼
+          </div>
+        </div>
+      </summary>
+
+      <div className="border-t border-[#eaddea] p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          {report.page_path && (
+            <span className="rounded-full bg-[#f0dfec] px-3 py-1 text-xs font-bold text-[#6d4966]">
+              {report.page_path}
+            </span>
+          )}
+
+          {checked && report.checked_at && (
+            <div className="text-sm text-gray-500">
+              確認日時: {formatDate(report.checked_at)}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 rounded-xl bg-white p-4">
+          <div className="text-sm font-bold text-gray-500">
+            不具合内容
+          </div>
+          <div className="mt-2 whitespace-pre-wrap text-base leading-7 text-[#211d21]">
+            {report.issue_description}
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <BugInfo
+            label="端末種類"
+            value={report.device_type}
+          />
+          <BugInfo
+            label="機種名"
+            value={report.device_model}
+          />
+          <BugInfo
+            label="OS"
+            value={[
+              report.os_type,
+              report.os_version,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          />
+          <BugInfo
+            label="ブラウザ"
+            value={[
+              browserName,
+              report.browser_version,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          />
+        </div>
+
+        {report.supplemental_comment && (
+          <div className="mt-4 rounded-xl bg-white p-4">
+            <div className="text-sm font-bold text-gray-500">
+              補足
+            </div>
+            <div className="mt-2 whitespace-pre-wrap text-[#211d21]">
+              {report.supplemental_comment}
+            </div>
+          </div>
+        )}
+
+        {paths.length > 0 && (
+          <div className="mt-5">
+            <div className="mb-3 font-bold">
+              📷 添付画像 ({paths.length}枚)
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {paths.map((path, index) => {
+                const url = imageUrls[path];
+
+                return url ? (
+                  <a
+                    key={path}
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block overflow-hidden rounded-xl border border-[#eaddea] bg-white"
+                  >
+                    <img
+                      src={url}
+                      alt={`不具合報告 ${report.id} 添付画像 ${index + 1}`}
+                      className="h-56 w-full object-contain"
+                    />
+                  </a>
+                ) : (
+                  <div
+                    key={path}
+                    className="flex h-32 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white p-3 text-center text-sm text-gray-500"
+                  >
+                    画像URLを取得中…
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {!checked && (
+          <div className="mt-5 border-t border-[#eaddea] pt-4">
+            <button
+              type="button"
+              disabled={checking}
+              onClick={onCheck}
+              className="rounded-xl bg-[#211d21] px-5 py-3 font-bold text-white disabled:opacity-50"
+            >
+              {checking
+                ? "処理中…"
+                : "✓ 確認済みにする"}
+            </button>
+          </div>
+        )}
+      </div>
+    </details>
   );
 }
 
@@ -1619,6 +1809,24 @@ function StoreRequestsTab({
     value: string
   ) => string;
 }) {
+  const pendingRequests = useMemo(
+    () =>
+      requests.filter(
+        (request) =>
+          request.status === "pending"
+      ),
+    [requests]
+  );
+
+  const processedRequests = useMemo(
+    () =>
+      requests.filter(
+        (request) =>
+          request.status !== "pending"
+      ),
+    [requests]
+  );
+
   return (
     <div className="mt-6">
       <div className="mb-5">
@@ -1627,411 +1835,395 @@ function StoreRequestsTab({
         </h2>
 
         <p className="mt-2 text-gray-500">
-          ユーザーから届いた店舗情報を確認・修正してから登録します。
+          未処理のリクエストだけを上に表示します。承認・却下後は履歴に移動します。
         </p>
       </div>
 
-      {requests.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
-          店舗追加リクエストはありません。
+      {pendingRequests.length === 0 ? (
+        <div className="rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">
+          未処理の店舗追加リクエストはありません。
         </div>
       ) : (
         <div className="space-y-5">
-          {requests.map(
-            (request) => {
-              const pending =
-                request.status ===
-                "pending";
-
-              return (
-                <article
-                  key={request.id}
-                  className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-5"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-xl font-bold">
-                          {request.chain_name
-                            ? `${request.chain_name} `
-                            : ""}
-                          {request.name}
-                        </div>
-
-                        <RequestStatus
-                          status={
-                            request.status
-                          }
-                        />
-                      </div>
-
-                      <div className="mt-2 text-sm text-gray-600">
-                        📍{" "}
-                        {
-                          request.prefecture
-                        }
-                        {request.city
-                          ? ` ${request.city}`
+          {pendingRequests.map(
+            (request) => (
+              <article
+                key={request.id}
+                className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-5"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="text-xl font-bold">
+                        {request.chain_name
+                          ? `${request.chain_name} `
                           : ""}
+                        {request.name}
                       </div>
 
-                      <div className="mt-1 text-sm text-gray-500">
-                        申請日時:{" "}
-                        {formatDate(
-                          request.requested_at
-                        )}
-                      </div>
+                      <RequestStatus
+                        status={request.status}
+                      />
+                    </div>
 
-                      {request.comment && (
-                        <div className="mt-3 rounded-xl bg-white p-3">
-                          💬{" "}
-                          {
-                            request.comment
-                          }
-                        </div>
+                    <div className="mt-2 text-sm text-gray-600">
+                      📍 {request.prefecture}
+                      {request.city
+                        ? ` ${request.city}`
+                        : ""}
+                    </div>
+
+                    <div className="mt-1 text-sm text-gray-500">
+                      申請日時:{" "}
+                      {formatDate(
+                        request.requested_at
                       )}
                     </div>
 
-                    {pending && (
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            startEdit(
-                              request
-                            )
-                          }
-                          className="rounded-xl bg-[#6f4b89] px-4 py-2.5 font-bold text-white"
-                        >
-                          内容を確認・編集
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={
-                            processingId ===
-                            request.id
-                          }
-                          onClick={() =>
-                            onReject(
-                              request
-                            )
-                          }
-                          className="rounded-xl bg-red-600 px-4 py-2.5 font-bold text-white disabled:opacity-50"
-                        >
-                          却下
-                        </button>
+                    {request.comment && (
+                      <div className="mt-3 rounded-xl bg-white p-3">
+                        💬 {request.comment}
                       </div>
                     )}
                   </div>
 
-                  {edit?.requestId ===
-                    request.id && (
-                    <div className="mt-6 border-t border-[#eaddea] pt-6">
-                      <h3 className="text-xl font-bold">
-                        登録内容を確認
-                      </h3>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        startEdit(request)
+                      }
+                      className="rounded-xl bg-[#6f4b89] px-4 py-2.5 font-bold text-white"
+                    >
+                      内容を確認・編集
+                    </button>
 
-                      <div className="mt-5 grid gap-4 md:grid-cols-2">
-                        <AdminInput
-                          label="チェーン名"
-                          value={
-                            edit.chainName
-                          }
-                          onChange={(
-                            value
-                          ) =>
+                    <button
+                      type="button"
+                      disabled={
+                        processingId === request.id
+                      }
+                      onClick={() =>
+                        onReject(request)
+                      }
+                      className="rounded-xl bg-red-600 px-4 py-2.5 font-bold text-white disabled:opacity-50"
+                    >
+                      却下
+                    </button>
+                  </div>
+                </div>
+
+                {edit?.requestId ===
+                  request.id && (
+                  <div className="mt-6 border-t border-[#eaddea] pt-6">
+                    <h3 className="text-xl font-bold">
+                      登録内容を確認
+                    </h3>
+
+                    <div className="mt-5 grid gap-4 md:grid-cols-2">
+                      <AdminInput
+                        label="チェーン名"
+                        value={edit.chainName}
+                        onChange={(value) =>
+                          setEdit({
+                            ...edit,
+                            chainName: value,
+                          })
+                        }
+                      />
+
+                      <AdminInput
+                        label="店舗名"
+                        value={edit.name}
+                        onChange={(value) =>
+                          setEdit({
+                            ...edit,
+                            name: value,
+                          })
+                        }
+                      />
+
+                      <label className="block">
+                        <div className="mb-2 font-bold">
+                          店舗種別
+                        </div>
+
+                        <select
+                          value={edit.storeType}
+                          onChange={(event) => {
+                            const type =
+                              event.target.value as
+                                | "physical"
+                                | "online";
+
                             setEdit({
                               ...edit,
-                              chainName:
-                                value,
-                            })
-                          }
-                        />
-
-                        <AdminInput
-                          label="店舗名"
-                          value={
-                            edit.name
-                          }
-                          onChange={(
-                            value
-                          ) =>
-                            setEdit({
-                              ...edit,
-                              name: value,
-                            })
-                          }
-                        />
-
-                        <label className="block">
-                          <div className="mb-2 font-bold">
-                            店舗種別
-                          </div>
-
-                          <select
-                            value={
-                              edit.storeType
-                            }
-                            onChange={(
-                              event
-                            ) => {
-                              const type =
-                                event
-                                  .target
-                                  .value as
-                                  | "physical"
-                                  | "online";
-
-                              setEdit({
-                                ...edit,
-                                storeType:
-                                  type,
-                                prefecture:
-                                  type ===
-                                  "online"
-                                    ? "オンライン"
-                                    : edit.prefecture ===
-                                        "オンライン"
-                                      ? ""
-                                      : edit.prefecture,
-                              });
-                            }}
-                            className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3"
-                          >
-                            <option value="physical">
-                              実店舗
-                            </option>
-                            <option value="online">
-                              オンライン
-                            </option>
-                          </select>
-                        </label>
-
-                        <AdminInput
-                          label="都道府県"
-                          value={
-                            edit.prefecture
-                          }
-                          disabled={
-                            edit.storeType ===
-                            "online"
-                          }
-                          onChange={(
-                            value
-                          ) =>
-                            setEdit({
-                              ...edit,
+                              storeType: type,
                               prefecture:
-                                value,
-                            })
-                          }
-                        />
-
-                        {edit.storeType ===
-                          "physical" && (
-                          <AdminInput
-                            label="市区町村"
-                            value={
-                              edit.city
-                            }
-                            onChange={(
-                              value
-                            ) =>
-                              setEdit({
-                                ...edit,
-                                city: value,
-                              })
-                            }
-                          />
-                        )}
-
-                        <AdminInput
-                          label="住所"
-                          value={
-                            edit.address
-                          }
-                          onChange={(
-                            value
-                          ) =>
-                            setEdit({
-                              ...edit,
-                              address:
-                                value,
-                            })
-                          }
-                        />
-
-                        <AdminInput
-                          label="電話番号"
-                          value={
-                            edit.phone
-                          }
-                          onChange={(
-                            value
-                          ) =>
-                            setEdit({
-                              ...edit,
-                              phone: value,
-                            })
-                          }
-                        />
-
-                        <AdminInput
-                          label="営業時間"
-                          placeholder="例: 10:00～21:00"
-                          value={
-                            edit.businessHours
-                          }
-                          onChange={(
-                            value
-                          ) =>
-                            setEdit({
-                              ...edit,
-                              businessHours:
-                                value,
-                            })
-                          }
-                        />
-
-                        <AdminInput
-                          label="公式店舗URL"
-                          value={
-                            edit.officialUrl
-                          }
-                          onChange={(
-                            value
-                          ) =>
-                            setEdit({
-                              ...edit,
-                              officialUrl:
-                                value,
-                            })
-                          }
-                        />
-
-                        <AdminInput
-                          label="オンラインURL"
-                          value={
-                            edit.onlineUrl
-                          }
-                          onChange={(
-                            value
-                          ) =>
-                            setEdit({
-                              ...edit,
-                              onlineUrl:
-                                value,
-                            })
-                          }
-                        />
-
-                        <label className="block">
-                          <div className="mb-2 font-bold">
-                            オリコン
-                          </div>
-
-                          <select
-                            value={
-                              edit.oriconTarget
-                                ? "true"
-                                : "false"
-                            }
-                            onChange={(
-                              event
-                            ) =>
-                              setEdit({
-                                ...edit,
-                                oriconTarget:
-                                  event
-                                    .target
-                                    .value ===
-                                  "true",
-                              })
-                            }
-                            className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3"
-                          >
-                            <option value="false">
-                              対象外
-                            </option>
-                            <option value="true">
-                              集計対象
-                            </option>
-                          </select>
-                        </label>
-
-                        <label className="block">
-                          <div className="mb-2 font-bold">
-                            Billboard
-                          </div>
-
-                          <select
-                            value={
-                              edit.billboardStatus
-                            }
-                            onChange={(
-                              event
-                            ) =>
-                              setEdit({
-                                ...edit,
-                                billboardStatus:
-                                  event
-                                    .target
-                                    .value as RequestEdit["billboardStatus"],
-                              })
-                            }
-                            className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3"
-                          >
-                            <option value="target">
-                              集計対象
-                            </option>
-
-                            <option value="check_store">
-                              要確認
-                            </option>
-
-                            <option value="not_target">
-                              対象外
-                            </option>
-                          </select>
-                        </label>
-                      </div>
-
-                      <div className="mt-6 flex flex-wrap gap-3">
-                        <button
-                          type="button"
-                          disabled={
-                            processingId ===
-                            request.id
-                          }
-                          onClick={
-                            onApprove
-                          }
-                          className="rounded-xl bg-[#211d21] px-6 py-3 font-bold text-white disabled:opacity-50"
+                                type === "online"
+                                  ? "オンライン"
+                                  : edit.prefecture ===
+                                      "オンライン"
+                                    ? ""
+                                    : edit.prefecture,
+                            });
+                          }}
+                          className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3"
                         >
-                          {processingId ===
-                          request.id
-                            ? "登録中…"
-                            : "この内容で承認・店舗登録"}
-                        </button>
+                          <option value="physical">
+                            実店舗
+                          </option>
+                          <option value="online">
+                            オンライン
+                          </option>
+                        </select>
+                      </label>
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setEdit(null)
+                      <AdminInput
+                        label="都道府県"
+                        value={edit.prefecture}
+                        disabled={
+                          edit.storeType ===
+                          "online"
+                        }
+                        onChange={(value) =>
+                          setEdit({
+                            ...edit,
+                            prefecture: value,
+                          })
+                        }
+                      />
+
+                      {edit.storeType ===
+                        "physical" && (
+                        <AdminInput
+                          label="市区町村"
+                          value={edit.city}
+                          onChange={(value) =>
+                            setEdit({
+                              ...edit,
+                              city: value,
+                            })
                           }
-                          className="rounded-xl border border-gray-300 px-6 py-3 font-bold"
+                        />
+                      )}
+
+                      <AdminInput
+                        label="住所"
+                        value={edit.address}
+                        onChange={(value) =>
+                          setEdit({
+                            ...edit,
+                            address: value,
+                          })
+                        }
+                      />
+
+                      <AdminInput
+                        label="電話番号"
+                        value={edit.phone}
+                        onChange={(value) =>
+                          setEdit({
+                            ...edit,
+                            phone: value,
+                          })
+                        }
+                      />
+
+                      <AdminInput
+                        label="営業時間"
+                        placeholder="例: 10:00～21:00"
+                        value={edit.businessHours}
+                        onChange={(value) =>
+                          setEdit({
+                            ...edit,
+                            businessHours: value,
+                          })
+                        }
+                      />
+
+                      <AdminInput
+                        label="公式店舗URL"
+                        value={edit.officialUrl}
+                        onChange={(value) =>
+                          setEdit({
+                            ...edit,
+                            officialUrl: value,
+                          })
+                        }
+                      />
+
+                      <AdminInput
+                        label="オンラインURL"
+                        value={edit.onlineUrl}
+                        onChange={(value) =>
+                          setEdit({
+                            ...edit,
+                            onlineUrl: value,
+                          })
+                        }
+                      />
+
+                      <label className="block">
+                        <div className="mb-2 font-bold">
+                          オリコン
+                        </div>
+
+                        <select
+                          value={
+                            edit.oriconTarget
+                              ? "true"
+                              : "false"
+                          }
+                          onChange={(event) =>
+                            setEdit({
+                              ...edit,
+                              oriconTarget:
+                                event.target
+                                  .value === "true",
+                            })
+                          }
+                          className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3"
                         >
-                          編集を閉じる
-                        </button>
-                      </div>
+                          <option value="false">
+                            対象外
+                          </option>
+                          <option value="true">
+                            集計対象
+                          </option>
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <div className="mb-2 font-bold">
+                          Billboard
+                        </div>
+
+                        <select
+                          value={
+                            edit.billboardStatus
+                          }
+                          onChange={(event) =>
+                            setEdit({
+                              ...edit,
+                              billboardStatus:
+                                event.target
+                                  .value as RequestEdit["billboardStatus"],
+                            })
+                          }
+                          className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3"
+                        >
+                          <option value="target">
+                            集計対象
+                          </option>
+
+                          <option value="check_store">
+                            要確認
+                          </option>
+
+                          <option value="not_target">
+                            対象外
+                          </option>
+                        </select>
+                      </label>
                     </div>
-                  )}
-                </article>
-              );
-            }
+
+                    <div className="mt-6 flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        disabled={
+                          processingId ===
+                          request.id
+                        }
+                        onClick={onApprove}
+                        className="rounded-xl bg-[#211d21] px-6 py-3 font-bold text-white disabled:opacity-50"
+                      >
+                        {processingId ===
+                        request.id
+                          ? "登録中…"
+                          : "この内容で承認・店舗登録"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEdit(null)
+                        }
+                        className="rounded-xl border border-gray-300 px-6 py-3 font-bold"
+                      >
+                        編集を閉じる
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </article>
+            )
           )}
         </div>
+      )}
+
+      {processedRequests.length > 0 && (
+        <details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50">
+          <summary className="cursor-pointer select-none px-5 py-4 font-bold text-gray-600">
+            履歴: 承認済み・却下 ({processedRequests.length}件)
+          </summary>
+
+          <div className="space-y-3 border-t border-gray-200 p-4">
+            {processedRequests.map(
+              (request) => (
+                <details
+                  key={request.id}
+                  className="rounded-xl border border-gray-200 bg-white/60 text-gray-600"
+                >
+                  <summary className="cursor-pointer select-none p-4">
+                    <div className="inline-flex flex-wrap items-center gap-2">
+                      <span className="font-bold">
+                        {request.chain_name
+                          ? `${request.chain_name} `
+                          : ""}
+                        {request.name}
+                      </span>
+                      <RequestStatus
+                        status={request.status}
+                      />
+                    </div>
+                  </summary>
+
+                  <div className="border-t border-gray-200 px-4 pb-4 pt-3 text-sm">
+                    <div>
+                      📍 {request.prefecture}
+                      {request.city
+                        ? ` ${request.city}`
+                        : ""}
+                    </div>
+
+                    <div className="mt-1">
+                      申請日時:{" "}
+                      {formatDate(
+                        request.requested_at
+                      )}
+                    </div>
+
+                    {request.reviewed_at && (
+                      <div className="mt-1">
+                        対応日時:{" "}
+                        {formatDate(
+                          request.reviewed_at
+                        )}
+                      </div>
+                    )}
+
+                    {request.comment && (
+                      <div className="mt-3 rounded-lg bg-gray-50 p-3">
+                        💬 {request.comment}
+                      </div>
+                    )}
+                  </div>
+                </details>
+              )
+            )}
+          </div>
+        </details>
       )}
     </div>
   );
