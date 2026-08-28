@@ -18,7 +18,7 @@ type InventoryReport = {
 };
 
 type ReviewReport = InventoryReport & {
-  review_status: "pending" | "rejected";
+  review_status: "approved" | "pending" | "rejected";
   review_reason: string | null;
   reviewed_at: string | null;
   reviewed_by: string | null;
@@ -242,7 +242,7 @@ export default function AdminPage() {
         );
         return;
       }
-
+      console.log("REVIEW REPORTS DATA:", data);
       setReviewReports(
         (data ?? []) as ReviewReport[]
       );
@@ -1658,6 +1658,11 @@ function ReviewReportsTab({
   const pending = reports.filter(
     (report) => report.review_status === "pending"
   );
+  const approved = reports.filter(
+    (report) =>
+      report.review_status === "approved" &&
+      Boolean(report.reviewed_at)
+  );
   const rejected = reports.filter(
     (report) => report.review_status === "rejected"
   );
@@ -1670,6 +1675,52 @@ function ReviewReportsTab({
   const productName = (id: number) =>
     products.find((item) => item.id === id)?.name ??
     "商品不明";
+
+  const historyCard = (
+    report: ReviewReport,
+    actionLabel: "承認" | "却下"
+  ) => (
+    <article
+      key={report.id}
+      className="rounded-xl border border-gray-200 bg-white p-4 text-gray-600"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="font-bold">
+          {storeName(report.store_id)}
+        </div>
+        <span
+          className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+            actionLabel === "承認"
+              ? "bg-green-100 text-green-700"
+              : "bg-red-100 text-red-700"
+          }`}
+        >
+          {actionLabel}済み
+        </span>
+      </div>
+      <div className="mt-1">
+        {productName(report.product_id)}
+      </div>
+      <div className="mt-1">
+        {report.quantity === 0
+          ? "在庫なし"
+          : `${report.quantity}枚`}
+      </div>
+      <div className="mt-1 text-sm">
+        投稿: {formatDate(report.created_at)}
+      </div>
+      {report.reviewed_at && (
+        <div className="mt-1 text-sm">
+          {actionLabel}: {formatDate(report.reviewed_at)}
+        </div>
+      )}
+      {report.review_reason && (
+        <div className="mt-2 text-sm">
+          判定理由: {report.review_reason}
+        </div>
+      )}
+    </article>
+  );
 
   return (
     <div className="mt-6">
@@ -1747,46 +1798,37 @@ function ReviewReportsTab({
         </div>
       )}
 
-      {rejected.length > 0 && (
-        <details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50">
+      <div className="mt-7 space-y-3">
+        <details className="rounded-2xl border border-green-200 bg-green-50/50">
+          <summary className="cursor-pointer select-none px-5 py-4 font-bold text-green-700">
+            承認済みの履歴 ({approved.length}件)
+          </summary>
+          <div className="space-y-3 border-t border-green-200 p-4">
+            {approved.length === 0 ? (
+              <div className="py-3 text-center text-sm text-gray-500">
+                承認済みの履歴はありません。
+              </div>
+            ) : (
+              approved.map((report) => historyCard(report, "承認"))
+            )}
+          </div>
+        </details>
+
+        <details className="rounded-2xl border border-gray-200 bg-gray-50">
           <summary className="cursor-pointer select-none px-5 py-4 font-bold text-gray-600">
             却下済みの履歴 ({rejected.length}件)
           </summary>
           <div className="space-y-3 border-t border-gray-200 p-4">
-            {rejected.map((report) => (
-              <article
-                key={report.id}
-                className="rounded-xl border border-gray-200 bg-white p-4 text-gray-600"
-              >
-                <div className="font-bold">
-                  {storeName(report.store_id)}
-                </div>
-                <div className="mt-1">
-                  {productName(report.product_id)}
-                </div>
-                <div className="mt-1">
-                  {report.quantity === 0
-                    ? "在庫なし"
-                    : `${report.quantity}枚`}
-                </div>
-                <div className="mt-1 text-sm">
-                  投稿: {formatDate(report.created_at)}
-                </div>
-                {report.reviewed_at && (
-                  <div className="mt-1 text-sm">
-                    却下: {formatDate(report.reviewed_at)}
-                  </div>
-                )}
-                {report.review_reason && (
-                  <div className="mt-2 text-sm">
-                    判定理由: {report.review_reason}
-                  </div>
-                )}
-              </article>
-            ))}
+            {rejected.length === 0 ? (
+              <div className="py-3 text-center text-sm text-gray-500">
+                却下済みの履歴はありません。
+              </div>
+            ) : (
+              rejected.map((report) => historyCard(report, "却下"))
+            )}
           </div>
         </details>
-      )}
+      </div>
     </div>
   );
 }
@@ -1802,9 +1844,20 @@ function SecurityEventsTab({
   products: Product[];
   formatDate: (value: string) => string;
 }) {
+  const [eventFilter, setEventFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("newest");
+
   const now = Date.now();
   const dayAgo = now - 24 * 60 * 60 * 1000;
   const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+  const blockedTypes = [
+    "rate_limit_client",
+    "rate_limit_ip",
+    "same_item_block",
+    "turnstile_block",
+    "invalid_request",
+  ];
 
   const last24h = events.filter(
     (event) => new Date(event.created_at).getTime() >= dayAgo
@@ -1815,13 +1868,7 @@ function SecurityEventsTab({
   const blocked24h = events.filter(
     (event) =>
       new Date(event.created_at).getTime() >= dayAgo &&
-      [
-        "rate_limit_client",
-        "rate_limit_ip",
-        "same_item_block",
-        "turnstile_block",
-        "invalid_request",
-      ].includes(event.event_type)
+      blockedTypes.includes(event.event_type)
   ).length;
   const pending24h = events.filter(
     (event) =>
@@ -1845,7 +1892,7 @@ function SecurityEventsTab({
 
   const label: Record<string, string> = {
     submitted: "正常投稿",
-    pending: "要確認",
+    pending: "要確認 (Pending)",
     rate_limit_client: "Browser制限",
     rate_limit_ip: "IP制限",
     same_item_block: "同一商品制限",
@@ -1855,13 +1902,62 @@ function SecurityEventsTab({
     rejected_by_admin: "管理者却下",
   };
 
+  const filterOptions = [
+    ["all", "すべて"],
+    ["submitted", "正常投稿"],
+    ["pending", "要確認 (Pending)"],
+    ["approved_by_admin", "管理者承認"],
+    ["rejected_by_admin", "管理者却下"],
+    ["same_item_block", "同一商品制限"],
+    ["rate_limit_client", "Browser制限"],
+    ["rate_limit_ip", "IP制限"],
+    ["turnstile_block", "Turnstile拒否"],
+    ["invalid_request", "不正リクエスト"],
+    ["blocked", "拒否・制限をまとめて表示"],
+  ];
+
+  const visibleEvents = useMemo(() => {
+    const filtered = events.filter((event) => {
+      if (eventFilter === "all") return true;
+      if (eventFilter === "blocked") {
+        return blockedTypes.includes(event.event_type);
+      }
+      return event.event_type === eventFilter;
+    });
+
+    return [...filtered].sort((a, b) => {
+      if (sortOrder === "oldest") {
+        return (
+          new Date(a.created_at).getTime() -
+          new Date(b.created_at).getTime()
+        );
+      }
+      if (sortOrder === "type") {
+        return (label[a.event_type] ?? a.event_type).localeCompare(
+          label[b.event_type] ?? b.event_type,
+          "ja"
+        );
+      }
+      if (sortOrder === "store") {
+        return storeName(a.store_id).localeCompare(
+          storeName(b.store_id),
+          "ja"
+        );
+      }
+      return (
+        new Date(b.created_at).getTime() -
+        new Date(a.created_at).getTime()
+      );
+    });
+  }, [events, eventFilter, sortOrder, stores]);
+
   return (
     <div className="mt-6">
       <h2 className="text-2xl font-bold">
         🛡️ セキュリティ履歴
       </h2>
       <p className="mt-2 text-gray-500">
-        正常投稿を含め、投稿試行を時系列で確認できます。
+        正常投稿を含め、投稿試行を種類別に絞り込み・並べ替えて確認できます。
       </p>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -1871,13 +1967,57 @@ function SecurityEventsTab({
         <SecuritySummary label="24時間の要確認" value={pending24h} />
       </div>
 
+      <div className="mt-5 rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="block">
+            <span className="text-sm font-bold text-gray-600">
+              種類で絞り込み
+            </span>
+            <select
+              value={eventFilter}
+              onChange={(e) => setEventFilter(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-[#d9cbd7] bg-white px-3 py-2.5"
+            >
+              {filterOptions.map(([value, text]) => (
+                <option key={value} value={value}>
+                  {text}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-bold text-gray-600">
+              並び順
+            </span>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-[#d9cbd7] bg-white px-3 py-2.5"
+            >
+              <option value="newest">新しい順</option>
+              <option value="oldest">古い順</option>
+              <option value="type">種類順</option>
+              <option value="store">店舗名順</option>
+            </select>
+          </label>
+        </div>
+        <div className="mt-3 text-sm text-gray-500">
+          表示中: {visibleEvents.length.toLocaleString()}件 / 全{events.length.toLocaleString()}件
+        </div>
+      </div>
+
       {events.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
           セキュリティ履歴はまだありません。
         </div>
+      ) : visibleEvents.length === 0 ? (
+        <div className="mt-6 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
+          この条件に該当する履歴はありません。
+        </div>
       ) : (
         <div className="mt-6 space-y-3">
-          {events.map((event) => (
+          {visibleEvents.map((event) => (
             <details
               key={event.id}
               className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc]"
