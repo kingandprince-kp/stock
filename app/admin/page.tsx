@@ -17,6 +17,28 @@ type InventoryReport = {
   created_at: string;
 };
 
+type ReviewReport = InventoryReport & {
+  review_status: "pending" | "rejected";
+  review_reason: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+};
+
+type SecurityEvent = {
+  id: number;
+  event_type: string;
+  ip_address: string | null;
+  ip_hash: string | null;
+  client_hash: string | null;
+  store_id: number | null;
+  product_id: number | null;
+  quantity: number | null;
+  comment: string | null;
+  review_status: "approved" | "pending" | "rejected" | null;
+  reason: string | null;
+  created_at: string;
+};
+
 type DeletionHistory = {
   id: number;
   original_report_id: number;
@@ -88,6 +110,8 @@ type SalesSummary = {
 
 type AdminTab =
   | "reports"
+  | "review"
+  | "security"
   | "deletions"
   | "requests"
   | "bugs"
@@ -115,6 +139,15 @@ type RequestEdit = {
 export default function AdminPage() {
   const [reports, setReports] =
     useState<InventoryReport[]>([]);
+
+  const [reviewReports, setReviewReports] =
+    useState<ReviewReport[]>([]);
+
+  const [securityEvents, setSecurityEvents] =
+    useState<SecurityEvent[]>([]);
+
+  const [reviewProcessingId, setReviewProcessingId] =
+    useState<number | null>(null);
 
   const [deletions, setDeletions] =
     useState<DeletionHistory[]>([]);
@@ -190,6 +223,54 @@ export default function AdminPage() {
 
   const [loginError, setLoginError] =
     useState("");
+
+  // =========================================
+  // 要確認投稿
+  // =========================================
+
+  const loadReviewReports =
+    useCallback(async () => {
+      const { data, error } =
+        await supabase.rpc(
+          "get_inventory_review_reports_admin"
+        );
+
+      if (error) {
+        console.error(error);
+        setErrorMessage(
+          `要確認投稿を取得できませんでした: ${error.message}`
+        );
+        return;
+      }
+
+      setReviewReports(
+        (data ?? []) as ReviewReport[]
+      );
+    }, []);
+
+  // =========================================
+  // セキュリティ履歴
+  // =========================================
+
+  const loadSecurityEvents =
+    useCallback(async () => {
+      const { data, error } =
+        await supabase.rpc(
+          "get_inventory_security_events_admin"
+        );
+
+      if (error) {
+        console.error(error);
+        setErrorMessage(
+          `セキュリティ履歴を取得できませんでした: ${error.message}`
+        );
+        return;
+      }
+
+      setSecurityEvents(
+        (data ?? []) as SecurityEvent[]
+      );
+    }, []);
 
   // =========================================
   // 削除履歴
@@ -395,6 +476,7 @@ export default function AdminPage() {
             comment,
             created_at
           `)
+          .eq("review_status", "approved")
           .order("created_at", {
             ascending: false,
           })
@@ -455,6 +537,8 @@ export default function AdminPage() {
       );
 
       await Promise.all([
+        loadReviewReports(),
+        loadSecurityEvents(),
         loadDeletionHistory(),
         loadStoreRequests(),
         loadBugReports(),
@@ -463,6 +547,8 @@ export default function AdminPage() {
 
       setLoading(false);
     }, [
+      loadReviewReports,
+      loadSecurityEvents,
       loadDeletionHistory,
       loadStoreRequests,
       loadBugReports,
@@ -506,6 +592,8 @@ export default function AdminPage() {
           } else {
             setLoggedIn(false);
             setReports([]);
+            setReviewReports([]);
+            setSecurityEvents([]);
             setDeletions([]);
             setStoreRequests([]);
             setBugReports([]);
@@ -545,6 +633,79 @@ export default function AdminPage() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
+  }
+
+  // =========================================
+  // 要確認投稿 承認・却下
+  // =========================================
+
+  async function handleApproveReview(
+    report: ReviewReport
+  ) {
+    const confirmed = window.confirm(
+      `${getStoreName(report.store_id)}\n${getProductName(report.product_id)}\n${report.quantity === 0 ? "在庫なし" : `${report.quantity}枚`}\n\nこの投稿を承認して公開しますか？`
+    );
+
+    if (!confirmed) return;
+
+    setReviewProcessingId(report.id);
+    setMessage("");
+    setErrorMessage("");
+
+    const { error } = await supabase.rpc(
+      "approve_inventory_report_admin",
+      { p_report_id: report.id }
+    );
+
+    if (error) {
+      setErrorMessage(
+        `承認できませんでした: ${error.message}`
+      );
+      setReviewProcessingId(null);
+      return;
+    }
+
+    await loadAdminData();
+    setMessage(
+      `要確認投稿 #${report.id} を承認しました。`
+    );
+    setReviewProcessingId(null);
+  }
+
+  async function handleRejectReview(
+    report: ReviewReport
+  ) {
+    const confirmed = window.confirm(
+      `${getStoreName(report.store_id)}\n${getProductName(report.product_id)}\n${report.quantity === 0 ? "在庫なし" : `${report.quantity}枚`}\n\nこの投稿を却下しますか？\n却下後も履歴には残ります。`
+    );
+
+    if (!confirmed) return;
+
+    setReviewProcessingId(report.id);
+    setMessage("");
+    setErrorMessage("");
+
+    const { error } = await supabase.rpc(
+      "reject_inventory_report_admin",
+      { p_report_id: report.id }
+    );
+
+    if (error) {
+      setErrorMessage(
+        `却下できませんでした: ${error.message}`
+      );
+      setReviewProcessingId(null);
+      return;
+    }
+
+    await Promise.all([
+      loadReviewReports(),
+      loadSecurityEvents(),
+    ]);
+    setMessage(
+      `要確認投稿 #${report.id} を却下しました。`
+    );
+    setReviewProcessingId(null);
   }
 
   // =========================================
@@ -1063,6 +1224,16 @@ export default function AdminPage() {
     );
   }
 
+  const pendingReviewCount =
+    useMemo(
+      () =>
+        reviewReports.filter(
+          (report) =>
+            report.review_status === "pending"
+        ).length,
+      [reviewReports]
+    );
+
   const pendingRequestCount =
     useMemo(
       () =>
@@ -1211,8 +1382,8 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* 5タブ */}
-          <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-5">
+          {/* 7タブ */}
+          <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-4 lg:grid-cols-7">
             <AdminTabButton
               active={
                 activeTab === "reports"
@@ -1222,6 +1393,33 @@ export default function AdminPage() {
               }
             >
               📋 投稿一覧
+            </AdminTabButton>
+
+            <AdminTabButton
+              active={
+                activeTab === "review"
+              }
+              onClick={() =>
+                setActiveTab("review")
+              }
+            >
+              🔎 要確認
+              {pendingReviewCount > 0 && (
+                <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
+                  {pendingReviewCount}
+                </span>
+              )}
+            </AdminTabButton>
+
+            <AdminTabButton
+              active={
+                activeTab === "security"
+              }
+              onClick={() =>
+                setActiveTab("security")
+              }
+            >
+              🛡️ セキュリティ
             </AdminTabButton>
 
             <AdminTabButton
@@ -1328,6 +1526,25 @@ export default function AdminPage() {
               }
             />
           ) : activeTab ===
+            "review" ? (
+            <ReviewReportsTab
+              reports={reviewReports}
+              stores={stores}
+              products={products}
+              processingId={reviewProcessingId}
+              onApprove={handleApproveReview}
+              onReject={handleRejectReview}
+              formatDate={formatDate}
+            />
+          ) : activeTab ===
+            "security" ? (
+            <SecurityEventsTab
+              events={securityEvents}
+              stores={stores}
+              products={products}
+              formatDate={formatDate}
+            />
+          ) : activeTab ===
             "deletions" ? (
             <DeletionHistoryTab
               deletions={deletions}
@@ -1418,6 +1635,351 @@ export default function AdminPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function ReviewReportsTab({
+  reports,
+  stores,
+  products,
+  processingId,
+  onApprove,
+  onReject,
+  formatDate,
+}: {
+  reports: ReviewReport[];
+  stores: Store[];
+  products: Product[];
+  processingId: number | null;
+  onApprove: (report: ReviewReport) => void;
+  onReject: (report: ReviewReport) => void;
+  formatDate: (value: string) => string;
+}) {
+  const pending = reports.filter(
+    (report) => report.review_status === "pending"
+  );
+  const rejected = reports.filter(
+    (report) => report.review_status === "rejected"
+  );
+
+  const storeName = (id: number) => {
+    const store = stores.find((item) => item.id === id);
+    return store ? getDisplayStoreName(store) : "店舗不明";
+  };
+
+  const productName = (id: number) =>
+    products.find((item) => item.id === id)?.name ??
+    "商品不明";
+
+  return (
+    <div className="mt-6">
+      <h2 className="text-2xl font-bold">
+        🔎 要確認の在庫投稿
+      </h2>
+      <p className="mt-2 text-gray-500">
+        自動判定で保留になった投稿です。承認するまで公開ページには表示されません。
+      </p>
+
+      {pending.length === 0 ? (
+        <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">
+          現在、要確認の投稿はありません。
+        </div>
+      ) : (
+        <div className="mt-5 space-y-4">
+          {pending.map((report) => (
+            <article
+              key={report.id}
+              className="rounded-2xl border border-orange-200 bg-orange-50 p-5"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-lg font-bold">
+                      {storeName(report.store_id)}
+                    </span>
+                    <span className="rounded-full bg-orange-200 px-3 py-1 text-xs font-bold text-orange-800">
+                      要確認
+                    </span>
+                  </div>
+                  <div className="mt-2">
+                    {productName(report.product_id)}
+                  </div>
+                  <div className="mt-1 font-bold text-[#b95489]">
+                    {report.quantity === 0
+                      ? "在庫なし"
+                      : `${report.quantity}枚`}
+                  </div>
+                  <div className="mt-1 text-sm text-gray-500">
+                    {formatDate(report.created_at)}
+                  </div>
+                  {report.comment && (
+                    <div className="mt-3 rounded-xl bg-white p-3">
+                      💬 {report.comment}
+                    </div>
+                  )}
+                  <div className="mt-3 rounded-xl border border-orange-200 bg-white p-3 text-sm">
+                    <span className="font-bold">判定理由: </span>
+                    {report.review_reason || "理由なし"}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={processingId === report.id}
+                    onClick={() => onApprove(report)}
+                    className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white disabled:opacity-50"
+                  >
+                    承認・公開
+                  </button>
+                  <button
+                    type="button"
+                    disabled={processingId === report.id}
+                    onClick={() => onReject(report)}
+                    className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white disabled:opacity-50"
+                  >
+                    却下
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {rejected.length > 0 && (
+        <details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50">
+          <summary className="cursor-pointer select-none px-5 py-4 font-bold text-gray-600">
+            却下済みの履歴 ({rejected.length}件)
+          </summary>
+          <div className="space-y-3 border-t border-gray-200 p-4">
+            {rejected.map((report) => (
+              <article
+                key={report.id}
+                className="rounded-xl border border-gray-200 bg-white p-4 text-gray-600"
+              >
+                <div className="font-bold">
+                  {storeName(report.store_id)}
+                </div>
+                <div className="mt-1">
+                  {productName(report.product_id)}
+                </div>
+                <div className="mt-1">
+                  {report.quantity === 0
+                    ? "在庫なし"
+                    : `${report.quantity}枚`}
+                </div>
+                <div className="mt-1 text-sm">
+                  投稿: {formatDate(report.created_at)}
+                </div>
+                {report.reviewed_at && (
+                  <div className="mt-1 text-sm">
+                    却下: {formatDate(report.reviewed_at)}
+                  </div>
+                )}
+                {report.review_reason && (
+                  <div className="mt-2 text-sm">
+                    判定理由: {report.review_reason}
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function SecurityEventsTab({
+  events,
+  stores,
+  products,
+  formatDate,
+}: {
+  events: SecurityEvent[];
+  stores: Store[];
+  products: Product[];
+  formatDate: (value: string) => string;
+}) {
+  const now = Date.now();
+  const dayAgo = now - 24 * 60 * 60 * 1000;
+  const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+  const last24h = events.filter(
+    (event) => new Date(event.created_at).getTime() >= dayAgo
+  ).length;
+  const last7d = events.filter(
+    (event) => new Date(event.created_at).getTime() >= weekAgo
+  ).length;
+  const blocked24h = events.filter(
+    (event) =>
+      new Date(event.created_at).getTime() >= dayAgo &&
+      [
+        "rate_limit_client",
+        "rate_limit_ip",
+        "same_item_block",
+        "turnstile_block",
+        "invalid_request",
+      ].includes(event.event_type)
+  ).length;
+  const pending24h = events.filter(
+    (event) =>
+      new Date(event.created_at).getTime() >= dayAgo &&
+      event.event_type === "pending"
+  ).length;
+
+  const storeName = (id: number | null) => {
+    if (id === null) return "店舗なし";
+    const store = stores.find((item) => item.id === id);
+    return store ? getDisplayStoreName(store) : `店舗ID ${id}`;
+  };
+
+  const productName = (id: number | null) => {
+    if (id === null) return "商品なし";
+    return (
+      products.find((item) => item.id === id)?.name ??
+      `商品ID ${id}`
+    );
+  };
+
+  const label: Record<string, string> = {
+    submitted: "正常投稿",
+    pending: "要確認",
+    rate_limit_client: "Browser制限",
+    rate_limit_ip: "IP制限",
+    same_item_block: "同一商品制限",
+    turnstile_block: "Turnstile拒否",
+    invalid_request: "不正リクエスト",
+    approved_by_admin: "管理者承認",
+    rejected_by_admin: "管理者却下",
+  };
+
+  return (
+    <div className="mt-6">
+      <h2 className="text-2xl font-bold">
+        🛡️ セキュリティ履歴
+      </h2>
+      <p className="mt-2 text-gray-500">
+        正常投稿を含め、投稿試行を時系列で確認できます。
+      </p>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <SecuritySummary label="24時間の全記録" value={last24h} />
+        <SecuritySummary label="7日間の全記録" value={last7d} />
+        <SecuritySummary label="24時間の拒否" value={blocked24h} />
+        <SecuritySummary label="24時間の要確認" value={pending24h} />
+      </div>
+
+      {events.length === 0 ? (
+        <div className="mt-6 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
+          セキュリティ履歴はまだありません。
+        </div>
+      ) : (
+        <div className="mt-6 space-y-3">
+          {events.map((event) => (
+            <details
+              key={event.id}
+              className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc]"
+            >
+              <summary className="cursor-pointer select-none p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-bold">
+                        {label[event.event_type] ?? event.event_type}
+                      </span>
+                      {event.review_status && (
+                        <span className="rounded-full bg-[#f0dfec] px-2.5 py-1 text-xs font-bold text-[#6d4966]">
+                          {event.review_status}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 text-sm text-gray-500">
+                      {formatDate(event.created_at)}
+                    </div>
+                    <div className="mt-2 font-bold">
+                      {storeName(event.store_id)}
+                    </div>
+                    <div className="mt-1 text-sm">
+                      {productName(event.product_id)}
+                      {event.quantity !== null
+                        ? ` / ${event.quantity === 0 ? "在庫なし" : `${event.quantity}枚`}`
+                        : ""}
+                    </div>
+                  </div>
+                  <div className="text-sm font-bold text-gray-500">
+                    詳細 ▼
+                  </div>
+                </div>
+              </summary>
+
+              <div className="border-t border-[#eaddea] p-4">
+                {event.reason && (
+                  <div className="rounded-xl bg-white p-3">
+                    <span className="font-bold">理由: </span>
+                    {event.reason}
+                  </div>
+                )}
+                {event.comment && (
+                  <div className="mt-3 rounded-xl bg-white p-3">
+                    💬 {event.comment}
+                  </div>
+                )}
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <SecurityValue label="生IP" value={event.ip_address} />
+                  <SecurityValue label="IPハッシュ" value={event.ip_hash} mono />
+                  <SecurityValue label="Browserハッシュ" value={event.client_hash} mono />
+                  <SecurityValue label="イベントID" value={String(event.id)} />
+                </div>
+              </div>
+            </details>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SecuritySummary({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4">
+      <div className="text-sm font-bold text-gray-500">
+        {label}
+      </div>
+      <div className="mt-1 text-2xl font-bold">
+        {value.toLocaleString()}件
+      </div>
+    </div>
+  );
+}
+
+function SecurityValue({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: string | null;
+  mono?: boolean;
+}) {
+  return (
+    <div className="rounded-xl bg-white p-3">
+      <div className="text-xs font-bold text-gray-500">
+        {label}
+      </div>
+      <div
+        className={`mt-1 break-all text-sm ${mono ? "font-mono" : "font-bold"}`}
+      >
+        {value || "情報なし"}
+      </div>
+    </div>
   );
 }
 

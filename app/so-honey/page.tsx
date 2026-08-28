@@ -351,13 +351,14 @@ const percent =
     : 0;
 
   const loadInventoryReports = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("inventory_reports")
-      .select(
-        "id, store_id, product_id, quantity, comment, created_at"
-      )
-      .order("created_at", { ascending: false })
-      .limit(5000);
+   const { data, error } = await supabase
+  .from("inventory_reports")
+  .select(
+    "id, store_id, product_id, quantity, comment, created_at"
+  )
+  .eq("review_status", "approved")
+  .order("created_at", { ascending: false })
+  .limit(5000);
 
     if (error) {
       console.error("inventory_reports error:", error);
@@ -2442,8 +2443,17 @@ if (/^[0-9]+$/.test(value)) {
   所属事務所・レコード会社・各販売店等とは無関係です。
 </p>
 
-            <p className="mt-1 text-[9px] text-[#6f686e] md:mt-2 md:text-xs md:text-[#403940]">
+                        <p className="mt-1 text-[9px] text-[#6f686e] md:mt-2 md:text-xs md:text-[#403940]">
               King & Prince 在庫チェッカー
+            </p>
+
+            <p className="mt-1 text-[9px] md:mt-2 md:text-xs">
+              <a
+                href="/privacy"
+                className="text-[#6f686e] underline underline-offset-2 hover:text-[#b95489] md:text-[#403940]"
+              >
+                プライバシーについて
+              </a>
             </p>
           </div>
         </footer>
