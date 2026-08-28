@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { supabase } from "@/app/lib/supabase";
@@ -187,12 +188,21 @@ export default function Home() {
     useState("");
   const [reportStoreId, setReportStoreId] = useState("");
   const [reportProductId, setReportProductId] = useState("");
-  const [reportQuantity, setReportQuantity] = useState("");
-  const [reportComment, setReportComment] = useState("");
+ const [reportQuantity, setReportQuantity] = useState("");
+const [reportComment, setReportComment] = useState("");
 
-  const [submitting, setSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState("");
-  const [submitError, setSubmitError] = useState("");
+const [turnstileToken, setTurnstileToken] =
+  useState("");
+
+const [turnstileReady, setTurnstileReady] =
+  useState(false);
+
+const turnstileWidgetIdRef =
+  useRef<string | null>(null);
+
+const [submitting, setSubmitting] = useState(false);
+const [submitMessage, setSubmitMessage] = useState("");
+const [submitError, setSubmitError] = useState("");
   const [requestOpen, setRequestOpen] = useState(false);
   const [requestName, setRequestName] = useState("");
   const [requestChainName, setRequestChainName] = useState("");
@@ -227,6 +237,106 @@ const [bugAutoDetect, setBugAutoDetect] = useState(false);
   useEffect(() => {
     setIsAndroid(/Android/i.test(navigator.userAgent));
   }, []);
+
+  useEffect(() => {
+  const siteKey =
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+  if (!siteKey) {
+    console.error(
+      "NEXT_PUBLIC_TURNSTILE_SITE_KEY is not configured."
+    );
+    return;
+  }
+
+  const renderTurnstile = () => {
+    const turnstile = (
+      window as typeof window & {
+        turnstile?: {
+          render: (
+            selector: string,
+            options: {
+              sitekey: string;
+              action: string;
+              callback: (token: string) => void;
+              "expired-callback": () => void;
+              "error-callback": () => void;
+            }
+          ) => string;
+          reset: (widgetId?: string) => void;
+        };
+      }
+    ).turnstile;
+
+    if (!turnstile) return;
+
+    if (turnstileWidgetIdRef.current) return;
+
+    const target =
+      document.querySelector("#inventory-turnstile");
+
+    if (!target) return;
+
+    turnstileWidgetIdRef.current =
+      turnstile.render("#inventory-turnstile", {
+        sitekey: siteKey,
+        action: "inventory_report",
+        callback: (token) => {
+          setTurnstileToken(token);
+          setTurnstileReady(true);
+        },
+        "expired-callback": () => {
+          setTurnstileToken("");
+          setTurnstileReady(false);
+        },
+        "error-callback": () => {
+          setTurnstileToken("");
+          setTurnstileReady(false);
+        },
+      });
+  };
+
+  const existingScript =
+    document.querySelector<HTMLScriptElement>(
+      'script[src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"]'
+    );
+
+  if (existingScript) {
+    if (
+      (
+        window as typeof window & {
+          turnstile?: unknown;
+        }
+      ).turnstile
+    ) {
+      renderTurnstile();
+    } else {
+      existingScript.addEventListener(
+        "load",
+        renderTurnstile,
+        { once: true }
+      );
+    }
+
+    return;
+  }
+
+  const script = document.createElement("script");
+
+  script.src =
+    "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+
+  script.async = true;
+  script.defer = true;
+
+  script.addEventListener(
+    "load",
+    renderTurnstile,
+    { once: true }
+  );
+
+  document.head.appendChild(script);
+}, []);
 
  const sales = salesData?.total_sales ?? 0;
 const today = salesData?.today_sales ?? 0;
@@ -508,7 +618,7 @@ setLoading(false);
       minute: "2-digit",
     }).format(new Date(dateString));
 
-  async function handleSubmitReport() {
+ async function handleSubmitReport() {
   setSubmitMessage("");
   setSubmitError("");
 
@@ -532,10 +642,10 @@ setLoading(false);
   if (
     !Number.isInteger(quantity) ||
     quantity < 0 ||
-    quantity > 999
+    quantity > 100
   ) {
     setSubmitError(
-      "在庫枚数は0〜999の整数で入力してください。"
+      "在庫枚数は0〜100の整数で入力してください。"
     );
     return;
   }
@@ -547,11 +657,17 @@ setLoading(false);
     return;
   }
 
+  if (!turnstileReady || !turnstileToken) {
+    setSubmitError(
+      "Bot確認が完了していません。少し待ってからもう一度お試しください。"
+    );
+    return;
+  }
+
   setSubmitting(true);
 
   try {
-    // ブラウザごとの識別IDを作成
-    // 個人情報ではなく、連投制限のためだけに使用
+    // ブラウザごとの識別ID
     let clientId = localStorage.getItem(
       "kp_inventory_client_id"
     );
@@ -565,45 +681,62 @@ setLoading(false);
       );
     }
 
-    const { error } = await supabase.rpc(
-      "submit_inventory_report",
+    // Supabaseをブラウザから直接呼ばず、
+    // Next.jsのサーバーAPIを経由する
+    const response = await fetch(
+      "/api/inventory-report",
       {
-        p_store_id: Number(reportStoreId),
-        p_product_id: Number(reportProductId),
-        p_quantity: quantity,
-        p_comment:
-          reportComment.trim() === ""
-            ? null
-            : reportComment.trim(),
-        p_client_id: clientId,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          storeId: Number(reportStoreId),
+          productId: Number(reportProductId),
+          quantity,
+          comment:
+            reportComment.trim() === ""
+              ? null
+              : reportComment.trim(),
+          clientId,
+          turnstileToken,
+        }),
       }
     );
 
-    if (error) {
-      console.error(
-        "submit_inventory_report error:",
-        error
-      );
+    const result = (await response.json()) as {
+      success?: boolean;
+      message?: string;
+      reportId?: number;
+    };
 
-      let message = error.message;
-
-      if (
-        message.includes(
-          "同じ店舗・同じ商品への連続投稿"
-        )
-      ) {
-        message =
-          "同じ店舗・同じ商品への再投稿は、3分ほど時間をおいてください。";
-      } else if (
-        message.includes(
-          "短時間に投稿が集中"
-        )
-      ) {
-        message =
-          "短時間に投稿が集中しています。少し時間をおいてから投稿してください。";
+    // Turnstileトークンは1回限りなので、
+    // 投稿結果にかかわらず次回用にリセット
+    const turnstile = (
+      window as typeof window & {
+        turnstile?: {
+          reset: (widgetId?: string) => void;
+        };
       }
+    ).turnstile;
 
-      setSubmitError(message);
+    if (
+      turnstile &&
+      turnstileWidgetIdRef.current
+    ) {
+      turnstile.reset(
+        turnstileWidgetIdRef.current
+      );
+    }
+
+    setTurnstileToken("");
+    setTurnstileReady(false);
+
+    if (!response.ok || !result.success) {
+      setSubmitError(
+        result.message ||
+          "投稿に失敗しました。もう一度お試しください。"
+      );
       return;
     }
 
@@ -616,7 +749,30 @@ setLoading(false);
 
     await loadInventoryReports();
   } catch (error) {
-    console.error(error);
+    console.error(
+      "inventory report API error:",
+      error
+    );
+
+    const turnstile = (
+      window as typeof window & {
+        turnstile?: {
+          reset: (widgetId?: string) => void;
+        };
+      }
+    ).turnstile;
+
+    if (
+      turnstile &&
+      turnstileWidgetIdRef.current
+    ) {
+      turnstile.reset(
+        turnstileWidgetIdRef.current
+      );
+    }
+
+    setTurnstileToken("");
+    setTurnstileReady(false);
 
     setSubmitError(
       "投稿中にエラーが発生しました。もう一度お試しください。"
@@ -1680,12 +1836,18 @@ async function handleBugReport() {
               onChange={(e) => {
                 const value = e.target.value;
 
-                if (
-                  value === "" ||
-                  /^[0-9]{0,3}$/.test(value)
-                ) {
-                  setReportQuantity(value);
-                }
+                if (value === "") {
+  setReportQuantity("");
+  return;
+}
+
+if (/^[0-9]+$/.test(value)) {
+  const number = Number(value);
+
+  if (number >= 0 && number <= 100) {
+    setReportQuantity(value);
+  }
+}
               }}
               placeholder="例: 5"
               className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 md:text-base"
@@ -1707,7 +1869,7 @@ async function handleBugReport() {
               onChange={(e) =>
                 setReportComment(e.target.value)
               }
-              placeholder="例: 入荷予定なしとのこと"
+              placeholder="例: 入荷予定なしとのこと / バックヤードに潤沢 / 店員さんに出してもらう など"
               className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 md:text-base"
             />
           </label>
@@ -1724,9 +1886,13 @@ async function handleBugReport() {
             </div>
           )}
 
+<div className="mt-3 md:mt-5">
+  <div id="inventory-turnstile" />
+</div>
+
           <button
             onClick={handleSubmitReport}
-            disabled={submitting}
+            disabled={submitting || !turnstileReady}
             className="mt-3 rounded-xl bg-[#211d21] px-5 py-2.5 text-[12px] font-bold text-white disabled:opacity-50 md:mt-5 md:rounded-2xl md:px-7 md:py-3.5 md:text-base"
           >
             {submitting ? "投稿中…" : "投稿する"}
@@ -2193,16 +2359,21 @@ async function handleBugReport() {
               </details>
 
               <div className="mt-3 rounded-lg border border-[#cdbdca] bg-[#faf7f9] px-3 py-2 text-[10px] font-medium leading-4 text-[#4b4249] md:text-xs md:leading-5">
-                <div className="font-bold text-[#352f34]">
-                  動作環境について
-                </div>
-                <p className="mt-1">
-                  本サイトは比較的新しいOS・ブラウザでの利用を想定しています。古いOS・ブラウザでは、表示の崩れやタップ操作が反応しないなど、一部機能が正常に動作しない場合があります。
-                </p>
-                <p className="mt-1">
-                  目安: Chrome 111以降 / Edge 111以降 / Firefox 128以降 / Safari 16.4以降
-                </p>
-              </div>
+  <div className="font-bold text-[#352f34]">
+    動作環境について
+  </div>
+
+  <p className="mt-1">
+    本サイトは、比較的新しいOS・ブラウザでのご利用を推奨しています。
+    古いOS・ブラウザでは、表示の崩れやタップ操作が反応しないなど、
+    一部機能が正常に動作しない場合があります。
+  </p>
+
+  <p className="mt-1">
+    iPhone・iPadでは、iOS / iPadOS 16.4以降を目安にご利用ください。
+    Android・Windows等をご利用の場合も、OSとブラウザを最新の状態にしてご利用ください。
+  </p>
+</div>
 
               <label className="mt-3 block">
                 <div className="mb-1 text-[10px] font-bold text-[#352f34] md:text-xs">
