@@ -150,7 +150,8 @@ export async function POST(
         | "approved"
         | "pending"
         | "rejected"
-        | null = null
+        | null = null,
+      reportId: number | null = null
     ) {
       const {
         error: logError,
@@ -160,6 +161,7 @@ export async function POST(
         )
         .insert({
           event_type: eventType,
+          report_id: reportId,
 
           ip_address: ip,
           ip_hash: ipHash,
@@ -865,13 +867,15 @@ export async function POST(
       await logSecurityEvent(
         "pending",
         reviewReason,
-        "pending"
+        "pending",
+        Number(reportId)
       );
     } else {
       await logSecurityEvent(
         "submitted",
         "正常投稿",
-        "approved"
+        "approved",
+        Number(reportId)
       );
     }
 

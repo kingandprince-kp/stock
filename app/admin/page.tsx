@@ -26,6 +26,7 @@ type ReviewReport = InventoryReport & {
 
 type SecurityEvent = {
   id: number;
+  report_id: number | null;
   event_type: string;
   ip_address: string | null;
   ip_hash: string | null;
@@ -1944,12 +1945,45 @@ function SecurityEventsTab({
           "ja"
         );
       }
+      if (sortOrder === "report") {
+        return (b.report_id ?? -1) - (a.report_id ?? -1);
+      }
       return (
         new Date(b.created_at).getTime() -
         new Date(a.created_at).getTime()
       );
     });
   }, [events, eventFilter, sortOrder, stores]);
+
+  const originalEventFor = (event: SecurityEvent) => {
+    if (event.report_id === null) return null;
+    return (
+      events.find(
+        (item) =>
+          item.report_id === event.report_id &&
+          (item.event_type === "pending" ||
+            item.event_type === "submitted")
+      ) ?? null
+    );
+  };
+
+  const linkedEventFor = (event: SecurityEvent) => {
+    if (event.report_id === null) return null;
+    if (
+      event.event_type !== "pending" &&
+      event.event_type !== "submitted"
+    ) {
+      return null;
+    }
+    return (
+      events.find(
+        (item) =>
+          item.report_id === event.report_id &&
+          (item.event_type === "approved_by_admin" ||
+            item.event_type === "rejected_by_admin")
+      ) ?? null
+    );
+  };
 
   return (
     <div className="mt-6">
@@ -1999,6 +2033,7 @@ function SecurityEventsTab({
               <option value="oldest">古い順</option>
               <option value="type">種類順</option>
               <option value="store">店舗名順</option>
+              <option value="report">投稿番号順</option>
             </select>
           </label>
         </div>
@@ -2029,6 +2064,11 @@ function SecurityEventsTab({
                       <span className="font-bold">
                         {label[event.event_type] ?? event.event_type}
                       </span>
+                      {event.report_id !== null && (
+                        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
+                          投稿 #{event.report_id}
+                        </span>
+                      )}
                       {event.review_status && (
                         <span className="rounded-full bg-[#f0dfec] px-2.5 py-1 text-xs font-bold text-[#6d4966]">
                           {event.review_status}
@@ -2053,6 +2093,67 @@ function SecurityEventsTab({
                   </div>
                 </div>
               </summary>
+
+              {event.report_id !== null && (
+                <div className="mx-4 mb-3 rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-sm">
+                  <div className="font-bold text-blue-800">
+                    投稿 #{event.report_id} の関連履歴
+                  </div>
+                  {(() => {
+                    const original = originalEventFor(event);
+                    const linked = linkedEventFor(event);
+                    const source =
+                      event.event_type === "approved_by_admin" ||
+                      event.event_type === "rejected_by_admin"
+                        ? original
+                        : event;
+
+                    return (
+                      <div className="mt-2 space-y-1 text-gray-600">
+                        {linked && (
+                          <div>
+                            処理結果:{" "}
+                            <span className="font-bold">
+                              {label[linked.event_type] ?? linked.event_type}
+                            </span>{" "}
+                            ({formatDate(linked.created_at)})
+                          </div>
+                        )}
+                        {(event.event_type === "approved_by_admin" ||
+                          event.event_type === "rejected_by_admin") &&
+                          original && (
+                            <div>
+                              元の投稿記録:{" "}
+                              {label[original.event_type] ??
+                                original.event_type}{" "}
+                              ({formatDate(original.created_at)})
+                            </div>
+                          )}
+                        {source?.ip_address && (
+                          <div>元投稿IP: {source.ip_address}</div>
+                        )}
+                        {source?.ip_hash && (
+                          <div className="break-all">
+                            元投稿IP hash: {source.ip_hash}
+                          </div>
+                        )}
+                        {source?.client_hash && (
+                          <div className="break-all">
+                            元投稿Browser hash: {source.client_hash}
+                          </div>
+                        )}
+                        {!linked &&
+                          (event.event_type === "pending" ||
+                            event.event_type === "submitted") && (
+                            <div>
+                              管理者処理: まだ関連する承認・却下記録はありません。
+                            </div>
+                          )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
 
               <div className="border-t border-[#eaddea] p-4">
                 {event.reason && (
