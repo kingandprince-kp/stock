@@ -242,7 +242,7 @@ export default function AdminPage() {
         );
         return;
       }
-      console.log("REVIEW REPORTS DATA:", data);
+
       setReviewReports(
         (data ?? []) as ReviewReport[]
       );
