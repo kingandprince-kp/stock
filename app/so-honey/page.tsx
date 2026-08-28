@@ -770,60 +770,40 @@ async function detectBugEnvironment() {
   const ua = navigator.userAgent;
   let browserVersion = "";
 
-  // 端末種類・機種名
+  // 端末種類だけを自動判定する。
+  // 具体的な機種名はブラウザから正確に取得できない場合があるため自動入力しない。
   if (/iPhone/i.test(ua)) {
     setBugDeviceType("iPhone");
-    // iPhoneはブラウザ情報だけでは具体的なモデル名を判定できないことが多い
-    setBugDeviceModel((current) => current || "iPhone");
   } else if (/iPad/i.test(ua)) {
     setBugDeviceType("iPad");
-    setBugDeviceModel((current) => current || "iPad");
   } else if (/Android/i.test(ua)) {
     setBugDeviceType("Android");
-
-    const modelMatch = ua.match(
-      /Android\s[^;)]*;\s*([^;)]+?)(?:\s+Build\/|\))/i
-    );
-
-    const model = modelMatch?.[1]
-      ?.replace(/^\s*(?:[a-z]{2}(?:-[A-Z]{2})?;\s*)?/i, "")
-      .trim();
-
-    setBugDeviceModel(model ?? "");
   } else {
     setBugDeviceType("PC");
-    setBugDeviceModel("");
   }
 
-  // OS・OSバージョン
+  // OSの種類だけを自動判定する。
+  // OSバージョンはUser-Agentが実際と異なる値を返す場合があるため自動入力しない。
   if (/iPhone/i.test(ua)) {
-    const match = ua.match(/OS (\d+[_\d]*)/);
-    const version = match ? match[1].replace(/_/g, ".") : "";
     setBugOsType("iOS");
-    setBugOsVersion(version);
-    setBugOsDisplay(`iOS${version ? ` ${version}` : ""}`);
+    setBugOsVersion("");
+    setBugOsDisplay("iOS");
   } else if (/iPad/i.test(ua)) {
-    const match = ua.match(/OS (\d+[_\d]*)/);
-    const version = match ? match[1].replace(/_/g, ".") : "";
     setBugOsType("iPadOS");
-    setBugOsVersion(version);
-    setBugOsDisplay(`iPadOS${version ? ` ${version}` : ""}`);
+    setBugOsVersion("");
+    setBugOsDisplay("iPadOS");
   } else if (/Android/i.test(ua)) {
-    const match = ua.match(/Android ([\d.]+)/);
-    const version = match ? match[1] : "";
     setBugOsType("Android");
-    setBugOsVersion(version);
-    setBugOsDisplay(`Android${version ? ` ${version}` : ""}`);
+    setBugOsVersion("");
+    setBugOsDisplay("Android");
   } else if (/Windows/i.test(ua)) {
     setBugOsType("Windows");
     setBugOsVersion("");
     setBugOsDisplay("Windows");
-  } else if (/Mac OS X/i.test(ua)) {
-    const match = ua.match(/Mac OS X (\d+[_\d]*)/);
-    const version = match ? match[1].replace(/_/g, ".") : "";
+  } else if (/Mac OS X|Macintosh/i.test(ua)) {
     setBugOsType("macOS");
-    setBugOsVersion(version);
-    setBugOsDisplay(`macOS${version ? ` ${version}` : ""}`);
+    setBugOsVersion("");
+    setBugOsDisplay("macOS");
   } else if (/Linux/i.test(ua)) {
     setBugOsType("Linux");
     setBugOsVersion("");
@@ -855,6 +835,7 @@ async function detectBugEnvironment() {
   if (isBraveBrowser) {
     setBugBrowser("Brave");
 
+    // Brave固有のバージョンではなくChromium側の値になる場合がある。
     const match = ua.match(/Chrome\/([\d.]+)/i);
     browserVersion = match?.[1] ?? "";
   } else if (/EdgA|EdgiOS|Edg/i.test(ua)) {
@@ -867,7 +848,9 @@ async function detectBugEnvironment() {
   } else if (/OPR|Opera/i.test(ua)) {
     setBugBrowser("Opera");
 
-    const match = ua.match(/(?:OPR|Opera)\/([\d.]+)/i);
+    const match = ua.match(
+      /(?:OPR|Opera)\/([\d.]+)/i
+    );
     browserVersion = match?.[1] ?? "";
   } else if (/FxiOS|Firefox/i.test(ua)) {
     setBugBrowser("Firefox");
@@ -889,11 +872,12 @@ async function detectBugEnvironment() {
     const match = ua.match(/Version\/([\d.]+)/i);
     browserVersion = match?.[1] ?? "";
   } else {
-    setBugBrowser("その他");
+    setBugBrowser("");
   }
 
   setBugBrowserVersion(browserVersion);
 }
+
 async function handleBugReport() {
   setBugMessage("");
   setBugError("");
@@ -1371,7 +1355,7 @@ async function handleBugReport() {
         {/* ===== 店舗検索 ===== */}
         <section
           id="stores"
-          className={`scroll-mt-24 rounded-[20px] border border-white/80 p-3.5 shadow-sm md:rounded-[30px] md:p-6 ${
+          className={`scroll-mt-24 rounded-[20px] border border-white/80 p-3.5 text-[#211d21] shadow-sm md:rounded-[30px] md:p-6 ${
             isAndroid ? "bg-white" : "bg-white/90"
           }`}
         >
@@ -1572,7 +1556,7 @@ async function handleBugReport() {
           <div className="mt-3 grid gap-3 md:mt-5 md:grid-cols-2 md:gap-4">
             {reportMode === "physical" && (
               <label className="space-y-1.5 md:space-y-2">
-                <span className="text-[12px] font-bold md:text-base">
+                <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
                   📍 都道府県
                 </span>
 
@@ -1583,7 +1567,7 @@ async function handleBugReport() {
                     setReportStoreId("");
                     setReportStoreSearch("");
                   }}
-                  className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] md:rounded-2xl md:p-3.5 md:text-base"
+                  className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] md:rounded-2xl md:p-3.5 md:text-base"
                 >
                   {PREFECTURES.map((pref) => (
                     <option key={pref} value={pref}>
@@ -1595,7 +1579,7 @@ async function handleBugReport() {
             )}
 
             <label className="space-y-1.5 md:space-y-2">
-              <span className="text-[12px] font-bold md:text-base">
+              <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
                 💿 商品
               </span>
 
@@ -1604,7 +1588,7 @@ async function handleBugReport() {
                 onChange={(e) =>
                   setReportProductId(e.target.value)
                 }
-                className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] md:rounded-2xl md:p-3.5 md:text-base"
+                className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] md:rounded-2xl md:p-3.5 md:text-base"
               >
                 {products.map((product) => (
                   <option key={product.id} value={product.id}>
@@ -1616,7 +1600,7 @@ async function handleBugReport() {
           </div>
 
           <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
-            <span className="text-[12px] font-bold md:text-base">
+            <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
               🔎{" "}
               {reportMode === "online"
                 ? "オンラインショップを検索"
@@ -1634,7 +1618,7 @@ async function handleBugReport() {
                   ? "ショップ名を入力"
                   : "店舗名・チェーン名・市区町村を入力"
               }
-              className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] md:rounded-2xl md:p-3.5 md:text-base"
+              className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 md:text-base"
             />
           </label>
 
@@ -1656,7 +1640,7 @@ async function handleBugReport() {
                       onClick={() =>
                         setReportStoreId(String(store.id))
                       }
-                      className={`w-full rounded-lg border px-3 py-2 text-left text-[12px] font-bold md:rounded-xl md:px-4 md:py-3 md:text-base ${
+                      className={`w-full rounded-lg border px-3 py-2 text-left text-[12px] font-bold text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] md:rounded-xl md:px-4 md:py-3 md:text-base ${
                         selected
                           ? "border-[#b96b9f] bg-[#f1deeb]"
                           : "border-transparent bg-white"
@@ -1676,14 +1660,14 @@ async function handleBugReport() {
                 選択中
               </div>
 
-              <div className="mt-0.5 text-[12px] font-bold md:mt-1 md:text-base">
+              <div className="mt-0.5 text-[12px] font-bold text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] md:mt-1 md:text-base">
                 {getDisplayStoreName(selectedReportStore)}
               </div>
             </div>
           )}
 
           <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
-            <span className="text-[12px] font-bold md:text-base">
+            <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
               🔢 在庫枚数
             </span>
 
@@ -1704,12 +1688,12 @@ async function handleBugReport() {
                 }
               }}
               placeholder="例: 5"
-              className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] md:rounded-2xl md:p-3.5 md:text-base"
+              className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 md:text-base"
             />
           </label>
 
           <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
-            <span className="text-[12px] font-bold md:text-base">
+            <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
               💬 コメント
               <span className="ml-2 text-[11px] font-normal text-[#8a8089] md:text-sm">
                 任意・500文字まで
@@ -1724,7 +1708,7 @@ async function handleBugReport() {
                 setReportComment(e.target.value)
               }
               placeholder="例: 入荷予定なしとのこと"
-              className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] md:rounded-2xl md:p-3.5 md:text-base"
+              className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 md:text-base"
             />
           </label>
 
@@ -2044,13 +2028,13 @@ async function handleBugReport() {
                   />
 
                   <span className="text-[11px] font-bold leading-4 text-[#382f36] md:text-sm md:leading-5">
-                    端末・機種名・OS・ブラウザ情報を自動入力する
+                    端末種類・OS・ブラウザ情報を自動入力する
                   </span>
                 </label>
 
                 {bugAutoDetect && (
                   <p className="mt-1.5 text-[9px] font-medium leading-4 text-[#514850] md:text-[11px]">
-                    ブラウザから確認できる範囲で入力します。機種名やバージョンなど、一部の情報は端末によって取得できない場合があります。自動入力後も修正できます。
+                    端末種類・OSの種類・ブラウザを、ブラウザから確認できる範囲で入力します。機種名とOSバージョンは正確に取得できない場合があるため自動入力しません。ブラウザバージョンは取得できた場合のみ表示します。自動入力後も修正できます。
                   </p>
                 )}
               </div>
@@ -2108,9 +2092,12 @@ async function handleBugReport() {
                     onChange={(e) =>
                       handleBugOsDisplayChange(e.target.value)
                     }
-                    placeholder="例: iOS 18.6 / Android 15 / Windows 11 / macOS 15.6"
+                    placeholder="例: iOS 26.5 / Android 15 / Windows 11 / macOS 15.6"
                     className="w-full rounded-lg border border-[#cdbdca] bg-white px-2 py-2 text-[11px] text-[#2f292e] placeholder:text-[#766c74] md:text-sm"
                   />
+                  <div className="mt-1 text-[9px] font-medium leading-4 text-[#514850] md:text-[11px]">
+                    自動入力を利用した場合も、OSバージョンは手動で入力してください。
+                  </div>
                 </label>
 
                 <label className="md:col-span-2">
@@ -2204,6 +2191,18 @@ async function handleBugReport() {
                   </p>
                 </div>
               </details>
+
+              <div className="mt-3 rounded-lg border border-[#cdbdca] bg-[#faf7f9] px-3 py-2 text-[10px] font-medium leading-4 text-[#4b4249] md:text-xs md:leading-5">
+                <div className="font-bold text-[#352f34]">
+                  動作環境について
+                </div>
+                <p className="mt-1">
+                  本サイトは比較的新しいOS・ブラウザでの利用を想定しています。古いOS・ブラウザでは、表示の崩れやタップ操作が反応しないなど、一部機能が正常に動作しない場合があります。
+                </p>
+                <p className="mt-1">
+                  目安: Chrome 111以降 / Edge 111以降 / Firefox 128以降 / Safari 16.4以降
+                </p>
+              </div>
 
               <label className="mt-3 block">
                 <div className="mb-1 text-[10px] font-bold text-[#352f34] md:text-xs">
