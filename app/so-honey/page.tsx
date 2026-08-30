@@ -158,9 +158,9 @@ type InventoryReport = {
 
 type SalesSummary = {
   id: number;
-  today_sales: number;
-  weekly_sales: number;
-  total_sales: number;
+  today_sales: number | null;
+  weekly_sales: number | null;
+  total_sales: number | null;
   goal: number;
   updated_at: string;
 };
@@ -338,16 +338,24 @@ const [bugAutoDetect, setBugAutoDetect] = useState(false);
   document.head.appendChild(script);
 }, []);
 
- const sales = salesData?.total_sales ?? 0;
-const today = salesData?.today_sales ?? 0;
-const week = salesData?.weekly_sales ?? 0;
+ const sales = salesData?.total_sales ?? null;
+const today = salesData?.today_sales ?? null;
+const week = salesData?.weekly_sales ?? null;
 const goal = salesData?.goal ?? GOAL;
 
-const remain = Math.max(goal - sales, 0);
+const salesForProgress = sales ?? 0;
+
+const remain = Math.max(
+  goal - salesForProgress,
+  0
+);
 
 const percent =
   goal > 0
-    ? Math.min((sales / goal) * 100, 100)
+    ? Math.min(
+        (salesForProgress / goal) * 100,
+        100
+      )
     : 0;
 
   const loadInventoryReports = useCallback(async () => {
@@ -1300,10 +1308,17 @@ async function handleBugReport() {
     </div>
 
     <div className="mt-1 text-3xl font-bold md:mt-2 md:text-5xl">
+  {sales === null ? (
+    "－"
+  ) : (
+    <>
       {sales.toLocaleString()}
-      <span className="ml-1 text-sm md:text-xl">枚</span>
-    </div>
-  </div>
+      <span className="ml-1 text-sm md:text-xl">
+        枚
+      </span>
+    </>
+  )}
+</div>
 
   {SHOW_GOAL_PROGRESS && (
     <>
@@ -2979,7 +2994,7 @@ function StatCard({
 }: {
   icon: string;
   title: string;
-  value: number;
+  value: number | null;
 }) {
   return (
     <div className="rounded-xl border border-[#eaddea] bg-[#fcf9fc] px-2 py-2 md:rounded-2xl md:px-3 md:py-3">
@@ -2997,10 +3012,16 @@ function StatCard({
           </div>
 
           <div className="whitespace-nowrap text-base font-bold leading-5 text-[#171417] md:text-xl">
-            {value.toLocaleString()}
-            <span className="ml-0.5 text-[9px] md:text-xs">
-              枚
-            </span>
+            {value === null ? (
+              "－"
+            ) : (
+              <>
+                {value.toLocaleString()}
+                <span className="ml-0.5 text-[9px] md:text-xs">
+                  枚
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>

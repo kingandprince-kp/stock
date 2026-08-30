@@ -102,9 +102,9 @@ type Product = {
 
 type SalesSummary = {
   id: number;
-  today_sales: number;
-  weekly_sales: number;
-  total_sales: number;
+  today_sales: number | null;
+  weekly_sales: number | null;
+  total_sales: number | null;
   goal: number;
   updated_at: string;
 };
@@ -436,16 +436,22 @@ export default function AdminPage() {
 
       if (latest) {
         setTodaySales(
-          String(latest.today_sales)
-        );
+  latest.today_sales === null
+    ? "-"
+    : String(latest.today_sales)
+);
 
-        setWeeklySales(
-          String(latest.weekly_sales)
-        );
+setWeeklySales(
+  latest.weekly_sales === null
+    ? "-"
+    : String(latest.weekly_sales)
+);
 
-        setTotalSales(
-          String(latest.total_sales)
-        );
+setTotalSales(
+  latest.total_sales === null
+    ? "-"
+    : String(latest.total_sales)
+);
 
         setSalesGoal(
           String(latest.goal)
@@ -1086,44 +1092,49 @@ export default function AdminPage() {
       return;
     }
 
-    const today =
-      Number(todaySales);
+    function parseSalesValue(
+      value: string
+    ): number | null | "invalid" {
+      const trimmed = value.trim();
 
-    const week =
-      Number(weeklySales);
+      if (trimmed === "-") {
+        return null;
+      }
 
-    const total =
-      Number(totalSales);
+      const number = Number(trimmed);
 
-    const goal =
-      Number(salesGoal);
+      if (
+        !Number.isInteger(number) ||
+        number < 0
+      ) {
+        return "invalid";
+      }
 
-    if (
-      !Number.isInteger(today) ||
-      today < 0
-    ) {
+      return number;
+    }
+
+    const today = parseSalesValue(todaySales);
+    const week = parseSalesValue(weeklySales);
+    const total = parseSalesValue(totalSales);
+    const goal = Number(salesGoal);
+
+    if (today === "invalid") {
       setErrorMessage(
-        "本日の売上は0以上の整数で入力してください。"
+        "本日の売上は「-」または0以上の整数で入力してください。"
       );
       return;
     }
 
-    if (
-      !Number.isInteger(week) ||
-      week < 0
-    ) {
+    if (week === "invalid") {
       setErrorMessage(
-        "今週の売上は0以上の整数で入力してください。"
+        "今週の売上は「-」または0以上の整数で入力してください。"
       );
       return;
     }
 
-    if (
-      !Number.isInteger(total) ||
-      total < 0
-    ) {
+    if (total === "invalid") {
       setErrorMessage(
-        "累計売上は0以上の整数で入力してください。"
+        "累計売上は「-」または0以上の整数で入力してください。"
       );
       return;
     }
@@ -1138,31 +1149,35 @@ export default function AdminPage() {
       return;
     }
 
-    const confirmed =
-      window.confirm(
-        `売上情報を更新します。\n\n本日: ${today.toLocaleString()}枚\n今週: ${week.toLocaleString()}枚\n累計: ${total.toLocaleString()}枚\n目標: ${goal.toLocaleString()}枚`
-      );
+    const displaySales = (
+      value: number | null
+    ) =>
+      value === null
+        ? "－"
+        : `${value.toLocaleString()}枚`;
+
+    const confirmed = window.confirm(
+      `売上情報を更新します。\n\n本日: ${displaySales(today)}\n今週: ${displaySales(week)}\n累計: ${displaySales(total)}\n目標: ${goal.toLocaleString()}枚`
+    );
 
     if (!confirmed) return;
 
     setSalesUpdating(true);
 
-    const { error } =
-      await supabase.rpc(
-        "update_sales_admin",
-        {
-          p_today_sales: today,
-          p_weekly_sales: week,
-          p_total_sales: total,
-          p_goal: goal,
-        }
-      );
+    const { error } = await supabase.rpc(
+      "update_sales_admin",
+      {
+        p_today_sales: today,
+        p_weekly_sales: week,
+        p_total_sales: total,
+        p_goal: goal,
+      }
+    );
 
     if (error) {
       setErrorMessage(
         `売上情報を更新できませんでした: ${error.message}`
       );
-
       setSalesUpdating(false);
       return;
     }
@@ -3469,7 +3484,7 @@ function SalesInput({
 
       <input
         type="text"
-        inputMode="numeric"
+        inputMode="text"
         value={value}
         onChange={(event) => {
           const next =
@@ -3477,6 +3492,7 @@ function SalesInput({
 
           if (
             next === "" ||
+            next === "-" ||
             /^[0-9]+$/.test(next)
           ) {
             onChange(next);
