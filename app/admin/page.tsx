@@ -435,23 +435,24 @@ export default function AdminPage() {
       setSalesData(latest);
 
       if (latest) {
+        const formatSalesInputValue = (
+          value: number | null | undefined
+        ) =>
+          value == null || String(value).toLowerCase() === "null"
+            ? "-"
+            : String(value);
+
         setTodaySales(
-  latest.today_sales === null
-    ? "-"
-    : String(latest.today_sales)
-);
+          formatSalesInputValue(latest.today_sales)
+        );
 
-setWeeklySales(
-  latest.weekly_sales === null
-    ? "-"
-    : String(latest.weekly_sales)
-);
+        setWeeklySales(
+          formatSalesInputValue(latest.weekly_sales)
+        );
 
-setTotalSales(
-  latest.total_sales === null
-    ? "-"
-    : String(latest.total_sales)
-);
+        setTotalSales(
+          formatSalesInputValue(latest.total_sales)
+        );
 
         setSalesGoal(
           String(latest.goal)
@@ -1097,7 +1098,12 @@ setTotalSales(
     ): number | null | "invalid" {
       const trimmed = value.trim();
 
-      if (trimmed === "-") {
+      if (
+        trimmed === "-" ||
+        trimmed === "－" ||
+        trimmed === "ー" ||
+        trimmed === "―"
+      ) {
         return null;
       }
 
@@ -3419,33 +3425,28 @@ function SalesTab({
           <SalesInput
             label="📊 本日の売上"
             value={todaySales}
-            onChange={
-              setTodaySales
-            }
+            onChange={setTodaySales}
+            allowDash
           />
 
           <SalesInput
             label="📅 今週の売上"
             value={weeklySales}
-            onChange={
-              setWeeklySales
-            }
+            onChange={setWeeklySales}
+            allowDash
           />
 
           <SalesInput
             label="👑 累計売上"
             value={totalSales}
-            onChange={
-              setTotalSales
-            }
+            onChange={setTotalSales}
+            allowDash
           />
 
           <SalesInput
             label="🎯 目標枚数"
             value={salesGoal}
-            onChange={
-              setSalesGoal
-            }
+            onChange={setSalesGoal}
           />
         </div>
 
@@ -3469,12 +3470,12 @@ function SalesInput({
   label,
   value,
   onChange,
+  allowDash = false,
 }: {
   label: string;
   value: string;
-  onChange: (
-    value: string
-  ) => void;
+  onChange: (value: string) => void;
+  allowDash?: boolean;
 }) {
   return (
     <label className="block">
@@ -3484,17 +3485,25 @@ function SalesInput({
 
       <input
         type="text"
-        inputMode="text"
+        inputMode={allowDash ? "text" : "numeric"}
         value={value}
         onChange={(event) => {
-          const next =
-            event.target.value;
+          const next = event.target.value;
+
+          if (next === "") {
+            onChange("");
+            return;
+          }
 
           if (
-            next === "" ||
-            next === "-" ||
-            /^[0-9]+$/.test(next)
+            allowDash &&
+            ["-", "－", "ー", "―"].includes(next)
           ) {
+            onChange("-");
+            return;
+          }
+
+          if (/^[0-9]+$/.test(next)) {
             onChange(next);
           }
         }}
