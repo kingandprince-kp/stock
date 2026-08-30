@@ -9,7 +9,7 @@ export default function PrivacyPage() {
     >
       <div className="mx-auto max-w-3xl">
         <section className="rounded-3xl bg-white p-6 shadow-sm md:p-10">
-          <h1 className="text-xl font-bold text-[#211d21]">
+          <h1 className="text-lg font-bold text-[#211d21]">
             プライバシーについて
           </h1>
 
@@ -60,11 +60,11 @@ export default function PrivacyPage() {
 </div>
 
           <a
-            href="/so-honey"
-            className="mt-8 inline-block rounded-xl bg-[#f0dfec] px-5 py-3 font-bold text-[#6d4966]"
-          >
-            So Honey 在庫チェッカーに戻る
-          </a>
+  href="/so-honey"
+  className="mt-6 inline-block rounded-lg bg-[#f0dfec] px-4 py-2 text-sm font-bold text-[#6d4966]"
+>
+  So Honey 在庫チェッカーに戻る
+</a>
         </section>
       </div>
     </main>
