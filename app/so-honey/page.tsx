@@ -2447,14 +2447,7 @@ if (/^[0-9]+$/.test(value)) {
               King & Prince 在庫チェッカー
             </p>
 
-            <p className="mt-1 text-[9px] md:mt-2 md:text-xs">
-              <a
-                href="/privacy"
-                className="text-[#6f686e] underline underline-offset-2 hover:text-[#b95489] md:text-[#403940]"
-              >
-                プライバシーについて
-              </a>
-            </p>
+            
           </div>
         </footer>
       </div>
