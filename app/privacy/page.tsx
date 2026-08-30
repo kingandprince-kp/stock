@@ -9,63 +9,55 @@ export default function PrivacyPage() {
     >
       <div className="mx-auto max-w-3xl">
         <section className="rounded-3xl bg-white p-6 shadow-sm md:p-10">
-          <h1 className="text-2xl font-bold text-[#211d21]">
+          <h1 className="text-xl font-bold text-[#211d21]">
             プライバシーについて
           </h1>
 
-          <div className="mt-6 space-y-6 leading-7 text-[#4f454d]">
-            <section>
-              <h2 className="font-bold text-[#211d21]">
-                アクセス情報の取得について
-              </h2>
+          <div className="mt-6 space-y-5 text-sm leading-6 text-[#4f454d]">
+  <section>
+    <h2 className="font-bold text-[#211d21]">
+      アクセス情報の取得について
+    </h2>
 
-              <p className="mt-2">
-                当サイトでは、不正投稿・連続投稿等の防止および
-                セキュリティ確保のため、在庫情報の投稿時に
-                IPアドレス等のアクセス情報を取得する場合があります。
-              </p>
-            </section>
+    <p className="mt-2">
+      当サイトでは、不正投稿・連続投稿等の防止およびセキュリティ確保のため、在庫情報の投稿時にIPアドレス等のアクセス情報を取得する場合があります。
+    </p>
+  </section>
 
-            <section>
-              <h2 className="font-bold text-[#211d21]">
-                利用目的
-              </h2>
+  <section>
+    <h2 className="font-bold text-[#211d21]">
+      利用目的
+    </h2>
 
-              <p className="mt-2">
-                取得した情報は、不正利用の検知・防止、
-                投稿状況の確認、セキュリティ上の問題が発生した際の
-                調査および対応のために利用します。
-              </p>
-            </section>
+    <p className="mt-2">
+      取得した情報は、不正利用の検知・防止、投稿状況の確認、セキュリティ上の問題が発生した際の調査および対応のために利用します。
+    </p>
+  </section>
 
-            <section>
-              <h2 className="font-bold text-[#211d21]">
-                保存期間
-              </h2>
+  <section>
+    <h2 className="font-bold text-[#211d21]">
+      保存期間
+    </h2>
 
-              <p className="mt-2">
-                取得したIPアドレスは、取得から180日を経過した後に
-                削除します。
-              </p>
+    <p className="mt-2">
+      取得したIPアドレスは、取得から180日を経過した後に削除します。
+    </p>
 
-              <p className="mt-2">
-                不正利用の検知・防止のために生成した識別情報や
-                セキュリティ上の記録については、
-                必要な範囲で保存する場合があります。
-              </p>
-            </section>
+    <p className="mt-2">
+      不正利用の検知・防止のために生成した識別情報やセキュリティ上の記録については、必要な範囲で保存する場合があります。
+    </p>
+  </section>
 
-            <section>
-              <h2 className="font-bold text-[#211d21]">
-                情報の管理
-              </h2>
+  <section>
+    <h2 className="font-bold text-[#211d21]">
+      情報の管理
+    </h2>
 
-              <p className="mt-2">
-                取得した情報はサイト管理の目的でのみ利用し、
-                適切に管理します。
-              </p>
-            </section>
-          </div>
+    <p className="mt-2">
+      取得した情報はサイト管理の目的でのみ利用し、適切に管理します。
+    </p>
+  </section>
+</div>
 
           <a
             href="/so-honey"
