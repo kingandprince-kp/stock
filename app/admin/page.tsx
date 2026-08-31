@@ -1144,6 +1144,87 @@ export default function AdminPage() {
   }
 
   // =========================================
+  // 管理画面 一括処理
+  // =========================================
+
+  async function runBulkRpc(
+    rpcName: string,
+    params: Record<string, unknown>,
+    successMessage: string
+  ) {
+    setMessage("");
+    setErrorMessage("");
+    const { error } = await supabase.rpc(rpcName, params);
+    if (error) {
+      setErrorMessage(`一括処理に失敗しました: ${error.message}`);
+      return;
+    }
+    await loadAdminData();
+    setMessage(successMessage);
+  }
+
+  async function handleBulkDeleteReports(ids: number[]) {
+    if (!ids.length) return;
+    if (!window.confirm(`選択した${ids.length}件の在庫投稿を削除します。\n削除履歴から復元できます。`)) return;
+    await runBulkRpc("bulk_delete_inventory_reports_admin", { p_report_ids: ids }, `${ids.length}件の在庫投稿を削除しました。削除履歴から復元できます。`);
+  }
+
+  async function handleBulkReview(ids: number[], action: "approve" | "reject") {
+    if (!ids.length) return;
+    const label = action === "approve" ? "承認・公開" : "却下";
+    if (!window.confirm(`選択した${ids.length}件を${label}しますか？`)) return;
+    await runBulkRpc(action === "approve" ? "bulk_approve_inventory_reports_admin" : "bulk_reject_inventory_reports_admin", { p_report_ids: ids }, `${ids.length}件を${label}しました。`);
+  }
+
+  async function handleDeleteReviewHistory(ids: number[]) {
+    if (!ids.length) return;
+    if (!window.confirm(`選択した${ids.length}件の処理済み履歴を削除します。\nこの操作は元に戻せません。\n\n※承認済みの在庫投稿そのものは削除されません。`)) return;
+    await runBulkRpc("bulk_delete_inventory_review_history_admin", { p_report_ids: ids }, `${ids.length}件の処理済み履歴を削除しました。`);
+  }
+
+  async function handleDeleteSecurityEvents(ids: number[]) {
+    if (!ids.length) return;
+    if (!window.confirm(`選択した${ids.length}件のセキュリティ履歴を完全に削除します。\nこの操作は元に戻せません。`)) return;
+    await runBulkRpc("bulk_delete_security_events_admin", { p_event_ids: ids }, `${ids.length}件のセキュリティ履歴を削除しました。`);
+  }
+
+  async function handleBulkRestore(ids: number[]) {
+    if (!ids.length) return;
+    if (!window.confirm(`選択した${ids.length}件の削除済み投稿を復元しますか？`)) return;
+    await runBulkRpc("bulk_restore_inventory_reports_admin", { p_deletion_ids: ids }, `${ids.length}件の削除済み投稿を復元しました。`);
+  }
+
+  async function handleDeleteDeletionHistory(ids: number[]) {
+    if (!ids.length) return;
+    if (!window.confirm(`選択した${ids.length}件の削除履歴を完全に削除します。\nこの操作は元に戻せません。\n未復元の履歴を削除すると、その履歴からは復元できなくなります。`)) return;
+    await runBulkRpc("bulk_delete_inventory_deletion_history_admin", { p_deletion_ids: ids }, `${ids.length}件の削除履歴を完全に削除しました。`);
+  }
+
+  async function handleDeleteStoreRequestHistory(ids: number[]) {
+    if (!ids.length) return;
+    if (!window.confirm(`選択した${ids.length}件の処理済み店舗リクエスト履歴を完全に削除します。\nこの操作は元に戻せません。`)) return;
+    await runBulkRpc("bulk_delete_store_request_history_admin", { p_request_ids: ids }, `${ids.length}件の店舗リクエスト履歴を削除しました。`);
+  }
+
+  async function handleDeleteBillboardHistory(ids: number[]) {
+    if (!ids.length) return;
+    if (!window.confirm(`選択した${ids.length}件の処理済みBillboard情報履歴を完全に削除します。\nこの操作は元に戻せません。`)) return;
+    await runBulkRpc("bulk_delete_billboard_info_history_admin", { p_request_ids: ids }, `${ids.length}件のBillboard情報履歴を削除しました。`);
+  }
+
+  async function handleBulkCheckBugReports(ids: number[]) {
+    if (!ids.length) return;
+    if (!window.confirm(`選択した${ids.length}件の不具合報告を確認済みにしますか？`)) return;
+    await runBulkRpc("bulk_mark_bug_reports_checked_admin", { p_report_ids: ids }, `${ids.length}件の不具合報告を確認済みにしました。`);
+  }
+
+  async function handleDeleteBugReports(ids: number[]) {
+    if (!ids.length) return;
+    if (!window.confirm(`選択した${ids.length}件の不具合報告を完全に削除します。\nこの操作は元に戻せません。`)) return;
+    await runBulkRpc("bulk_delete_bug_reports_admin", { p_report_ids: ids }, `${ids.length}件の不具合報告を削除しました。`);
+  }
+
+  // =========================================
   // Billboard情報提供 承認・却下
   // =========================================
 
@@ -1724,9 +1805,8 @@ export default function AdminPage() {
               deletingId={
                 deletingId
               }
-              onDelete={
-                handleDelete
-              }
+              onDelete={handleDelete}
+              onBulkDelete={handleBulkDeleteReports}
               formatDate={
                 formatDate
               }
@@ -1740,6 +1820,8 @@ export default function AdminPage() {
               processingId={reviewProcessingId}
               onApprove={handleApproveReview}
               onReject={handleRejectReview}
+              onBulkReview={handleBulkReview}
+              onDeleteHistory={handleDeleteReviewHistory}
               formatDate={formatDate}
             />
           ) : activeTab ===
@@ -1748,6 +1830,7 @@ export default function AdminPage() {
               events={securityEvents}
               stores={stores}
               products={products}
+              onDeleteSelected={handleDeleteSecurityEvents}
               formatDate={formatDate}
             />
           ) : activeTab ===
@@ -1759,9 +1842,9 @@ export default function AdminPage() {
               restoringId={
                 restoringId
               }
-              onRestore={
-                handleRestore
-              }
+              onRestore={handleRestore}
+              onBulkRestore={handleBulkRestore}
+              onDeleteHistory={handleDeleteDeletionHistory}
               formatDate={
                 formatDate
               }
@@ -1785,9 +1868,8 @@ export default function AdminPage() {
               onReject={
                 handleRejectRequest
               }
-              processingId={
-                requestProcessingId
-              }
+              processingId={requestProcessingId}
+              onDeleteProcessed={handleDeleteStoreRequestHistory}
               formatDate={
                 formatDate
               }
@@ -1800,6 +1882,7 @@ export default function AdminPage() {
               processingId={billboardProcessingId}
               onApprove={handleApproveBillboardInfo}
               onReject={handleRejectBillboardInfo}
+              onDeleteProcessed={handleDeleteBillboardHistory}
               formatDate={formatDate}
             />
           ) : activeTab ===
@@ -1808,6 +1891,8 @@ export default function AdminPage() {
               reports={bugReports}
               checkingId={bugCheckingId}
               onCheck={handleCheckBugReport}
+              onBulkCheck={handleBulkCheckBugReports}
+              onDeleteSelected={handleDeleteBugReports}
               formatDate={formatDate}
             />
           ) : activeTab ===
@@ -1942,214 +2027,42 @@ function AccessTab({
   );
 }
 
-function ReviewReportsTab({
-  reports,
-  stores,
-  products,
-  processingId,
-  onApprove,
-  onReject,
-  formatDate,
-}: {
-  reports: ReviewReport[];
-  stores: Store[];
-  products: Product[];
-  processingId: number | null;
-  onApprove: (report: ReviewReport) => void;
-  onReject: (report: ReviewReport) => void;
-  formatDate: (value: string) => string;
+function ReviewReportsTab({ reports, stores, products, processingId, onApprove, onReject, onBulkReview, onDeleteHistory, formatDate }: {
+  reports: ReviewReport[]; stores: Store[]; products: Product[]; processingId: number | null;
+  onApprove: (report: ReviewReport) => void; onReject: (report: ReviewReport) => void;
+  onBulkReview: (ids: number[], action: "approve" | "reject") => void; onDeleteHistory: (ids: number[]) => void; formatDate: (value: string) => string;
 }) {
-  const pending = reports.filter(
-    (report) => report.review_status === "pending"
-  );
-  const approved = reports.filter(
-    (report) =>
-      report.review_status === "approved" &&
-      Boolean(report.reviewed_at)
-  );
-  const rejected = reports.filter(
-    (report) => report.review_status === "rejected"
-  );
-
-  const storeName = (id: number) => {
-    const store = stores.find((item) => item.id === id);
-    return store ? getDisplayStoreName(store) : "店舗不明";
-  };
-
-  const productName = (id: number) =>
-    products.find((item) => item.id === id)?.name ??
-    "商品不明";
-
-  const historyCard = (
-    report: ReviewReport,
-    actionLabel: "承認" | "却下"
-  ) => (
-    <article
-      key={report.id}
-      className="rounded-xl border border-gray-200 bg-white p-4 text-gray-600"
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="font-bold">
-          {storeName(report.store_id)}
-        </div>
-        <span
-          className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-            actionLabel === "承認"
-              ? "bg-green-100 text-green-700"
-              : "bg-red-100 text-red-700"
-          }`}
-        >
-          {actionLabel}済み
-        </span>
-      </div>
-      <div className="mt-1">
-        {productName(report.product_id)}
-      </div>
-      <div className="mt-1">
-        {report.quantity === 0
-          ? "在庫なし"
-          : `${report.quantity}枚`}
-      </div>
-      <div className="mt-1 text-sm">
-        投稿: {formatDate(report.created_at)}
-      </div>
-      {report.reviewed_at && (
-        <div className="mt-1 text-sm">
-          {actionLabel}: {formatDate(report.reviewed_at)}
-        </div>
-      )}
-      {report.review_reason && (
-        <div className="mt-2 text-sm">
-          判定理由: {report.review_reason}
-        </div>
-      )}
-    </article>
-  );
-
-  return (
-    <div className="mt-6">
-      <h2 className="text-2xl font-bold">
-        🔎 要確認の在庫投稿
-      </h2>
-      <p className="mt-2 text-gray-500">
-        自動判定で保留になった投稿です。承認するまで公開ページには表示されません。
-      </p>
-
-      {pending.length === 0 ? (
-        <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">
-          現在、要確認の投稿はありません。
-        </div>
-      ) : (
-        <div className="mt-5 space-y-4">
-          {pending.map((report) => (
-            <article
-              key={report.id}
-              className="rounded-2xl border border-orange-200 bg-orange-50 p-5"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-lg font-bold">
-                      {storeName(report.store_id)}
-                    </span>
-                    <span className="rounded-full bg-orange-200 px-3 py-1 text-xs font-bold text-orange-800">
-                      要確認
-                    </span>
-                  </div>
-                  <div className="mt-2">
-                    {productName(report.product_id)}
-                  </div>
-                  <div className="mt-1 font-bold text-[#b95489]">
-                    {report.quantity === 0
-                      ? "在庫なし"
-                      : `${report.quantity}枚`}
-                  </div>
-                  <div className="mt-1 text-sm text-gray-500">
-                    {formatDate(report.created_at)}
-                  </div>
-                  {report.comment && (
-                    <div className="mt-3 rounded-xl bg-white p-3">
-                      💬 {report.comment}
-                    </div>
-                  )}
-                  <div className="mt-3 rounded-xl border border-orange-200 bg-white p-3 text-sm">
-                    <span className="font-bold">判定理由: </span>
-                    {report.review_reason || "理由なし"}
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={processingId === report.id}
-                    onClick={() => onApprove(report)}
-                    className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white disabled:opacity-50"
-                  >
-                    承認・公開
-                  </button>
-                  <button
-                    type="button"
-                    disabled={processingId === report.id}
-                    onClick={() => onReject(report)}
-                    className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white disabled:opacity-50"
-                  >
-                    却下
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
-
-      <div className="mt-7 space-y-3">
-        <details className="rounded-2xl border border-green-200 bg-green-50/50">
-          <summary className="cursor-pointer select-none px-5 py-4 font-bold text-green-700">
-            承認済みの履歴 ({approved.length}件)
-          </summary>
-          <div className="space-y-3 border-t border-green-200 p-4">
-            {approved.length === 0 ? (
-              <div className="py-3 text-center text-sm text-gray-500">
-                承認済みの履歴はありません。
-              </div>
-            ) : (
-              approved.map((report) => historyCard(report, "承認"))
-            )}
-          </div>
-        </details>
-
-        <details className="rounded-2xl border border-gray-200 bg-gray-50">
-          <summary className="cursor-pointer select-none px-5 py-4 font-bold text-gray-600">
-            却下済みの履歴 ({rejected.length}件)
-          </summary>
-          <div className="space-y-3 border-t border-gray-200 p-4">
-            {rejected.length === 0 ? (
-              <div className="py-3 text-center text-sm text-gray-500">
-                却下済みの履歴はありません。
-              </div>
-            ) : (
-              rejected.map((report) => historyCard(report, "却下"))
-            )}
-          </div>
-        </details>
-      </div>
-    </div>
-  );
+  const [pendingSel,setPendingSel]=useState<number[]>([]); const [historySel,setHistorySel]=useState<number[]>([]);
+  const pending=reports.filter(r=>r.review_status==="pending"); const approved=reports.filter(r=>r.review_status==="approved"&&Boolean(r.reviewed_at)); const rejected=reports.filter(r=>r.review_status==="rejected");
+  const pids=pending.map(r=>r.id); const hids=[...approved,...rejected].map(r=>r.id);
+  useEffect(()=>{setPendingSel(c=>c.filter(id=>pids.includes(id)));setHistorySel(c=>c.filter(id=>hids.includes(id)));},[reports]);
+  const storeName=(id:number)=>{const x=stores.find(s=>s.id===id);return x?getDisplayStoreName(x):"店舗不明"}; const productName=(id:number)=>products.find(p=>p.id===id)?.name??"商品不明";
+  const tp=(id:number)=>setPendingSel(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id]); const th=(id:number)=>setHistorySel(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id]);
+  const hist=(r:ReviewReport,label:"承認"|"却下")=><article key={r.id} className="rounded-xl border border-gray-200 bg-white p-4 text-gray-600"><div className="flex items-start gap-3"><SelectionCheckbox checked={historySel.includes(r.id)} onChange={()=>th(r.id)} label={`履歴 #${r.id} を選択`} /><div><div className="flex flex-wrap items-center gap-2"><b>{storeName(r.store_id)}</b><span className={"rounded-full px-2.5 py-1 text-xs font-bold "+(label==="承認"?"bg-green-100 text-green-700":"bg-red-100 text-red-700")}>{label}済み</span></div><div className="mt-1">{productName(r.product_id)}</div><div className="mt-1">{r.quantity===0?"在庫なし":`${r.quantity}枚`}</div><div className="mt-1 text-sm">投稿: {formatDate(r.created_at)}</div>{r.reviewed_at&&<div className="mt-1 text-sm">{label}: {formatDate(r.reviewed_at)}</div>}{r.review_reason&&<div className="mt-2 text-sm">判定理由: {r.review_reason}</div>}</div></div></article>;
+  return <div className="mt-6"><h2 className="text-2xl font-bold">🔎 要確認の在庫投稿</h2><p className="mt-2 text-gray-500">自動判定で保留になった投稿です。承認するまで公開ページには表示されません。</p>
+    {pending.length>0&&<div className="mt-5"><BulkSelectionBar count={pendingSel.length} allSelected={pids.every(id=>pendingSel.includes(id))} onToggleAll={()=>setPendingSel(pids.every(id=>pendingSel.includes(id))?[]:pids)}><button disabled={!pendingSel.length} onClick={()=>onBulkReview(pendingSel,"approve")} className="rounded-xl bg-green-700 px-4 py-2 font-bold text-white disabled:opacity-40">一括承認・公開</button><button disabled={!pendingSel.length} onClick={()=>onBulkReview(pendingSel,"reject")} className="rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-40">一括却下</button></BulkSelectionBar></div>}
+    {!pending.length?<div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">現在、要確認の投稿はありません。</div>:<div className="mt-4 space-y-4">{pending.map(r=><article key={r.id} className="rounded-2xl border border-orange-200 bg-orange-50 p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex items-start gap-3"><SelectionCheckbox checked={pendingSel.includes(r.id)} onChange={()=>tp(r.id)} label={`投稿 #${r.id} を選択`} /><div><div className="text-lg font-bold">{storeName(r.store_id)}</div><div className="mt-2">{productName(r.product_id)}</div><div className="mt-1 font-bold text-[#b95489]">{r.quantity===0?"在庫なし":`${r.quantity}枚`}</div><div className="mt-1 text-sm text-gray-500">{formatDate(r.created_at)}</div>{r.comment&&<div className="mt-3 rounded-xl bg-white p-3">💬 {r.comment}</div>}<div className="mt-3 rounded-xl bg-white p-3 text-sm"><b>判定理由: </b>{r.review_reason||"理由なし"}</div></div></div><div className="flex gap-2"><button disabled={processingId===r.id} onClick={()=>onApprove(r)} className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white">承認・公開</button><button disabled={processingId===r.id} onClick={()=>onReject(r)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white">却下</button></div></div></article>)}</div>}
+    <div className="mt-7"><BulkSelectionBar count={historySel.length} allSelected={hids.length>0&&hids.every(id=>historySel.includes(id))} onToggleAll={()=>setHistorySel(hids.length>0&&hids.every(id=>historySel.includes(id))?[]:hids)}><button disabled={!historySel.length} onClick={()=>onDeleteHistory(historySel)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を削除</button></BulkSelectionBar></div>
+    <div className="mt-3 space-y-3"><details className="rounded-2xl border border-green-200 bg-green-50/50"><summary className="cursor-pointer px-5 py-4 font-bold text-green-700">承認済みの履歴 ({approved.length}件)</summary><div className="space-y-3 border-t border-green-200 p-4">{approved.length?approved.map(r=>hist(r,"承認")):<div className="text-sm text-gray-500">承認済みの履歴はありません。</div>}</div></details><details className="rounded-2xl border border-gray-200 bg-gray-50"><summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">却下済みの履歴 ({rejected.length}件)</summary><div className="space-y-3 border-t border-gray-200 p-4">{rejected.length?rejected.map(r=>hist(r,"却下")):<div className="text-sm text-gray-500">却下済みの履歴はありません。</div>}</div></details></div>
+  </div>;
 }
 
 function SecurityEventsTab({
   events,
   stores,
   products,
+  onDeleteSelected,
   formatDate,
 }: {
   events: SecurityEvent[];
   stores: Store[];
   products: Product[];
+  onDeleteSelected: (ids: number[]) => void;
   formatDate: (value: string) => string;
 }) {
   const [eventFilter, setEventFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("newest");
+  const [selected, setSelected] = useState<number[]>([]);
 
   const now = Date.now();
   const dayAgo = now - 24 * 60 * 60 * 1000;
@@ -2258,6 +2171,11 @@ function SecurityEventsTab({
     });
   }, [events, eventFilter, sortOrder, stores]);
 
+  const visibleIds = visibleEvents.map((event) => event.id);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.includes(id));
+  useEffect(() => { setSelected((current) => current.filter((id) => events.some((event) => event.id === id))); }, [events]);
+  const toggleSelected = (id: number) => setSelected((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
+
   const originalEventFor = (event: SecurityEvent) => {
     if (event.report_id === null) return null;
     return (
@@ -2345,6 +2263,8 @@ function SecurityEventsTab({
         </div>
       </div>
 
+      {visibleEvents.length > 0 && <div className="mt-4"><BulkSelectionBar count={selected.length} allSelected={allVisibleSelected} onToggleAll={() => { if (allVisibleSelected) setSelected((c)=>c.filter(id=>!visibleIds.includes(id))); else setSelected((c)=>Array.from(new Set([...c,...visibleIds]))); }}><button disabled={!selected.length} onClick={()=>onDeleteSelected(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を完全削除</button></BulkSelectionBar><div className="mt-2 text-xs text-gray-500">「全選択」は現在の絞り込み結果だけを選択します。</div></div>}
+
       {events.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
           セキュリティ履歴はまだありません。
@@ -2361,8 +2281,10 @@ function SecurityEventsTab({
               className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc]"
             >
               <summary className="cursor-pointer select-none p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <SelectionCheckbox checked={selected.includes(event.id)} onChange={() => toggleSelected(event.id)} label={`セキュリティ履歴 #${event.id} を選択`} />
+                    <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-bold">
                         {label[event.event_type] ?? event.event_type}
@@ -2389,6 +2311,7 @@ function SecurityEventsTab({
                       {event.quantity !== null
                         ? ` / ${event.quantity === 0 ? "在庫なし" : `${event.quantity}枚`}`
                         : ""}
+                    </div>
                     </div>
                   </div>
                   <div className="text-sm font-bold text-gray-500">
@@ -2527,153 +2450,13 @@ function SecurityValue({
   );
 }
 
-function BugReportsTab({
-  reports,
-  checkingId,
-  onCheck,
-  formatDate,
-}: {
-  reports: BugReport[];
-  checkingId: number | null;
-  onCheck: (report: BugReport) => void;
-  formatDate: (value: string) => string;
-}) {
-  const [imageUrls, setImageUrls] =
-    useState<Record<string, string>>({});
-
-  const uncheckedReports = useMemo(
-    () =>
-      reports.filter(
-        (report) => !report.checked_at
-      ),
-    [reports]
-  );
-
-  const checkedReports = useMemo(
-    () =>
-      reports.filter(
-        (report) => Boolean(report.checked_at)
-      ),
-    [reports]
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadImageUrls() {
-      const paths = Array.from(
-        new Set(
-          reports.flatMap((report) => {
-            if (
-              Array.isArray(report.image_urls) &&
-              report.image_urls.length > 0
-            ) {
-              return report.image_urls;
-            }
-
-            return report.image_url
-              ? [report.image_url]
-              : [];
-          })
-        )
-      );
-
-      if (paths.length === 0) {
-        setImageUrls({});
-        return;
-      }
-
-      const next: Record<string, string> = {};
-
-      await Promise.all(
-        paths.map(async (path) => {
-          const { data, error } =
-            await supabase.storage
-              .from("bug-report-images")
-              .createSignedUrl(path, 60 * 60);
-
-          if (!error && data?.signedUrl) {
-            next[path] = data.signedUrl;
-          }
-        })
-      );
-
-      if (!cancelled) {
-        setImageUrls(next);
-      }
-    }
-
-    loadImageUrls();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [reports]);
-
-  if (reports.length === 0) {
-    return (
-      <div className="mt-8 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
-        不具合報告はありません。
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-6">
-      <div className="mb-5">
-        <h2 className="text-2xl font-bold">
-          ⚠️ 不具合報告
-        </h2>
-        <p className="mt-2 text-gray-500">
-          未確認の報告だけを上に表示します。確認後は「確認済みにする」を押してください。
-        </p>
-      </div>
-
-      {uncheckedReports.length === 0 ? (
-        <div className="rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">
-          未確認の不具合報告はありません。
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {uncheckedReports.map((report) => (
-            <BugReportCard
-              key={report.id}
-              report={report}
-              imageUrls={imageUrls}
-              checked={false}
-              checking={
-                checkingId === report.id
-              }
-              onCheck={() => onCheck(report)}
-              formatDate={formatDate}
-            />
-          ))}
-        </div>
-      )}
-
-      {checkedReports.length > 0 && (
-        <details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50">
-          <summary className="cursor-pointer select-none px-5 py-4 font-bold text-gray-600">
-            ✓ 確認済みの報告 ({checkedReports.length}件)
-          </summary>
-
-          <div className="space-y-3 border-t border-gray-200 p-4">
-            {checkedReports.map((report) => (
-              <BugReportCard
-                key={report.id}
-                report={report}
-                imageUrls={imageUrls}
-                checked
-                checking={false}
-                onCheck={() => {}}
-                formatDate={formatDate}
-              />
-            ))}
-          </div>
-        </details>
-      )}
-    </div>
-  );
+function BugReportsTab({ reports, checkingId, onCheck, onBulkCheck, onDeleteSelected, formatDate }: { reports: BugReport[]; checkingId: number | null; onCheck: (report: BugReport) => void; onBulkCheck: (ids: number[]) => void; onDeleteSelected: (ids: number[]) => void; formatDate: (value: string) => string; }) {
+  const [imageUrls,setImageUrls]=useState<Record<string,string>>({}); const [selected,setSelected]=useState<number[]>([]); const unchecked=useMemo(()=>reports.filter(r=>!r.checked_at),[reports]); const checked=useMemo(()=>reports.filter(r=>Boolean(r.checked_at)),[reports]); const ids=reports.map(r=>r.id); const all=ids.length>0&&ids.every(id=>selected.includes(id)); const selectedUnchecked=selected.filter(id=>unchecked.some(r=>r.id===id));
+  useEffect(()=>setSelected(c=>c.filter(id=>ids.includes(id))),[reports]); const toggle=(id:number)=>setSelected(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id]);
+  useEffect(()=>{let cancelled=false;async function load(){const paths=Array.from(new Set(reports.flatMap(r=>Array.isArray(r.image_urls)&&r.image_urls.length?r.image_urls:r.image_url?[r.image_url]:[])));const next:Record<string,string>={};await Promise.all(paths.map(async path=>{const {data,error}=await supabase.storage.from("bug-report-images").createSignedUrl(path,3600);if(!error&&data?.signedUrl)next[path]=data.signedUrl}));if(!cancelled)setImageUrls(next)}load();return()=>{cancelled=true}},[reports]);
+  if(!reports.length)return <div className="mt-8 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">不具合報告はありません。</div>;
+  const wrapped=(r:BugReport,done:boolean)=><div key={r.id} className="flex items-start gap-3"><div className="pt-4"><SelectionCheckbox checked={selected.includes(r.id)} onChange={()=>toggle(r.id)} label={`不具合報告 #${r.id} を選択`} /></div><div className="min-w-0 flex-1"><BugReportCard report={r} imageUrls={imageUrls} checked={done} checking={checkingId===r.id} onCheck={()=>onCheck(r)} formatDate={formatDate}/></div></div>;
+  return <div className="mt-6"><h2 className="text-2xl font-bold">⚠️ 不具合報告</h2><p className="mt-2 text-gray-500">未確認の報告だけを上に表示します。複数選択で一括確認・削除もできます。</p><div className="mt-5"><BulkSelectionBar count={selected.length} allSelected={all} onToggleAll={()=>setSelected(all?[]:ids)}><button disabled={!selectedUnchecked.length} onClick={()=>onBulkCheck(selectedUnchecked)} className="rounded-xl bg-green-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した未確認を一括確認済み</button><button disabled={!selected.length} onClick={()=>onDeleteSelected(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した報告を完全削除</button></BulkSelectionBar></div>{!unchecked.length?<div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">未確認の不具合報告はありません。</div>:<div className="mt-4 space-y-4">{unchecked.map(r=>wrapped(r,false))}</div>}{checked.length>0&&<details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50"><summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">✓ 確認済みの報告 ({checked.length}件)</summary><div className="space-y-3 border-t border-gray-200 p-4">{checked.map(r=>wrapped(r,true))}</div></details>}</div>;
 }
 
 function BugReportCard({
@@ -2888,139 +2671,11 @@ function BugInfo({
   );
 }
 
-function BillboardInfoRequestsTab({
-  requests,
-  stores,
-  processingId,
-  onApprove,
-  onReject,
-  formatDate,
-}: {
-  requests: BillboardInfoRequest[];
-  stores: Store[];
-  processingId: number | null;
-  onApprove: (request: BillboardInfoRequest) => void;
-  onReject: (request: BillboardInfoRequest) => void;
-  formatDate: (value: string) => string;
-}) {
-  const pending = requests.filter((item) => item.status === "pending");
-  const processed = requests.filter((item) => item.status !== "pending");
-
-  const storeName = (storeId: number) => {
-    const store = stores.find((item) => item.id === storeId);
-    return store ? getDisplayStoreName(store) : `店舗ID ${storeId}`;
-  };
-
-  const card = (request: BillboardInfoRequest) => {
-    const proposedLabel =
-      request.proposed_status === "target"
-        ? "Billboard 対象"
-        : "Billboard 対象外";
-
-    return (
-      <article
-        key={request.id}
-        className="rounded-2xl border border-[#e5d7e6] bg-white p-5"
-      >
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="text-lg font-bold">
-              {storeName(request.store_id)}
-            </div>
-            <div className="mt-2">
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ${
-                request.proposed_status === "target"
-                  ? "bg-purple-100 text-purple-800"
-                  : "bg-gray-100 text-gray-700"
-              }`}>
-                {proposedLabel}
-              </span>
-              {request.status !== "pending" && (
-                <span className={`ml-2 rounded-full px-3 py-1 text-xs font-bold ${
-                  request.status === "approved"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-700"
-                }`}>
-                  {request.status === "approved" ? "承認済み" : "却下済み"}
-                </span>
-              )}
-            </div>
-
-            <div className="mt-3 text-sm font-bold text-gray-600">
-              確認できるソースURL・エビデンス
-            </div>
-            <div className="mt-1 whitespace-pre-wrap break-words rounded-xl bg-[#f8f4f7] p-3 text-sm">
-              {request.evidence}
-            </div>
-
-            <div className="mt-3 text-xs text-gray-500">
-              受付: {formatDate(request.requested_at)}
-            </div>
-            {request.reviewed_at && (
-              <div className="mt-1 text-xs text-gray-500">
-                処理: {formatDate(request.reviewed_at)}
-              </div>
-            )}
-          </div>
-
-          {request.status === "pending" && (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={processingId === request.id}
-                onClick={() => onApprove(request)}
-                className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white disabled:opacity-50"
-              >
-                内容確認済み・反映
-              </button>
-              <button
-                type="button"
-                disabled={processingId === request.id}
-                onClick={() => onReject(request)}
-                className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white disabled:opacity-50"
-              >
-                却下
-              </button>
-            </div>
-          )}
-        </div>
-      </article>
-    );
-  };
-
-  return (
-    <div className="mt-6">
-      <h2 className="text-2xl font-bold">📊 Billboard情報提供</h2>
-      <p className="mt-2 text-gray-500">
-        「Billboard 要確認」の店舗から寄せられた情報です。ソースURLや電話確認・店頭確認などのエビデンスを確認してから反映してください。
-      </p>
-
-      {pending.length === 0 ? (
-        <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">
-          未処理のBillboard情報提供はありません。
-        </div>
-      ) : (
-        <div className="mt-5 space-y-4">
-          {pending.map(card)}
-        </div>
-      )}
-
-      <details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50">
-        <summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">
-          処理済みの履歴 ({processed.length}件)
-        </summary>
-        <div className="space-y-3 border-t border-gray-200 p-4">
-          {processed.length === 0 ? (
-            <div className="py-3 text-center text-sm text-gray-500">
-              処理済みの履歴はありません。
-            </div>
-          ) : (
-            processed.map(card)
-          )}
-        </div>
-      </details>
-    </div>
-  );
+function BillboardInfoRequestsTab({ requests, stores, processingId, onApprove, onReject, onDeleteProcessed, formatDate }: { requests: BillboardInfoRequest[]; stores: Store[]; processingId: number | null; onApprove: (request: BillboardInfoRequest) => void; onReject: (request: BillboardInfoRequest) => void; onDeleteProcessed: (ids: number[]) => void; formatDate: (value: string) => string; }) {
+  const [selected,setSelected]=useState<number[]>([]); const pending=requests.filter(x=>x.status==="pending"); const processed=requests.filter(x=>x.status!=="pending"); const ids=processed.map(x=>x.id); const all=ids.length>0&&ids.every(id=>selected.includes(id));
+  useEffect(()=>setSelected(c=>c.filter(id=>ids.includes(id))),[requests]); const toggle=(id:number)=>setSelected(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id]); const storeName=(id:number)=>{const x=stores.find(s=>s.id===id);return x?getDisplayStoreName(x):`店舗ID ${id}`};
+  const card=(r:BillboardInfoRequest,selectable=false)=><article key={r.id} className="rounded-2xl border border-[#e5d7e6] bg-white p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex min-w-0 flex-1 items-start gap-3">{selectable&&<SelectionCheckbox checked={selected.includes(r.id)} onChange={()=>toggle(r.id)} label={`Billboard履歴 #${r.id} を選択`} />}<div className="min-w-0 flex-1"><div className="text-lg font-bold">{storeName(r.store_id)}</div><div className="mt-2"><span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-800">{r.proposed_status==="target"?"Billboard 対象":"Billboard 対象外"}</span>{r.status!=="pending"&&<span className={"ml-2 rounded-full px-3 py-1 text-xs font-bold "+(r.status==="approved"?"bg-green-100 text-green-700":"bg-red-100 text-red-700")}>{r.status==="approved"?"承認済み":"却下済み"}</span>}</div><div className="mt-3 text-sm font-bold text-gray-600">確認できるソースURL・エビデンス</div><div className="mt-1 whitespace-pre-wrap break-words rounded-xl bg-[#f8f4f7] p-3 text-sm">{r.evidence}</div><div className="mt-3 text-xs text-gray-500">受付: {formatDate(r.requested_at)}</div>{r.reviewed_at&&<div className="mt-1 text-xs text-gray-500">処理: {formatDate(r.reviewed_at)}</div>}</div></div>{r.status==="pending"&&<div className="flex gap-2"><button disabled={processingId===r.id} onClick={()=>onApprove(r)} className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white">内容確認済み・反映</button><button disabled={processingId===r.id} onClick={()=>onReject(r)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white">却下</button></div>}</div></article>;
+  return <div className="mt-6"><h2 className="text-2xl font-bold">📊 Billboard情報提供</h2><p className="mt-2 text-gray-500">「Billboard 要確認」の店舗から寄せられた情報です。ソースURLや電話確認・店頭確認などのエビデンスを確認してから反映してください。</p>{!pending.length?<div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">未処理のBillboard情報提供はありません。</div>:<div className="mt-5 space-y-4">{pending.map(r=>card(r))}</div>}<details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50"><summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">処理済みの履歴 ({processed.length}件)</summary><div className="border-t border-gray-200 p-4">{processed.length>0&&<BulkSelectionBar count={selected.length} allSelected={all} onToggleAll={()=>setSelected(all?[]:ids)}><button disabled={!selected.length} onClick={()=>onDeleteProcessed(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を完全削除</button></BulkSelectionBar>}<div className="mt-3 space-y-3">{processed.length?processed.map(r=>card(r,true)):<div className="py-3 text-center text-sm text-gray-500">処理済みの履歴はありません。</div>}</div></div></details></div>;
 }
 
 function StoreRequestsTab({
@@ -3031,6 +2686,7 @@ function StoreRequestsTab({
   onApprove,
   onReject,
   processingId,
+  onDeleteProcessed,
   formatDate,
 }: {
   requests: StoreRequest[];
@@ -3046,6 +2702,7 @@ function StoreRequestsTab({
     request: StoreRequest
   ) => void;
   processingId: number | null;
+  onDeleteProcessed: (ids: number[]) => void;
   formatDate: (
     value: string
   ) => string;
@@ -3059,6 +2716,8 @@ function StoreRequestsTab({
     [requests]
   );
 
+  const [selectedProcessed, setSelectedProcessed] = useState<number[]>([]);
+
   const processedRequests = useMemo(
     () =>
       requests.filter(
@@ -3067,6 +2726,11 @@ function StoreRequestsTab({
       ),
     [requests]
   );
+
+  const processedIds = processedRequests.map((request) => request.id);
+  const allProcessedSelected = processedIds.length > 0 && processedIds.every((id) => selectedProcessed.includes(id));
+  useEffect(() => { setSelectedProcessed((current) => current.filter((id) => processedIds.includes(id))); }, [requests]);
+  const toggleProcessed = (id: number) => setSelectedProcessed((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
 
   return (
     <div className="mt-6">
@@ -3409,7 +3073,9 @@ function StoreRequestsTab({
             履歴: 承認済み・却下 ({processedRequests.length}件)
           </summary>
 
-          <div className="space-y-3 border-t border-gray-200 p-4">
+          <div className="border-t border-gray-200 p-4">
+            <BulkSelectionBar count={selectedProcessed.length} allSelected={allProcessedSelected} onToggleAll={() => setSelectedProcessed(allProcessedSelected ? [] : processedIds)}><button disabled={!selectedProcessed.length} onClick={() => onDeleteProcessed(selectedProcessed)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を完全削除</button></BulkSelectionBar>
+            <div className="mt-3 space-y-3">
             {processedRequests.map(
               (request) => (
                 <details
@@ -3418,6 +3084,7 @@ function StoreRequestsTab({
                 >
                   <summary className="cursor-pointer select-none p-4">
                     <div className="inline-flex flex-wrap items-center gap-2">
+                      <SelectionCheckbox checked={selectedProcessed.includes(request.id)} onChange={() => toggleProcessed(request.id)} label={`店舗リクエスト履歴 #${request.id} を選択`} />
                       <span className="font-bold">
                         {request.chain_name
                           ? `${request.chain_name} `
@@ -3463,6 +3130,7 @@ function StoreRequestsTab({
                 </details>
               )
             )}
+            </div>
           </div>
         </details>
       )}
@@ -3535,6 +3203,27 @@ function AdminInput({
   );
 }
 
+function SelectionCheckbox({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
+  return (
+    <label className="inline-flex shrink-0 cursor-pointer items-center gap-2" onClick={(event) => event.stopPropagation()}>
+      <input type="checkbox" checked={checked} onChange={onChange} className="h-5 w-5 accent-[#6f4b89]" aria-label={label} />
+    </label>
+  );
+}
+
+function BulkSelectionBar({ count, allSelected, onToggleAll, children }: { count: number; allSelected: boolean; onToggleAll: () => void; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#e4d7e3] bg-[#f8f3f7] p-3">
+      <label className="inline-flex cursor-pointer items-center gap-2 font-bold text-[#6d4966]">
+        <input type="checkbox" checked={allSelected} onChange={onToggleAll} className="h-5 w-5 accent-[#6f4b89]" />
+        全選択
+      </label>
+      <span className="text-sm text-gray-500">選択中 {count}件</span>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </div>
+  );
+}
+
 function AdminTabButton({
   active,
   onClick,
@@ -3560,224 +3249,34 @@ function AdminTabButton({
 }
 
 function ReportsTab({
-  reports,
-  stores,
-  products,
-  deletingId,
-  onDelete,
-  formatDate,
+  reports, stores, products, deletingId, onDelete, onBulkDelete, formatDate,
 }: {
-  reports: InventoryReport[];
-  stores: Store[];
-  products: Product[];
-  deletingId: number | null;
-  onDelete: (
-    report: InventoryReport
-  ) => void;
-  formatDate: (
-    value: string
-  ) => string;
+  reports: InventoryReport[]; stores: Store[]; products: Product[]; deletingId: number | null;
+  onDelete: (report: InventoryReport) => void; onBulkDelete: (ids: number[]) => void; formatDate: (value: string) => string;
 }) {
-  if (reports.length === 0) {
-    return (
-      <div className="mt-8 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
-        在庫投稿はありません。
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-6 space-y-4">
-      {reports.map((report) => {
-        const store =
-          stores.find(
-            (item) =>
-              item.id ===
-              report.store_id
-          );
-
-        const product =
-          products.find(
-            (item) =>
-              item.id ===
-              report.product_id
-          );
-
-        return (
-          <article
-            key={report.id}
-            className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-5">
-              <div>
-                <div className="text-lg font-bold">
-                  {store
-                    ? getDisplayStoreName(
-                        store
-                      )
-                    : "店舗不明"}
-                </div>
-
-                <div className="mt-3">
-                  {product?.name ??
-                    "商品不明"}
-                </div>
-
-                <div className="mt-1 font-bold text-[#b95489]">
-                  {report.quantity ===
-                  0
-                    ? "在庫なし"
-                    : `${report.quantity}枚`}
-                </div>
-
-                <div className="mt-1 text-sm text-gray-500">
-                  {formatDate(
-                    report.created_at
-                  )}
-                </div>
-
-                {report.comment && (
-                  <div className="mt-3 rounded-xl bg-white p-3">
-                    💬{" "}
-                    {report.comment}
-                  </div>
-                )}
-              </div>
-
-              <button
-                type="button"
-                disabled={
-                  deletingId ===
-                  report.id
-                }
-                onClick={() =>
-                  onDelete(report)
-                }
-                className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white disabled:opacity-50"
-              >
-                削除
-              </button>
-            </div>
-          </article>
-        );
-      })}
-    </div>
-  );
+  const [selected, setSelected] = useState<number[]>([]);
+  const ids = reports.map((r) => r.id);
+  const allSelected = ids.length > 0 && ids.every((id) => selected.includes(id));
+  useEffect(() => { setSelected((current) => current.filter((id) => ids.includes(id))); }, [reports]);
+  const toggle = (id: number) => setSelected((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
+  if (!reports.length) return <div className="mt-8 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">在庫投稿はありません。</div>;
+  return <div className="mt-6 space-y-4">
+    <BulkSelectionBar count={selected.length} allSelected={allSelected} onToggleAll={() => setSelected(allSelected ? [] : ids)}>
+      <button type="button" disabled={!selected.length} onClick={() => onBulkDelete(selected)} className="rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-40">選択した投稿を削除</button>
+    </BulkSelectionBar>
+    {reports.map((report) => {
+      const store=stores.find((x)=>x.id===report.store_id); const product=products.find((x)=>x.id===report.product_id);
+      return <article key={report.id} className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"><div className="flex flex-wrap items-start justify-between gap-5"><div className="flex min-w-0 flex-1 items-start gap-3"><SelectionCheckbox checked={selected.includes(report.id)} onChange={()=>toggle(report.id)} label={`投稿 #${report.id} を選択`} /><div><div className="text-lg font-bold">{store?getDisplayStoreName(store):"店舗不明"}</div><div className="mt-3">{product?.name??"商品不明"}</div><div className="mt-1 font-bold text-[#b95489]">{report.quantity===0?"在庫なし":`${report.quantity}枚`}</div><div className="mt-1 text-sm text-gray-500">{formatDate(report.created_at)}</div>{report.comment&&<div className="mt-3 rounded-xl bg-white p-3">💬 {report.comment}</div>}</div></div><button type="button" disabled={deletingId===report.id} onClick={()=>onDelete(report)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white disabled:opacity-50">削除</button></div></article>;
+    })}
+  </div>;
 }
 
-function DeletionHistoryTab({
-  deletions,
-  stores,
-  products,
-  restoringId,
-  onRestore,
-  formatDate,
-}: {
-  deletions: DeletionHistory[];
-  stores: Store[];
-  products: Product[];
-  restoringId: number | null;
-  onRestore: (
-    deletion: DeletionHistory
-  ) => void;
-  formatDate: (
-    value: string
-  ) => string;
+function DeletionHistoryTab({ deletions, stores, products, restoringId, onRestore, onBulkRestore, onDeleteHistory, formatDate }: {
+  deletions: DeletionHistory[]; stores: Store[]; products: Product[]; restoringId: number | null; onRestore: (deletion: DeletionHistory) => void; onBulkRestore: (ids: number[]) => void; onDeleteHistory: (ids: number[]) => void; formatDate: (value: string) => string;
 }) {
-  return (
-    <div className="mt-6 space-y-4">
-      {deletions.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
-          削除履歴はありません。
-        </div>
-      )}
-
-      {deletions.map(
-        (deletion) => {
-          const store =
-            stores.find(
-              (item) =>
-                item.id ===
-                deletion.store_id
-            );
-
-          const product =
-            products.find(
-              (item) =>
-                item.id ===
-                deletion.product_id
-            );
-
-          const restored =
-            Boolean(
-              deletion.restored_at
-            );
-
-          return (
-            <article
-              key={deletion.id}
-              className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-5">
-                <div>
-                  <div className="text-lg font-bold">
-                    {store
-                      ? getDisplayStoreName(
-                          store
-                        )
-                      : "店舗不明"}
-                  </div>
-
-                  <div className="mt-2">
-                    {product?.name ??
-                      "商品不明"}
-                  </div>
-
-                  <div className="mt-1 font-bold">
-                    {deletion.quantity ===
-                    0
-                      ? "在庫なし"
-                      : `${deletion.quantity}枚`}
-                  </div>
-
-                  <div className="mt-2 text-sm text-gray-500">
-                    削除:{" "}
-                    {formatDate(
-                      deletion.deleted_at
-                    )}
-                  </div>
-
-                  {restored && (
-                    <div className="mt-1 text-sm font-bold text-green-700">
-                      復元済み
-                    </div>
-                  )}
-                </div>
-
-                {!restored && (
-                  <button
-                    type="button"
-                    disabled={
-                      restoringId ===
-                      deletion.id
-                    }
-                    onClick={() =>
-                      onRestore(
-                        deletion
-                      )
-                    }
-                    className="rounded-xl bg-[#6f4b89] px-5 py-3 font-bold text-white disabled:opacity-50"
-                  >
-                    復元
-                  </button>
-                )}
-              </div>
-            </article>
-          );
-        }
-      )}
-    </div>
-  );
+  const [selected,setSelected]=useState<number[]>([]); const ids=deletions.map(d=>d.id); const all=ids.length>0&&ids.every(id=>selected.includes(id));
+  useEffect(()=>setSelected(c=>c.filter(id=>ids.includes(id))),[deletions]); const toggle=(id:number)=>setSelected(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id]); const restorable=selected.filter(id=>!deletions.find(d=>d.id===id)?.restored_at);
+  return <div className="mt-6 space-y-4">{deletions.length>0&&<BulkSelectionBar count={selected.length} allSelected={all} onToggleAll={()=>setSelected(all?[]:ids)}><button disabled={!restorable.length} onClick={()=>onBulkRestore(restorable)} className="rounded-xl bg-[#6f4b89] px-4 py-2 font-bold text-white disabled:opacity-40">選択した未復元を一括復元</button><button disabled={!selected.length} onClick={()=>onDeleteHistory(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を完全削除</button></BulkSelectionBar>}{!deletions.length&&<div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">削除履歴はありません。</div>}{deletions.map(d=>{const store=stores.find(x=>x.id===d.store_id);const product=products.find(x=>x.id===d.product_id);const restored=Boolean(d.restored_at);return <article key={d.id} className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"><div className="flex flex-wrap items-start justify-between gap-5"><div className="flex items-start gap-3"><SelectionCheckbox checked={selected.includes(d.id)} onChange={()=>toggle(d.id)} label={`削除履歴 #${d.id} を選択`} /><div><div className="text-lg font-bold">{store?getDisplayStoreName(store):"店舗不明"}</div><div className="mt-2">{product?.name??"商品不明"}</div><div className="mt-1 font-bold">{d.quantity===0?"在庫なし":`${d.quantity}枚`}</div><div className="mt-2 text-sm text-gray-500">削除: {formatDate(d.deleted_at)}</div>{restored&&<div className="mt-1 text-sm font-bold text-green-700">復元済み</div>}</div></div>{!restored&&<button disabled={restoringId===d.id} onClick={()=>onRestore(d)} className="rounded-xl bg-[#6f4b89] px-5 py-3 font-bold text-white disabled:opacity-50">復元</button>}</div></article>})}</div>;
 }
 
 function SalesTab({
