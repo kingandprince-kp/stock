@@ -73,8 +73,7 @@ type BillboardInfoRequest = {
   id: number;
   store_id: number;
   proposed_status: "target" | "not_target";
-  source_url: string;
-  comment: string | null;
+  evidence: string;
   status: "pending" | "approved" | "rejected";
   requested_at: string;
   reviewed_at: string | null;
@@ -2818,21 +2817,12 @@ function BillboardInfoRequestsTab({
               )}
             </div>
 
-            <div className="mt-3 text-sm font-bold text-gray-600">ソース</div>
-            <a
-              href={request.source_url}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-1 block break-all text-sm font-bold text-blue-700 underline"
-            >
-              {request.source_url}
-            </a>
-
-            {request.comment && (
-              <div className="mt-3 rounded-xl bg-[#f8f4f7] p-3 text-sm">
-                💬 {request.comment}
-              </div>
-            )}
+            <div className="mt-3 text-sm font-bold text-gray-600">
+              確認できるソースURL・エビデンス
+            </div>
+            <div className="mt-1 whitespace-pre-wrap break-words rounded-xl bg-[#f8f4f7] p-3 text-sm">
+              {request.evidence}
+            </div>
 
             <div className="mt-3 text-xs text-gray-500">
               受付: {formatDate(request.requested_at)}
@@ -2852,7 +2842,7 @@ function BillboardInfoRequestsTab({
                 onClick={() => onApprove(request)}
                 className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white disabled:opacity-50"
               >
-                ソース確認済み・反映
+                内容確認済み・反映
               </button>
               <button
                 type="button"
@@ -2873,7 +2863,7 @@ function BillboardInfoRequestsTab({
     <div className="mt-6">
       <h2 className="text-2xl font-bold">📊 Billboard情報提供</h2>
       <p className="mt-2 text-gray-500">
-        「Billboard 要確認」の店舗から寄せられた情報です。ソースを実際に確認してから反映してください。
+        「Billboard 要確認」の店舗から寄せられた情報です。ソースURLや電話確認・店頭確認などのエビデンスを確認してから反映してください。
       </p>
 
       {pending.length === 0 ? (
