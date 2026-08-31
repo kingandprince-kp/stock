@@ -2664,7 +2664,9 @@ function StoreCard({
             Billboard集計対象情報を提供する
           </div>
           <p className="mt-1 text-[10px] leading-5 text-[#6d626c] md:text-sm md:leading-6">
-            公式ページなどのURLのほか、店舗への電話確認・店頭での確認内容なども送信できます。内容を確認後、サイトへ反映します。
+            Billboard集計対象についての情報をお寄せください。
+公式サイトなどのURLのほか、店舗への電話・店頭で確認した情報もご投稿いただけます。
+お寄せいただいた情報は、内容を確認したうえで反映します。確認できる情報が十分でない場合など、反映を見送ることがありますのでご了承ください。
           </p>
 
           <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -2689,14 +2691,14 @@ function StoreCard({
 
           <label className="mt-3 block">
             <div className="mb-1 text-[11px] font-bold text-[#4d434c] md:text-sm">
-              確認できるソースURL・エビデンス <span className="text-red-600">必須</span>
+              確認できるURL・エビデンス <span className="text-red-600">必須</span>
             </div>
             <textarea
               value={billboardEvidence}
               onChange={(event) => setBillboardEvidence(event.target.value)}
               maxLength={1000}
               rows={4}
-              placeholder={"例）https://...\n店舗へ電話で確認。8/31、店員さんよりBillboard集計対象との回答あり。\n店頭掲示でBillboard集計対象と確認。"}
+              placeholder={"例) https://...\n9/1、店舗へ電話で確認。店員さんよりBillboard集計対象との回答あり。\n店頭掲示でBillboard集計対象と確認 など"}
               className="w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] md:rounded-xl md:p-3 md:text-sm"
             />
           </label>
