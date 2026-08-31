@@ -165,6 +165,8 @@ type SalesSummary = {
   updated_at: string;
 };
 
+type BillboardInfoStatus = "target" | "not_target";
+
 type SearchMode = "physical" | "online";
 
 export default function Home() {
@@ -2504,6 +2506,89 @@ function StoreCard({
   formatDate: (dateString: string) => string;
 }) {
   const [open, setOpen] = useState(false);
+  const [billboardInfoOpen, setBillboardInfoOpen] = useState(false);
+  const [billboardProposedStatus, setBillboardProposedStatus] =
+    useState<BillboardInfoStatus>("target");
+  const [billboardSourceUrl, setBillboardSourceUrl] = useState("");
+  const [billboardComment, setBillboardComment] = useState("");
+  const [billboardSubmitting, setBillboardSubmitting] = useState(false);
+  const [billboardMessage, setBillboardMessage] = useState("");
+  const [billboardError, setBillboardError] = useState("");
+
+  async function handleBillboardInfoSubmit() {
+    setBillboardMessage("");
+    setBillboardError("");
+
+    const sourceUrl = billboardSourceUrl.trim();
+    const comment = billboardComment.trim();
+
+    if (sourceUrl === "") {
+      setBillboardError("確認できるソースURLを入力してください。");
+      return;
+    }
+
+    try {
+      const parsed = new URL(sourceUrl);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        throw new Error("invalid protocol");
+      }
+    } catch {
+      setBillboardError("http:// または https:// から始まるURLを入力してください。");
+      return;
+    }
+
+    if (sourceUrl.length > 500) {
+      setBillboardError("ソースURLは500文字以内で入力してください。");
+      return;
+    }
+
+    if (comment.length > 500) {
+      setBillboardError("補足は500文字以内で入力してください。");
+      return;
+    }
+
+    setBillboardSubmitting(true);
+
+    try {
+      let clientId = localStorage.getItem("kp_inventory_client_id");
+
+      if (!clientId) {
+        clientId = crypto.randomUUID();
+        localStorage.setItem("kp_inventory_client_id", clientId);
+      }
+
+      const { error } = await supabase.rpc(
+        "submit_billboard_info_request",
+        {
+          p_store_id: store.id,
+          p_proposed_status: billboardProposedStatus,
+          p_source_url: sourceUrl,
+          p_comment: comment === "" ? null : comment,
+          p_client_id: clientId,
+        }
+      );
+
+      if (error) {
+        setBillboardError(
+          `情報を送信できませんでした: ${error.message}`
+        );
+        return;
+      }
+
+      setBillboardMessage(
+        "情報を送信しました。ソースを確認後、サイトへ反映します。"
+      );
+      setBillboardSourceUrl("");
+      setBillboardComment("");
+    } catch (error) {
+      console.error(error);
+      setBillboardError(
+        "送信中にエラーが発生しました。もう一度お試しください。"
+      );
+    } finally {
+      setBillboardSubmitting(false);
+    }
+  }
 
   const storeReports = products
     .map((product) =>
@@ -2566,9 +2651,22 @@ function StoreCard({
           )}
 
           {store.billboard_status === "check_store" && (
-            <span className="whitespace-nowrap rounded-md border border-[#9e85b8] bg-[#eee7f4] px-2 py-0.5 text-[9px] font-bold text-[#5b486b] md:rounded-xl md:px-4 md:py-2 md:text-base">
-              Billboard 要確認
-            </span>
+            <>
+              <span className="whitespace-nowrap rounded-md border border-[#9e85b8] bg-[#eee7f4] px-2 py-0.5 text-[9px] font-bold text-[#5b486b] md:rounded-xl md:px-4 md:py-2 md:text-base">
+                Billboard 要確認
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setBillboardInfoOpen((current) => !current);
+                  setBillboardMessage("");
+                  setBillboardError("");
+                }}
+                className="whitespace-nowrap rounded-md border border-[#9e85b8] bg-white px-2 py-0.5 text-[9px] font-bold text-[#5b486b] md:rounded-xl md:px-3 md:py-2 md:text-sm"
+              >
+                情報提供する
+              </button>
+            </>
           )}
 
           {store.billboard_status === "not_target" && (
@@ -2578,6 +2676,94 @@ function StoreCard({
           )}
         </div>
       </div>
+
+      {store.billboard_status === "check_store" && billboardInfoOpen && (
+        <div className="mt-3 rounded-xl border border-[#d9c8df] bg-[#faf7fc] p-3 md:mt-4 md:rounded-2xl md:p-4">
+          <div className="text-sm font-bold text-[#5b486b] md:text-base">
+            Billboard集計対象情報を提供する
+          </div>
+          <p className="mt-1 text-[10px] leading-5 text-[#6d626c] md:text-sm md:leading-6">
+            反映には確認できるソースが必要です。公式ページ・店舗ページなど、根拠を確認できるURLを入力してください。情報のみでは反映できない場合があります。
+          </p>
+
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <label className="block">
+              <div className="mb-1 text-[11px] font-bold text-[#4d434c] md:text-sm">
+                情報の内容
+              </div>
+              <select
+                value={billboardProposedStatus}
+                onChange={(event) =>
+                  setBillboardProposedStatus(
+                    event.target.value as BillboardInfoStatus
+                  )
+                }
+                className="w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] md:rounded-xl md:p-3 md:text-sm"
+              >
+                <option value="target">Billboard 対象</option>
+                <option value="not_target">Billboard 対象外</option>
+              </select>
+            </label>
+
+            <label className="block">
+              <div className="mb-1 text-[11px] font-bold text-[#4d434c] md:text-sm">
+                確認できるソースURL <span className="text-red-600">必須</span>
+              </div>
+              <input
+                type="url"
+                value={billboardSourceUrl}
+                onChange={(event) => setBillboardSourceUrl(event.target.value)}
+                placeholder="https://..."
+                className="w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] md:rounded-xl md:p-3 md:text-sm"
+              />
+            </label>
+          </div>
+
+          <label className="mt-3 block">
+            <div className="mb-1 text-[11px] font-bold text-[#4d434c] md:text-sm">
+              補足（任意）
+            </div>
+            <textarea
+              value={billboardComment}
+              onChange={(event) => setBillboardComment(event.target.value)}
+              maxLength={500}
+              rows={3}
+              placeholder="どこを見れば確認できるか等"
+              className="w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] md:rounded-xl md:p-3 md:text-sm"
+            />
+          </label>
+
+          {billboardError && (
+            <div className="mt-2 rounded-lg bg-red-50 p-2 text-[11px] font-bold text-red-700 md:text-sm">
+              {billboardError}
+            </div>
+          )}
+
+          {billboardMessage && (
+            <div className="mt-2 rounded-lg bg-green-50 p-2 text-[11px] font-bold text-green-700 md:text-sm">
+              {billboardMessage}
+            </div>
+          )}
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={billboardSubmitting}
+              onClick={handleBillboardInfoSubmit}
+              className="rounded-lg bg-[#6d4966] px-4 py-2 text-[11px] font-bold text-white disabled:opacity-50 md:rounded-xl md:text-sm"
+            >
+              {billboardSubmitting ? "送信中…" : "情報を送信"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setBillboardInfoOpen(false)}
+              className="rounded-lg border border-[#d8cad7] bg-white px-4 py-2 text-[11px] font-bold text-[#5b486b] md:rounded-xl md:text-sm"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 在庫 */}
       <div className="mt-3 rounded-xl bg-[#f8f1f7] p-2.5 md:mt-5 md:rounded-2xl md:p-4">

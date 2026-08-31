@@ -69,6 +69,18 @@ type StoreRequest = {
   approved_store_id: number | null;
 };
 
+type BillboardInfoRequest = {
+  id: number;
+  store_id: number;
+  proposed_status: "target" | "not_target";
+  source_url: string;
+  comment: string | null;
+  status: "pending" | "approved" | "rejected";
+  requested_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+};
+
 type BugReport = {
   id: number;
   issue_description: string;
@@ -115,6 +127,7 @@ type AdminTab =
   | "security"
   | "deletions"
   | "requests"
+  | "billboard"
   | "bugs"
   | "sales";
 
@@ -155,6 +168,12 @@ export default function AdminPage() {
 
   const [storeRequests, setStoreRequests] =
     useState<StoreRequest[]>([]);
+
+  const [billboardInfoRequests, setBillboardInfoRequests] =
+    useState<BillboardInfoRequest[]>([]);
+
+  const [billboardProcessingId, setBillboardProcessingId] =
+    useState<number | null>(null);
 
   const [bugReports, setBugReports] =
     useState<BugReport[]>([]);
@@ -322,6 +341,29 @@ export default function AdminPage() {
 
       setStoreRequests(
         (data ?? []) as StoreRequest[]
+      );
+    }, []);
+
+  // =========================================
+  // Billboard情報提供
+  // =========================================
+
+  const loadBillboardInfoRequests =
+    useCallback(async () => {
+      const { data, error } = await supabase.rpc(
+        "get_billboard_info_requests_admin"
+      );
+
+      if (error) {
+        console.error(error);
+        setErrorMessage(
+          `Billboard情報提供を取得できませんでした: ${error.message}`
+        );
+        return;
+      }
+
+      setBillboardInfoRequests(
+        (data ?? []) as BillboardInfoRequest[]
       );
     }, []);
 
@@ -549,6 +591,7 @@ export default function AdminPage() {
         loadSecurityEvents(),
         loadDeletionHistory(),
         loadStoreRequests(),
+        loadBillboardInfoRequests(),
         loadBugReports(),
         loadSalesData(),
       ]);
@@ -559,6 +602,7 @@ export default function AdminPage() {
       loadSecurityEvents,
       loadDeletionHistory,
       loadStoreRequests,
+      loadBillboardInfoRequests,
       loadBugReports,
       loadSalesData,
     ]);
@@ -604,6 +648,7 @@ export default function AdminPage() {
             setSecurityEvents([]);
             setDeletions([]);
             setStoreRequests([]);
+            setBillboardInfoRequests([]);
             setBugReports([]);
             setSalesData(null);
           }
@@ -1070,6 +1115,80 @@ export default function AdminPage() {
   }
 
   // =========================================
+  // Billboard情報提供 承認・却下
+  // =========================================
+
+  async function handleApproveBillboardInfo(
+    request: BillboardInfoRequest
+  ) {
+    const storeName = getStoreName(request.store_id);
+    const statusLabel =
+      request.proposed_status === "target"
+        ? "Billboard 対象"
+        : "Billboard 対象外";
+
+    const confirmed = window.confirm(
+      `${storeName}\n${statusLabel}\n\nソースを確認済みとして、この内容を店舗情報へ反映しますか？`
+    );
+
+    if (!confirmed) return;
+
+    setBillboardProcessingId(request.id);
+    setMessage("");
+    setErrorMessage("");
+
+    const { error } = await supabase.rpc(
+      "approve_billboard_info_request_admin",
+      { p_request_id: request.id }
+    );
+
+    if (error) {
+      setErrorMessage(
+        `Billboard情報を承認できませんでした: ${error.message}`
+      );
+      setBillboardProcessingId(null);
+      return;
+    }
+
+    await loadAdminData();
+    setMessage(
+      `${storeName} を「${statusLabel}」として反映しました。`
+    );
+    setBillboardProcessingId(null);
+  }
+
+  async function handleRejectBillboardInfo(
+    request: BillboardInfoRequest
+  ) {
+    const confirmed = window.confirm(
+      `${getStoreName(request.store_id)}\n\nこのBillboard情報提供を却下しますか？`
+    );
+
+    if (!confirmed) return;
+
+    setBillboardProcessingId(request.id);
+    setMessage("");
+    setErrorMessage("");
+
+    const { error } = await supabase.rpc(
+      "reject_billboard_info_request_admin",
+      { p_request_id: request.id }
+    );
+
+    if (error) {
+      setErrorMessage(
+        `Billboard情報を却下できませんでした: ${error.message}`
+      );
+      setBillboardProcessingId(null);
+      return;
+    }
+
+    await loadBillboardInfoRequests();
+    setMessage("Billboard情報提供を却下しました。");
+    setBillboardProcessingId(null);
+  }
+
+  // =========================================
   // 売上更新
   // =========================================
 
@@ -1267,6 +1386,15 @@ export default function AdminPage() {
       [storeRequests]
     );
 
+  const pendingBillboardInfoCount =
+    useMemo(
+      () =>
+        billboardInfoRequests.filter(
+          (request) => request.status === "pending"
+        ).length,
+      [billboardInfoRequests]
+    );
+
   const uncheckedBugReportCount =
     useMemo(
       () =>
@@ -1404,8 +1532,8 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* 7タブ */}
-          <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-4 lg:grid-cols-7">
+          {/* 8タブ */}
+          <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-4 lg:grid-cols-8">
             <AdminTabButton
               active={
                 activeTab === "reports"
@@ -1476,6 +1604,22 @@ export default function AdminPage() {
                   {
                     pendingRequestCount
                   }
+                </span>
+              )}
+            </AdminTabButton>
+
+            <AdminTabButton
+              active={
+                activeTab === "billboard"
+              }
+              onClick={() =>
+                setActiveTab("billboard")
+              }
+            >
+              📊 Billboard情報
+              {pendingBillboardInfoCount > 0 && (
+                <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
+                  {pendingBillboardInfoCount}
                 </span>
               )}
             </AdminTabButton>
@@ -1607,6 +1751,16 @@ export default function AdminPage() {
               formatDate={
                 formatDate
               }
+            />
+          ) : activeTab ===
+            "billboard" ? (
+            <BillboardInfoRequestsTab
+              requests={billboardInfoRequests}
+              stores={stores}
+              processingId={billboardProcessingId}
+              onApprove={handleApproveBillboardInfo}
+              onReject={handleRejectBillboardInfo}
+              formatDate={formatDate}
             />
           ) : activeTab ===
             "bugs" ? (
@@ -2602,6 +2756,150 @@ function BugInfo({
       <div className="mt-1 font-bold">
         {value || "情報なし"}
       </div>
+    </div>
+  );
+}
+
+function BillboardInfoRequestsTab({
+  requests,
+  stores,
+  processingId,
+  onApprove,
+  onReject,
+  formatDate,
+}: {
+  requests: BillboardInfoRequest[];
+  stores: Store[];
+  processingId: number | null;
+  onApprove: (request: BillboardInfoRequest) => void;
+  onReject: (request: BillboardInfoRequest) => void;
+  formatDate: (value: string) => string;
+}) {
+  const pending = requests.filter((item) => item.status === "pending");
+  const processed = requests.filter((item) => item.status !== "pending");
+
+  const storeName = (storeId: number) => {
+    const store = stores.find((item) => item.id === storeId);
+    return store ? getDisplayStoreName(store) : `店舗ID ${storeId}`;
+  };
+
+  const card = (request: BillboardInfoRequest) => {
+    const proposedLabel =
+      request.proposed_status === "target"
+        ? "Billboard 対象"
+        : "Billboard 対象外";
+
+    return (
+      <article
+        key={request.id}
+        className="rounded-2xl border border-[#e5d7e6] bg-white p-5"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="text-lg font-bold">
+              {storeName(request.store_id)}
+            </div>
+            <div className="mt-2">
+              <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                request.proposed_status === "target"
+                  ? "bg-purple-100 text-purple-800"
+                  : "bg-gray-100 text-gray-700"
+              }`}>
+                {proposedLabel}
+              </span>
+              {request.status !== "pending" && (
+                <span className={`ml-2 rounded-full px-3 py-1 text-xs font-bold ${
+                  request.status === "approved"
+                    ? "bg-green-100 text-green-700"
+                    : "bg-red-100 text-red-700"
+                }`}>
+                  {request.status === "approved" ? "承認済み" : "却下済み"}
+                </span>
+              )}
+            </div>
+
+            <div className="mt-3 text-sm font-bold text-gray-600">ソース</div>
+            <a
+              href={request.source_url}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1 block break-all text-sm font-bold text-blue-700 underline"
+            >
+              {request.source_url}
+            </a>
+
+            {request.comment && (
+              <div className="mt-3 rounded-xl bg-[#f8f4f7] p-3 text-sm">
+                💬 {request.comment}
+              </div>
+            )}
+
+            <div className="mt-3 text-xs text-gray-500">
+              受付: {formatDate(request.requested_at)}
+            </div>
+            {request.reviewed_at && (
+              <div className="mt-1 text-xs text-gray-500">
+                処理: {formatDate(request.reviewed_at)}
+              </div>
+            )}
+          </div>
+
+          {request.status === "pending" && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={processingId === request.id}
+                onClick={() => onApprove(request)}
+                className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white disabled:opacity-50"
+              >
+                ソース確認済み・反映
+              </button>
+              <button
+                type="button"
+                disabled={processingId === request.id}
+                onClick={() => onReject(request)}
+                className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white disabled:opacity-50"
+              >
+                却下
+              </button>
+            </div>
+          )}
+        </div>
+      </article>
+    );
+  };
+
+  return (
+    <div className="mt-6">
+      <h2 className="text-2xl font-bold">📊 Billboard情報提供</h2>
+      <p className="mt-2 text-gray-500">
+        「Billboard 要確認」の店舗から寄せられた情報です。ソースを実際に確認してから反映してください。
+      </p>
+
+      {pending.length === 0 ? (
+        <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">
+          未処理のBillboard情報提供はありません。
+        </div>
+      ) : (
+        <div className="mt-5 space-y-4">
+          {pending.map(card)}
+        </div>
+      )}
+
+      <details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50">
+        <summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">
+          処理済みの履歴 ({processed.length}件)
+        </summary>
+        <div className="space-y-3 border-t border-gray-200 p-4">
+          {processed.length === 0 ? (
+            <div className="py-3 text-center text-sm text-gray-500">
+              処理済みの履歴はありません。
+            </div>
+          ) : (
+            processed.map(card)
+          )}
+        </div>
+      </details>
     </div>
   );
 }
