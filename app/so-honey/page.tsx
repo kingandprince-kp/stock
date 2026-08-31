@@ -240,6 +240,34 @@ const [bugAutoDetect, setBugAutoDetect] = useState(false);
     setIsAndroid(/Android/i.test(navigator.userAgent));
   }, []);
 
+  // 管理者向けアクセス集計。IPアドレスは保存せず、
+  // ブラウザ識別子は日別ユニーク数の重複判定にだけ使用する。
+  useEffect(() => {
+    async function recordPageAccess() {
+      try {
+        let clientId = localStorage.getItem("kp_inventory_client_id");
+
+        if (!clientId) {
+          clientId = crypto.randomUUID();
+          localStorage.setItem("kp_inventory_client_id", clientId);
+        }
+
+        const { error } = await supabase.rpc("record_page_access", {
+          p_path: window.location.pathname,
+          p_client_id: clientId,
+        });
+
+        if (error) {
+          console.error("record_page_access error:", error);
+        }
+      } catch (error) {
+        console.error("record_page_access error:", error);
+      }
+    }
+
+    void recordPageAccess();
+  }, []);
+
   useEffect(() => {
   const siteKey =
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -2558,7 +2586,7 @@ function StoreCard({
       }
 
       setBillboardMessage(
-        "情報を送信しました。内容を確認後、サイトへ反映します。"
+        "情報をお寄せいただき、ありがとうございました！内容を確認のうえ、サイトへ反映いたします。在庫チェッカーへのご協力、ありがとうございます☺️"
       );
       setBillboardEvidence("");
     } catch (error) {
@@ -2660,13 +2688,11 @@ function StoreCard({
 
       {store.billboard_status === "check_store" && billboardInfoOpen && (
         <div className="mt-3 rounded-xl border border-[#d9c8df] bg-[#faf7fc] p-3 md:mt-4 md:rounded-2xl md:p-4">
-          <div className="text-sm font-bold text-[#5b486b] md:text-base">
+          <div className="text-[11px] font-bold text-[#5b486b] md:text-sm">
             Billboard集計対象情報を提供する
           </div>
           <p className="mt-1 text-[10px] leading-5 text-[#6d626c] md:text-sm md:leading-6">
-            Billboard集計対象についての情報をお寄せください。
-公式サイトなどのURLのほか、店舗への電話・店頭で確認した情報もご投稿いただけます。
-お寄せいただいた情報は、内容を確認したうえで反映します。確認できる情報が十分でない場合など、反映を見送ることがありますのでご了承ください。
+            公式ページなどのURLのほか、店舗への電話確認・店頭での確認内容なども送信できます。内容を確認後、サイトへ反映します。
           </p>
 
           <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -2691,14 +2717,14 @@ function StoreCard({
 
           <label className="mt-3 block">
             <div className="mb-1 text-[11px] font-bold text-[#4d434c] md:text-sm">
-              確認できるURL・エビデンス <span className="text-red-600">必須</span>
+              確認できるソースURL・エビデンス <span className="text-red-600">必須</span>
             </div>
             <textarea
               value={billboardEvidence}
               onChange={(event) => setBillboardEvidence(event.target.value)}
               maxLength={1000}
               rows={4}
-              placeholder={"例) https://...\n9/1、店舗へ電話で確認。店員さんよりBillboard集計対象との回答あり。\n店頭掲示でBillboard集計対象と確認 など"}
+              placeholder={"例）https://...\n店舗へ電話で確認。8/31、店員さんよりBillboard集計対象との回答あり。\n店頭掲示でBillboard集計対象と確認。"}
               className="w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] md:rounded-xl md:p-3 md:text-sm"
             />
           </label>

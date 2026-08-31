@@ -120,6 +120,13 @@ type SalesSummary = {
   updated_at: string;
 };
 
+type AccessDaily = {
+  access_date: string;
+  path: string;
+  views: number;
+  unique_visitors: number;
+};
+
 type AdminTab =
   | "reports"
   | "review"
@@ -128,6 +135,7 @@ type AdminTab =
   | "requests"
   | "billboard"
   | "bugs"
+  | "access"
   | "sales";
 
 type RequestEdit = {
@@ -188,6 +196,9 @@ export default function AdminPage() {
 
   const [salesData, setSalesData] =
     useState<SalesSummary | null>(null);
+
+  const [accessDaily, setAccessDaily] =
+    useState<AccessDaily[]>([]);
 
   const [todaySales, setTodaySales] =
     useState("");
@@ -501,6 +512,23 @@ export default function AdminPage() {
       }
     }, []);
 
+  const loadAccessData =
+    useCallback(async () => {
+      const { data, error } = await supabase.rpc(
+        "get_page_access_admin",
+        { p_days: 30 }
+      );
+
+      if (error) {
+        setErrorMessage(
+          `アクセス数を取得できませんでした: ${error.message}`
+        );
+        return;
+      }
+
+      setAccessDaily((data ?? []) as AccessDaily[]);
+    }, []);
+
   // =========================================
   // 管理画面全体読み込み
   // =========================================
@@ -592,6 +620,7 @@ export default function AdminPage() {
         loadStoreRequests(),
         loadBillboardInfoRequests(),
         loadBugReports(),
+        loadAccessData(),
         loadSalesData(),
       ]);
 
@@ -603,6 +632,7 @@ export default function AdminPage() {
       loadStoreRequests,
       loadBillboardInfoRequests,
       loadBugReports,
+      loadAccessData,
       loadSalesData,
     ]);
 
@@ -1531,8 +1561,8 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* 8タブ */}
-          <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-4 lg:grid-cols-8">
+          {/* 9タブ */}
+          <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-3 lg:grid-cols-9">
             <AdminTabButton
               active={
                 activeTab === "reports"
@@ -1637,6 +1667,17 @@ export default function AdminPage() {
                   {uncheckedBugReportCount}
                 </span>
               )}
+            </AdminTabButton>
+
+            <AdminTabButton
+              active={
+                activeTab === "access"
+              }
+              onClick={() =>
+                setActiveTab("access")
+              }
+            >
+              👀 アクセス
             </AdminTabButton>
 
             <AdminTabButton
@@ -1769,6 +1810,11 @@ export default function AdminPage() {
               onCheck={handleCheckBugReport}
               formatDate={formatDate}
             />
+          ) : activeTab ===
+            "access" ? (
+            <AccessTab
+              rows={accessDaily}
+            />
           ) : (
             <SalesTab
               salesData={salesData}
@@ -1810,6 +1856,89 @@ export default function AdminPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function AccessTab({
+  rows,
+}: {
+  rows: AccessDaily[];
+}) {
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
+  const todayRows = rows.filter((row) => row.access_date === today);
+  const todayViews = todayRows.reduce((sum, row) => sum + Number(row.views), 0);
+  const todayUnique = todayRows.reduce(
+    (sum, row) => sum + Number(row.unique_visitors),
+    0
+  );
+  const totalViews = rows.reduce((sum, row) => sum + Number(row.views), 0);
+
+  const byDate = Array.from(
+    rows.reduce((map, row) => {
+      const current = map.get(row.access_date) ?? { views: 0, unique: 0 };
+      current.views += Number(row.views);
+      current.unique += Number(row.unique_visitors);
+      map.set(row.access_date, current);
+      return map;
+    }, new Map<string, { views: number; unique: number }>())
+  ).sort(([a], [b]) => b.localeCompare(a));
+
+  return (
+    <div className="mt-8">
+      <h2 className="text-2xl font-bold">👀 アクセス数</h2>
+      <p className="mt-2 text-sm text-gray-600">
+        管理画面だけに表示されます。PVはページ表示回数、訪問者数は同じブラウザを日ごとに重複除外した目安です。IPアドレスはアクセス集計には保存しません。
+      </p>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border bg-white p-5">
+          <div className="text-sm text-gray-500">今日のPV</div>
+          <div className="mt-1 text-3xl font-bold">{todayViews.toLocaleString()}</div>
+        </div>
+        <div className="rounded-2xl border bg-white p-5">
+          <div className="text-sm text-gray-500">今日の訪問者数</div>
+          <div className="mt-1 text-3xl font-bold">{todayUnique.toLocaleString()}</div>
+        </div>
+        <div className="rounded-2xl border bg-white p-5">
+          <div className="text-sm text-gray-500">直近30日のPV</div>
+          <div className="mt-1 text-3xl font-bold">{totalViews.toLocaleString()}</div>
+        </div>
+      </div>
+
+      <div className="mt-6 overflow-x-auto rounded-2xl border bg-white">
+        <table className="w-full min-w-[520px] text-left text-sm">
+          <thead className="bg-[#f5edf4]">
+            <tr>
+              <th className="p-3">日付</th>
+              <th className="p-3 text-right">PV</th>
+              <th className="p-3 text-right">訪問者数</th>
+            </tr>
+          </thead>
+          <tbody>
+            {byDate.map(([date, value]) => (
+              <tr key={date} className="border-t">
+                <td className="p-3">{date}</td>
+                <td className="p-3 text-right">{value.views.toLocaleString()}</td>
+                <td className="p-3 text-right">{value.unique.toLocaleString()}</td>
+              </tr>
+            ))}
+            {byDate.length === 0 && (
+              <tr>
+                <td colSpan={3} className="p-6 text-center text-gray-500">
+                  まだアクセス記録はありません。
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
