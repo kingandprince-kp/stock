@@ -780,7 +780,7 @@ setLoading(false);
     }
 
     setSubmitMessage(
-      "在庫情報を投稿しました。"
+      "在庫情報を投稿しました。在庫チェッカーへのご協力、ありがとうございます!"
     );
 
     setReportQuantity("");
@@ -2586,7 +2586,7 @@ function StoreCard({
       }
 
       setBillboardMessage(
-        "情報をお寄せいただき、ありがとうございました！内容を確認のうえ、サイトへ反映いたします。在庫チェッカーへのご協力、ありがとうございます☺️"
+        "情報を送信しました。内容を確認のうえ、サイトへ反映いたします。在庫チェッカーへのご協力、ありがとうございます。"
       );
       setBillboardEvidence("");
     } catch (error) {
