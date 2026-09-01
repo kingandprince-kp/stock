@@ -98,6 +98,16 @@ type BugReport = {
   checked_at: string | null;
 };
 
+type StoreChangeHistory = {
+  id: number;
+  store_id: number;
+  action_type: "UPDATE" | "DELETE";
+  old_data: Record<string, unknown>;
+  new_data: Record<string, unknown> | null;
+  changed_by: string | null;
+  changed_at: string;
+};
+
 type Store = {
   id: number;
   name: string;
@@ -132,6 +142,7 @@ type AdminTab =
   | "review"
   | "security"
   | "deletions"
+  | "store-history"
   | "requests"
   | "billboard"
   | "bugs"
@@ -172,6 +183,9 @@ export default function AdminPage() {
 
   const [deletions, setDeletions] =
     useState<DeletionHistory[]>([]);
+
+  const [storeChangeHistory, setStoreChangeHistory] =
+    useState<StoreChangeHistory[]>([]);
 
   const [storeRequests, setStoreRequests] =
     useState<StoreRequest[]>([]);
@@ -325,6 +339,31 @@ export default function AdminPage() {
 
       setDeletions(
         (data ?? []) as DeletionHistory[]
+      );
+    }, []);
+
+  // =========================================
+  // 店舗変更・削除履歴
+  // =========================================
+
+  const loadStoreChangeHistory =
+    useCallback(async () => {
+      const { data, error } = await supabase
+        .from("store_change_history")
+        .select("id, store_id, action_type, old_data, new_data, changed_by, changed_at")
+        .order("changed_at", { ascending: false })
+        .limit(500);
+
+      if (error) {
+        console.error(error);
+        setErrorMessage(
+          `店舗変更履歴を取得できませんでした: ${error.message}`
+        );
+        return;
+      }
+
+      setStoreChangeHistory(
+        (data ?? []) as StoreChangeHistory[]
       );
     }, []);
 
@@ -617,6 +656,7 @@ export default function AdminPage() {
         loadReviewReports(),
         loadSecurityEvents(),
         loadDeletionHistory(),
+        loadStoreChangeHistory(),
         loadStoreRequests(),
         loadBillboardInfoRequests(),
         loadBugReports(),
@@ -629,6 +669,7 @@ export default function AdminPage() {
       loadReviewReports,
       loadSecurityEvents,
       loadDeletionHistory,
+      loadStoreChangeHistory,
       loadStoreRequests,
       loadBillboardInfoRequests,
       loadBugReports,
@@ -676,6 +717,7 @@ export default function AdminPage() {
             setReviewReports([]);
             setSecurityEvents([]);
             setDeletions([]);
+            setStoreChangeHistory([]);
             setStoreRequests([]);
             setBillboardInfoRequests([]);
             setBugReports([]);
@@ -1642,8 +1684,8 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* 9タブ */}
-          <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-3 lg:grid-cols-9">
+          {/* 10タブ */}
+          <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-3 lg:grid-cols-10">
             <AdminTabButton
               active={
                 activeTab === "reports"
@@ -1694,6 +1736,13 @@ export default function AdminPage() {
               }
             >
               🗑️ 削除履歴
+            </AdminTabButton>
+
+            <AdminTabButton
+              active={activeTab === "store-history"}
+              onClick={() => setActiveTab("store-history")}
+            >
+              🏪 店舗履歴
             </AdminTabButton>
 
             <AdminTabButton
@@ -1850,6 +1899,12 @@ export default function AdminPage() {
               }
             />
           ) : activeTab ===
+            "store-history" ? (
+            <StoreChangeHistoryTab
+              history={storeChangeHistory}
+              formatDate={formatDate}
+            />
+          ) : activeTab ===
             "requests" ? (
             <StoreRequestsTab
               requests={
@@ -1944,6 +1999,148 @@ export default function AdminPage() {
   );
 }
 
+function StoreChangeHistoryTab({
+  history,
+  formatDate,
+}: {
+  history: StoreChangeHistory[];
+  formatDate: (value: string) => string;
+}) {
+  const fieldLabels: Record<string, string> = {
+    name: "店舗名",
+    chain_name: "チェーン名",
+    prefecture: "都道府県",
+    city: "市区町村",
+    store_type: "店舗種別",
+    address: "住所",
+    phone: "電話番号",
+    business_hours: "営業時間",
+    official_url: "公式店舗URL",
+    online_url: "オンラインURL",
+    oricon_target: "オリコン",
+    billboard_status: "Billboard",
+    is_active: "有効状態",
+    source: "登録元",
+  };
+
+  const ignoredFields = new Set(["id", "created_at", "updated_at"]);
+
+  const displayValue = (value: unknown) => {
+    if (value === null || value === undefined || value === "") return "－";
+    if (typeof value === "boolean") return value ? "はい" : "いいえ";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+  };
+
+  const storeName = (row: StoreChangeHistory) => {
+    const data = row.new_data ?? row.old_data;
+    const name = displayValue(data?.name);
+    const chain = displayValue(data?.chain_name);
+    if (chain === "－" || name.includes(chain)) return name;
+    return `${chain} ${name}`;
+  };
+
+  const changes = (row: StoreChangeHistory) => {
+    if (row.action_type === "DELETE" || !row.new_data) return [];
+    const keys = Array.from(
+      new Set([...Object.keys(row.old_data ?? {}), ...Object.keys(row.new_data ?? {})])
+    );
+    return keys
+      .filter((key) => !ignoredFields.has(key))
+      .filter((key) => JSON.stringify(row.old_data?.[key]) !== JSON.stringify(row.new_data?.[key]));
+  };
+
+  return (
+    <div className="mt-6">
+      <h2 className="text-2xl font-bold">🏪 店舗変更・削除履歴</h2>
+      <p className="mt-2 text-gray-500">
+        stores の変更・削除を自動記録しています。削除された店舗も、削除直前の情報を確認できます。
+      </p>
+
+      {history.length === 0 ? (
+        <div className="mt-6 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
+          店舗の変更・削除履歴はまだありません。
+        </div>
+      ) : (
+        <div className="mt-6 space-y-3">
+          {history.map((row) => {
+            const changedFields = changes(row);
+            return (
+              <details key={row.id} className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc]">
+                <summary className="cursor-pointer select-none p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-lg font-bold">{storeName(row)}</span>
+                        <span className={`rounded-full px-3 py-1 text-xs font-bold ${row.action_type === "DELETE" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"}`}>
+                          {row.action_type === "DELETE" ? "削除" : "変更"}
+                        </span>
+                        <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-600">
+                          店舗ID {row.store_id}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-sm text-gray-500">{formatDate(row.changed_at)}</div>
+                      {row.action_type === "UPDATE" && (
+                        <div className="mt-2 text-sm text-gray-600">
+                          変更項目: {changedFields.length ? changedFields.map((key) => fieldLabels[key] ?? key).join("、") : "詳細を確認"}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-sm font-bold text-gray-500">詳細 ▼</div>
+                  </div>
+                </summary>
+
+                <div className="border-t border-[#eaddea] p-4">
+                  {row.action_type === "DELETE" ? (
+                    <div>
+                      <div className="mb-3 font-bold text-red-700">削除直前の店舗情報</div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {Object.entries(row.old_data ?? {})
+                          .filter(([key]) => !ignoredFields.has(key))
+                          .map(([key, value]) => (
+                            <div key={key} className="rounded-xl bg-white p-3">
+                              <div className="text-xs font-bold text-gray-500">{fieldLabels[key] ?? key}</div>
+                              <div className="mt-1 break-words font-bold">{displayValue(value)}</div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  ) : changedFields.length === 0 ? (
+                    <div className="text-gray-500">変更内容を特定できませんでした。</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {changedFields.map((key) => (
+                        <div key={key} className="rounded-xl bg-white p-4">
+                          <div className="text-sm font-bold text-gray-600">{fieldLabels[key] ?? key}</div>
+                          <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
+                            <div className="rounded-lg bg-red-50 p-3">
+                              <div className="text-xs font-bold text-red-600">変更前</div>
+                              <div className="mt-1 break-words">{displayValue(row.old_data?.[key])}</div>
+                            </div>
+                            <div className="text-center font-bold text-gray-400">→</div>
+                            <div className="rounded-lg bg-green-50 p-3">
+                              <div className="text-xs font-bold text-green-700">変更後</div>
+                              <div className="mt-1 break-words">{displayValue(row.new_data?.[key])}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-4 text-xs text-gray-500">
+                    操作者: {row.changed_by ?? "SQL Editor / システム処理"} ・ 履歴ID #{row.id}
+                  </div>
+                </div>
+              </details>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AccessTab({
   rows,
 }: {
@@ -2027,57 +2224,6 @@ function AccessTab({
   );
 }
 
-
-function getPendingAlert(reason: string | null) {
-  const text = reason ?? "";
-
-  if (
-    text.includes("連続投稿による自動保留") ||
-    text.includes("公開後に自動で保留")
-  ) {
-    return {
-      label: "🚨 連続投稿による自動保留",
-      detail: text.includes("公開後に自動で保留")
-        ? "公開後に自動で保留へ変更"
-        : null,
-      boxClass: "border-red-300 bg-red-50 text-red-800",
-      badgeClass: "bg-red-600 text-white",
-    };
-  }
-
-  if (
-    text.includes("大量在庫") ||
-    text.includes("50枚以上")
-  ) {
-    return {
-      label: "⚠️ 大量在庫（50枚以上）",
-      detail: null,
-      boxClass: "border-amber-300 bg-amber-50 text-amber-900",
-      badgeClass: "bg-amber-500 text-white",
-    };
-  }
-
-  if (
-    text.includes("短時間の連続投稿") ||
-    text.includes("異なる") ||
-    text.includes("5分以内")
-  ) {
-    return {
-      label: "⚠️ 短時間の連続投稿",
-      detail: null,
-      boxClass: "border-orange-300 bg-orange-50 text-orange-800",
-      badgeClass: "bg-orange-500 text-white",
-    };
-  }
-
-  return {
-    label: "⚠️ 要確認",
-    detail: null,
-    boxClass: "border-orange-200 bg-orange-50 text-orange-800",
-    badgeClass: "bg-orange-400 text-white",
-  };
-}
-
 function ReviewReportsTab({ reports, stores, products, processingId, onApprove, onReject, onBulkReview, onDeleteHistory, formatDate }: {
   reports: ReviewReport[]; stores: Store[]; products: Product[]; processingId: number | null;
   onApprove: (report: ReviewReport) => void; onReject: (report: ReviewReport) => void;
@@ -2092,7 +2238,7 @@ function ReviewReportsTab({ reports, stores, products, processingId, onApprove, 
   const hist=(r:ReviewReport,label:"承認"|"却下")=><article key={r.id} className="rounded-xl border border-gray-200 bg-white p-4 text-gray-600"><div className="flex items-start gap-3"><SelectionCheckbox checked={historySel.includes(r.id)} onChange={()=>th(r.id)} label={`履歴 #${r.id} を選択`} /><div><div className="flex flex-wrap items-center gap-2"><b>{storeName(r.store_id)}</b><span className={"rounded-full px-2.5 py-1 text-xs font-bold "+(label==="承認"?"bg-green-100 text-green-700":"bg-red-100 text-red-700")}>{label}済み</span></div><div className="mt-1">{productName(r.product_id)}</div><div className="mt-1">{r.quantity===0?"在庫なし":`${r.quantity}枚`}</div><div className="mt-1 text-sm">投稿: {formatDate(r.created_at)}</div>{r.reviewed_at&&<div className="mt-1 text-sm">{label}: {formatDate(r.reviewed_at)}</div>}{r.review_reason&&<div className="mt-2 text-sm">判定理由: {r.review_reason}</div>}</div></div></article>;
   return <div className="mt-6"><h2 className="text-2xl font-bold">🔎 要確認の在庫投稿</h2><p className="mt-2 text-gray-500">自動判定で保留になった投稿です。承認するまで公開ページには表示されません。</p>
     {pending.length>0&&<div className="mt-5"><BulkSelectionBar count={pendingSel.length} allSelected={pids.every(id=>pendingSel.includes(id))} onToggleAll={()=>setPendingSel(pids.every(id=>pendingSel.includes(id))?[]:pids)}><button disabled={!pendingSel.length} onClick={()=>onBulkReview(pendingSel,"approve")} className="rounded-xl bg-green-700 px-4 py-2 font-bold text-white disabled:opacity-40">一括承認・公開</button><button disabled={!pendingSel.length} onClick={()=>onBulkReview(pendingSel,"reject")} className="rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-40">一括却下</button></BulkSelectionBar></div>}
-    {!pending.length?<div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">現在、要確認の投稿はありません。</div>:<div className="mt-4 space-y-4">{pending.map(r=>{const alert=getPendingAlert(r.review_reason);return <article key={r.id} className={`rounded-2xl border p-5 ${alert.boxClass}`}><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex items-start gap-3"><SelectionCheckbox checked={pendingSel.includes(r.id)} onChange={()=>tp(r.id)} label={`投稿 #${r.id} を選択`} /><div><div className="mb-3 flex flex-wrap items-center gap-2"><span className={`rounded-full px-3 py-1 text-xs font-bold ${alert.badgeClass}`}>{alert.label}</span>{alert.detail&&<span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-red-700">{alert.detail}</span>}</div><div className="text-lg font-bold text-gray-900">{storeName(r.store_id)}</div><div className="mt-2 text-gray-800">{productName(r.product_id)}</div><div className="mt-1 font-bold text-[#b95489]">{r.quantity===0?"在庫なし":`${r.quantity}枚`}</div><div className="mt-1 text-sm text-gray-500">{formatDate(r.created_at)}</div>{r.comment&&<div className="mt-3 rounded-xl bg-white p-3 text-gray-800">💬 {r.comment}</div>}<div className="mt-3 rounded-xl bg-white p-3 text-sm text-gray-700"><b>判定理由: </b>{r.review_reason||"理由なし"}</div></div></div><div className="flex gap-2"><button disabled={processingId===r.id} onClick={()=>onApprove(r)} className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white">承認・公開</button><button disabled={processingId===r.id} onClick={()=>onReject(r)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white">却下</button></div></div></article>})}</div>}
+    {!pending.length?<div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">現在、要確認の投稿はありません。</div>:<div className="mt-4 space-y-4">{pending.map(r=><article key={r.id} className="rounded-2xl border border-orange-200 bg-orange-50 p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex items-start gap-3"><SelectionCheckbox checked={pendingSel.includes(r.id)} onChange={()=>tp(r.id)} label={`投稿 #${r.id} を選択`} /><div><div className="text-lg font-bold">{storeName(r.store_id)}</div><div className="mt-2">{productName(r.product_id)}</div><div className="mt-1 font-bold text-[#b95489]">{r.quantity===0?"在庫なし":`${r.quantity}枚`}</div><div className="mt-1 text-sm text-gray-500">{formatDate(r.created_at)}</div>{r.comment&&<div className="mt-3 rounded-xl bg-white p-3">💬 {r.comment}</div>}<div className="mt-3 rounded-xl bg-white p-3 text-sm"><b>判定理由: </b>{r.review_reason||"理由なし"}</div></div></div><div className="flex gap-2"><button disabled={processingId===r.id} onClick={()=>onApprove(r)} className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white">承認・公開</button><button disabled={processingId===r.id} onClick={()=>onReject(r)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white">却下</button></div></div></article>)}</div>}
     <div className="mt-7"><BulkSelectionBar count={historySel.length} allSelected={hids.length>0&&hids.every(id=>historySel.includes(id))} onToggleAll={()=>setHistorySel(hids.length>0&&hids.every(id=>historySel.includes(id))?[]:hids)}><button disabled={!historySel.length} onClick={()=>onDeleteHistory(historySel)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を削除</button></BulkSelectionBar></div>
     <div className="mt-3 space-y-3"><details className="rounded-2xl border border-green-200 bg-green-50/50"><summary className="cursor-pointer px-5 py-4 font-bold text-green-700">承認済みの履歴 ({approved.length}件)</summary><div className="space-y-3 border-t border-green-200 p-4">{approved.length?approved.map(r=>hist(r,"承認")):<div className="text-sm text-gray-500">承認済みの履歴はありません。</div>}</div></details><details className="rounded-2xl border border-gray-200 bg-gray-50"><summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">却下済みの履歴 ({rejected.length}件)</summary><div className="space-y-3 border-t border-gray-200 p-4">{rejected.length?rejected.map(r=>hist(r,"却下")):<div className="text-sm text-gray-500">却下済みの履歴はありません。</div>}</div></details></div>
   </div>;
@@ -2125,7 +2271,6 @@ function SecurityEventsTab({
     "same_item_block",
     "turnstile_block",
     "invalid_request",
-    "auto_rollback_pending",
   ];
 
   const last24h = events.filter(
