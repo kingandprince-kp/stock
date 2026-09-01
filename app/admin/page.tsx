@@ -348,11 +348,9 @@ export default function AdminPage() {
 
   const loadStoreChangeHistory =
     useCallback(async () => {
-      const { data, error } = await supabase
-        .from("store_change_history")
-        .select("id, store_id, action_type, old_data, new_data, changed_by, changed_at")
-        .order("changed_at", { ascending: false })
-        .limit(500);
+      const { data, error } = await supabase.rpc(
+        "get_store_change_history_admin"
+      );
 
       if (error) {
         console.error(error);
