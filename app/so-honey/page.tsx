@@ -696,6 +696,13 @@ setLoading(false);
     return;
   }
 
+  if (quantity >= 50 && reportComment.trim() === "") {
+    setSubmitError(
+      "50枚以上の在庫情報は確認のためコメント入力が必要です。入荷状況や店頭・オンラインで確認できた内容をご記入ください。"
+    );
+    return;
+  }
+
   if (!turnstileReady || !turnstileToken) {
     setSubmitError(
       "Bot確認が完了していません。少し待ってからもう一度お試しください。"

@@ -2027,6 +2027,57 @@ function AccessTab({
   );
 }
 
+
+function getPendingAlert(reason: string | null) {
+  const text = reason ?? "";
+
+  if (
+    text.includes("連続投稿による自動保留") ||
+    text.includes("公開後に自動で保留")
+  ) {
+    return {
+      label: "🚨 連続投稿による自動保留",
+      detail: text.includes("公開後に自動で保留")
+        ? "公開後に自動で保留へ変更"
+        : null,
+      boxClass: "border-red-300 bg-red-50 text-red-800",
+      badgeClass: "bg-red-600 text-white",
+    };
+  }
+
+  if (
+    text.includes("大量在庫") ||
+    text.includes("50枚以上")
+  ) {
+    return {
+      label: "⚠️ 大量在庫（50枚以上）",
+      detail: null,
+      boxClass: "border-amber-300 bg-amber-50 text-amber-900",
+      badgeClass: "bg-amber-500 text-white",
+    };
+  }
+
+  if (
+    text.includes("短時間の連続投稿") ||
+    text.includes("異なる") ||
+    text.includes("5分以内")
+  ) {
+    return {
+      label: "⚠️ 短時間の連続投稿",
+      detail: null,
+      boxClass: "border-orange-300 bg-orange-50 text-orange-800",
+      badgeClass: "bg-orange-500 text-white",
+    };
+  }
+
+  return {
+    label: "⚠️ 要確認",
+    detail: null,
+    boxClass: "border-orange-200 bg-orange-50 text-orange-800",
+    badgeClass: "bg-orange-400 text-white",
+  };
+}
+
 function ReviewReportsTab({ reports, stores, products, processingId, onApprove, onReject, onBulkReview, onDeleteHistory, formatDate }: {
   reports: ReviewReport[]; stores: Store[]; products: Product[]; processingId: number | null;
   onApprove: (report: ReviewReport) => void; onReject: (report: ReviewReport) => void;
@@ -2041,7 +2092,7 @@ function ReviewReportsTab({ reports, stores, products, processingId, onApprove, 
   const hist=(r:ReviewReport,label:"承認"|"却下")=><article key={r.id} className="rounded-xl border border-gray-200 bg-white p-4 text-gray-600"><div className="flex items-start gap-3"><SelectionCheckbox checked={historySel.includes(r.id)} onChange={()=>th(r.id)} label={`履歴 #${r.id} を選択`} /><div><div className="flex flex-wrap items-center gap-2"><b>{storeName(r.store_id)}</b><span className={"rounded-full px-2.5 py-1 text-xs font-bold "+(label==="承認"?"bg-green-100 text-green-700":"bg-red-100 text-red-700")}>{label}済み</span></div><div className="mt-1">{productName(r.product_id)}</div><div className="mt-1">{r.quantity===0?"在庫なし":`${r.quantity}枚`}</div><div className="mt-1 text-sm">投稿: {formatDate(r.created_at)}</div>{r.reviewed_at&&<div className="mt-1 text-sm">{label}: {formatDate(r.reviewed_at)}</div>}{r.review_reason&&<div className="mt-2 text-sm">判定理由: {r.review_reason}</div>}</div></div></article>;
   return <div className="mt-6"><h2 className="text-2xl font-bold">🔎 要確認の在庫投稿</h2><p className="mt-2 text-gray-500">自動判定で保留になった投稿です。承認するまで公開ページには表示されません。</p>
     {pending.length>0&&<div className="mt-5"><BulkSelectionBar count={pendingSel.length} allSelected={pids.every(id=>pendingSel.includes(id))} onToggleAll={()=>setPendingSel(pids.every(id=>pendingSel.includes(id))?[]:pids)}><button disabled={!pendingSel.length} onClick={()=>onBulkReview(pendingSel,"approve")} className="rounded-xl bg-green-700 px-4 py-2 font-bold text-white disabled:opacity-40">一括承認・公開</button><button disabled={!pendingSel.length} onClick={()=>onBulkReview(pendingSel,"reject")} className="rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-40">一括却下</button></BulkSelectionBar></div>}
-    {!pending.length?<div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">現在、要確認の投稿はありません。</div>:<div className="mt-4 space-y-4">{pending.map(r=><article key={r.id} className="rounded-2xl border border-orange-200 bg-orange-50 p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex items-start gap-3"><SelectionCheckbox checked={pendingSel.includes(r.id)} onChange={()=>tp(r.id)} label={`投稿 #${r.id} を選択`} /><div><div className="text-lg font-bold">{storeName(r.store_id)}</div><div className="mt-2">{productName(r.product_id)}</div><div className="mt-1 font-bold text-[#b95489]">{r.quantity===0?"在庫なし":`${r.quantity}枚`}</div><div className="mt-1 text-sm text-gray-500">{formatDate(r.created_at)}</div>{r.comment&&<div className="mt-3 rounded-xl bg-white p-3">💬 {r.comment}</div>}<div className="mt-3 rounded-xl bg-white p-3 text-sm"><b>判定理由: </b>{r.review_reason||"理由なし"}</div></div></div><div className="flex gap-2"><button disabled={processingId===r.id} onClick={()=>onApprove(r)} className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white">承認・公開</button><button disabled={processingId===r.id} onClick={()=>onReject(r)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white">却下</button></div></div></article>)}</div>}
+    {!pending.length?<div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">現在、要確認の投稿はありません。</div>:<div className="mt-4 space-y-4">{pending.map(r=>{const alert=getPendingAlert(r.review_reason);return <article key={r.id} className={`rounded-2xl border p-5 ${alert.boxClass}`}><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex items-start gap-3"><SelectionCheckbox checked={pendingSel.includes(r.id)} onChange={()=>tp(r.id)} label={`投稿 #${r.id} を選択`} /><div><div className="mb-3 flex flex-wrap items-center gap-2"><span className={`rounded-full px-3 py-1 text-xs font-bold ${alert.badgeClass}`}>{alert.label}</span>{alert.detail&&<span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-red-700">{alert.detail}</span>}</div><div className="text-lg font-bold text-gray-900">{storeName(r.store_id)}</div><div className="mt-2 text-gray-800">{productName(r.product_id)}</div><div className="mt-1 font-bold text-[#b95489]">{r.quantity===0?"在庫なし":`${r.quantity}枚`}</div><div className="mt-1 text-sm text-gray-500">{formatDate(r.created_at)}</div>{r.comment&&<div className="mt-3 rounded-xl bg-white p-3 text-gray-800">💬 {r.comment}</div>}<div className="mt-3 rounded-xl bg-white p-3 text-sm text-gray-700"><b>判定理由: </b>{r.review_reason||"理由なし"}</div></div></div><div className="flex gap-2"><button disabled={processingId===r.id} onClick={()=>onApprove(r)} className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white">承認・公開</button><button disabled={processingId===r.id} onClick={()=>onReject(r)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white">却下</button></div></div></article>})}</div>}
     <div className="mt-7"><BulkSelectionBar count={historySel.length} allSelected={hids.length>0&&hids.every(id=>historySel.includes(id))} onToggleAll={()=>setHistorySel(hids.length>0&&hids.every(id=>historySel.includes(id))?[]:hids)}><button disabled={!historySel.length} onClick={()=>onDeleteHistory(historySel)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を削除</button></BulkSelectionBar></div>
     <div className="mt-3 space-y-3"><details className="rounded-2xl border border-green-200 bg-green-50/50"><summary className="cursor-pointer px-5 py-4 font-bold text-green-700">承認済みの履歴 ({approved.length}件)</summary><div className="space-y-3 border-t border-green-200 p-4">{approved.length?approved.map(r=>hist(r,"承認")):<div className="text-sm text-gray-500">承認済みの履歴はありません。</div>}</div></details><details className="rounded-2xl border border-gray-200 bg-gray-50"><summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">却下済みの履歴 ({rejected.length}件)</summary><div className="space-y-3 border-t border-gray-200 p-4">{rejected.length?rejected.map(r=>hist(r,"却下")):<div className="text-sm text-gray-500">却下済みの履歴はありません。</div>}</div></details></div>
   </div>;
@@ -2074,6 +2125,7 @@ function SecurityEventsTab({
     "same_item_block",
     "turnstile_block",
     "invalid_request",
+    "auto_rollback_pending",
   ];
 
   const last24h = events.filter(

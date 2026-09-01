@@ -25,18 +25,32 @@ type TurnstileResponse = {
   "error-codes"?: string[];
 };
 
+type StoreRow = {
+  id: number;
+  store_type: string | null;
+  prefecture: string | null;
+};
+
+type SecurityRow = {
+  report_id: number | null;
+  store_id: number | null;
+  created_at: string;
+};
+
 function jsonError(
   message: string,
   status = 400
 ) {
   return NextResponse.json(
-    {
-      success: false,
-      message,
-    },
-    {
-      status,
-    }
+    { success: false, message },
+    { status }
+  );
+}
+
+function isOnlineStore(store: StoreRow) {
+  return (
+    store.store_type === "online" ||
+    store.prefecture === "オンライン"
   );
 }
 
@@ -61,7 +75,6 @@ export async function POST(
       console.error(
         "Required server environment variables are missing."
       );
-
       return jsonError(
         "サーバー設定に問題があります。",
         500
@@ -99,9 +112,6 @@ export async function POST(
       turnstileToken,
     } = body;
 
-    /*
-     * IP取得
-     */
     const forwardedFor =
       request.headers.get(
         "x-vercel-forwarded-for"
@@ -117,9 +127,6 @@ export async function POST(
         .split(",")[0]
         ?.trim() || null;
 
-    /*
-     * IPハッシュ
-     */
     const ipHash = ip
       ? createHmac(
           "sha256",
@@ -129,9 +136,6 @@ export async function POST(
           .digest("hex")
       : null;
 
-    /*
-     * Browser/clientハッシュ
-     */
     const clientHash =
       typeof clientId === "string" &&
       clientId.length > 0
@@ -140,9 +144,6 @@ export async function POST(
             .digest("hex")
         : null;
 
-    /*
-     * セキュリティイベント記録用
-     */
     async function logSecurityEvent(
       eventType: string,
       reason: string | null = null,
@@ -153,51 +154,41 @@ export async function POST(
         | null = null,
       reportId: number | null = null
     ) {
-      const {
-        error: logError,
-      } = await supabase
-        .from(
-          "inventory_security_events"
-        )
-        .insert({
-          event_type: eventType,
-          report_id: reportId,
-
-          ip_address: ip,
-          ip_hash: ipHash,
-          client_hash: clientHash,
-
-          store_id:
-            Number.isInteger(storeId) &&
-            Number(storeId) > 0
-              ? Number(storeId)
-              : null,
-
-          product_id:
-            Number.isInteger(productId) &&
-            Number(productId) > 0
-              ? Number(productId)
-              : null,
-
-          quantity:
-            Number.isInteger(quantity)
-              ? Number(quantity)
-              : null,
-
-          comment:
-            typeof comment === "string" &&
-            comment.trim() !== ""
-              ? comment.trim().slice(
-                  0,
-                  500
-                )
-              : null,
-
-          review_status:
-            reviewStatus,
-
-          reason,
-        });
+      const { error: logError } =
+        await supabase
+          .from(
+            "inventory_security_events"
+          )
+          .insert({
+            event_type: eventType,
+            report_id: reportId,
+            ip_address: ip,
+            ip_hash: ipHash,
+            client_hash: clientHash,
+            store_id:
+              Number.isInteger(storeId) &&
+              Number(storeId) > 0
+                ? Number(storeId)
+                : null,
+            product_id:
+              Number.isInteger(productId) &&
+              Number(productId) > 0
+                ? Number(productId)
+                : null,
+            quantity:
+              Number.isInteger(quantity)
+                ? Number(quantity)
+                : null,
+            comment:
+              typeof comment === "string" &&
+              comment.trim() !== ""
+                ? comment
+                    .trim()
+                    .slice(0, 500)
+                : null,
+            review_status: reviewStatus,
+            reason,
+          });
 
       if (logError) {
         console.error(
@@ -207,9 +198,6 @@ export async function POST(
       }
     }
 
-    /*
-     * 基本入力チェック
-     */
     if (
       !Number.isInteger(storeId) ||
       Number(storeId) <= 0
@@ -218,7 +206,6 @@ export async function POST(
         "invalid_request",
         "店舗IDが不正"
       );
-
       return jsonError(
         "店舗を選択してください。"
       );
@@ -232,7 +219,6 @@ export async function POST(
         "invalid_request",
         "商品IDが不正"
       );
-
       return jsonError(
         "商品を選択してください。"
       );
@@ -247,7 +233,6 @@ export async function POST(
         "invalid_request",
         "在庫枚数が0〜100の範囲外"
       );
-
       return jsonError(
         "在庫枚数は0〜100の整数で入力してください。"
       );
@@ -261,9 +246,27 @@ export async function POST(
         "invalid_request",
         "コメントが500文字を超過"
       );
-
       return jsonError(
         "コメントは500文字以内で入力してください。"
+      );
+    }
+
+    const normalizedComment =
+      typeof comment === "string" &&
+      comment.trim() !== ""
+        ? comment.trim()
+        : null;
+
+    if (
+      Number(quantity) >= 50 &&
+      !normalizedComment
+    ) {
+      await logSecurityEvent(
+        "invalid_request",
+        "50枚以上の投稿でコメント未入力"
+      );
+      return jsonError(
+        "50枚以上の在庫情報は、確認できた状況をコメント欄に入力してください。"
       );
     }
 
@@ -276,7 +279,6 @@ export async function POST(
         "invalid_request",
         "client IDが不正"
       );
-
       return jsonError(
         "投稿情報を確認できませんでした。ページを再読み込みしてください。"
       );
@@ -291,16 +293,12 @@ export async function POST(
         "turnstile_block",
         "Turnstile tokenがない、または不正"
       );
-
       return jsonError(
         "Bot確認が完了していません。ページを再読み込みしてください。",
         403
       );
     }
 
-    /*
-     * Turnstile確認
-     */
     const verifyResponse = await fetch(
       "https://challenges.cloudflare.com/turnstile/v0/siteverify",
       {
@@ -324,7 +322,6 @@ export async function POST(
         "turnstile_block",
         `Turnstile verification HTTP ${verifyResponse.status}`
       );
-
       return jsonError(
         "Bot確認に失敗しました。もう一度お試しください。",
         403
@@ -344,7 +341,6 @@ export async function POST(
           "unknown"
         }`
       );
-
       return jsonError(
         "Bot確認に失敗しました。もう一度お試しください。",
         403
@@ -362,7 +358,6 @@ export async function POST(
           "unknown"
         }`
       );
-
       return jsonError(
         "Bot確認に失敗しました。",
         403
@@ -380,12 +375,41 @@ export async function POST(
           "unknown"
         }`
       );
-
       return jsonError(
         "Bot確認に失敗しました。",
         403
       );
     }
+
+    const {
+      data: currentStoreData,
+      error: currentStoreError,
+    } = await supabase
+      .from("stores")
+      .select(
+        "id, store_type, prefecture"
+      )
+      .eq("id", Number(storeId))
+      .single();
+
+    if (
+      currentStoreError ||
+      !currentStoreData
+    ) {
+      await logSecurityEvent(
+        "invalid_request",
+        "店舗情報を取得できない"
+      );
+      return jsonError(
+        "店舗情報を確認できませんでした。"
+      );
+    }
+
+    const currentStore =
+      currentStoreData as StoreRow;
+
+    const online =
+      isOnlineStore(currentStore);
 
     const now = Date.now();
 
@@ -405,56 +429,7 @@ export async function POST(
       ).toISOString();
 
     /*
-     * client ID:
-     * 10分以内に10件投稿済みなら
-     * 次の投稿を拒否
-     */
-    const {
-      count: clientRecentCount,
-      error: clientRecentError,
-    } = await supabase
-      .from("inventory_rate_limits")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq(
-        "client_hash",
-        clientHash
-      )
-      .gt(
-        "created_at",
-        tenMinutesAgo
-      );
-
-    if (clientRecentError) {
-      console.error(
-        "client rate limit check error:",
-        clientRecentError
-      );
-
-      return jsonError(
-        "投稿情報の確認中にエラーが発生しました。",
-        500
-      );
-    }
-
-    if (
-      (clientRecentCount ?? 0) >= 10
-    ) {
-      await logSecurityEvent(
-        "rate_limit_client",
-        "同一ブラウザから10分以内に10件以上の投稿"
-      );
-
-      return jsonError(
-        "短時間に投稿が集中しています。少し時間をおいてから投稿してください。",
-        429
-      );
-    }
-
-    /*
-     * 同一ブラウザ・同一店舗・同一商品
+     * 同一ブラウザ・同一店舗・同一商品:
      * 3分以内の再投稿を拒否
      */
     const {
@@ -488,21 +463,17 @@ export async function POST(
         "same item check error:",
         sameItemError
       );
-
       return jsonError(
         "投稿情報の確認中にエラーが発生しました。",
         500
       );
     }
 
-    if (
-      (sameItemCount ?? 0) > 0
-    ) {
+    if ((sameItemCount ?? 0) > 0) {
       await logSecurityEvent(
         "same_item_block",
         "同一ブラウザから同一店舗・同一商品への3分以内の再投稿"
       );
-
       return jsonError(
         "同じ店舗・同じ商品への連続投稿は、3分以上時間をおいてください。",
         429
@@ -510,61 +481,10 @@ export async function POST(
     }
 
     /*
-     * IP:
-     * 10分以内30件で拒否
+     * 同一IP・同一店舗・同一商品:
+     * 10分以内5件で拒否
      */
     if (ipHash) {
-      const {
-        count: ipRecentCount,
-        error: ipRecentError,
-      } = await supabase
-        .from(
-          "inventory_ip_rate_limits"
-        )
-        .select("id", {
-          count: "exact",
-          head: true,
-        })
-        .eq(
-          "ip_hash",
-          ipHash
-        )
-        .gt(
-          "created_at",
-          tenMinutesAgo
-        );
-
-      if (ipRecentError) {
-        console.error(
-          "IP rate limit check error:",
-          ipRecentError
-        );
-
-        return jsonError(
-          "投稿情報の確認中にエラーが発生しました。",
-          500
-        );
-      }
-
-      if (
-        (ipRecentCount ?? 0) >=
-        30
-      ) {
-        await logSecurityEvent(
-          "rate_limit_ip",
-          "同一IPから10分以内に30件以上の投稿"
-        );
-
-        return jsonError(
-          "短時間に投稿が集中しています。少し時間をおいてから投稿してください。",
-          429
-        );
-      }
-
-      /*
-       * 同一IP・同一店舗・同一商品
-       * 10分以内5件で拒否
-       */
       const {
         count: ipSameItemCount,
         error: ipSameItemError,
@@ -598,7 +518,6 @@ export async function POST(
           "IP same item check error:",
           ipSameItemError
         );
-
         return jsonError(
           "投稿情報の確認中にエラーが発生しました。",
           500
@@ -606,124 +525,237 @@ export async function POST(
       }
 
       if (
-        (ipSameItemCount ?? 0) >=
-        5
+        (ipSameItemCount ?? 0) >= 5
       ) {
         await logSecurityEvent(
           "rate_limit_ip",
           "同一IPから同一店舗・同一商品へ10分以内に5件以上の投稿"
         );
-
         return jsonError(
-          "同じ店舗・同じ商品への投稿が短時間に集中しています。少し時間をおいてください。",
+          "同じ店舗・同じ商品への投稿が短時間に集中しています。10分ほど時間をおいてから、もう一度お試しください。",
           429
         );
       }
     }
 
     /*
-     * 5分以内の異なる店舗数を確認
+     * 直近の「登録済み在庫投稿」のセキュリティ履歴を取得。
+     * submitted / pending / auto_rollback_pending のみを対象にする。
      */
-    const [
-      clientStoresResult,
-      ipStoresResult,
-    ] = await Promise.all([
-      supabase
-        .from(
-          "inventory_rate_limits"
-        )
-        .select("store_id")
-        .eq(
-          "client_hash",
-          clientHash
-        )
-        .gt(
-          "created_at",
-          fiveMinutesAgo
-        ),
-
-      ipHash
-        ? supabase
-            .from(
-              "inventory_ip_rate_limits"
-            )
-            .select("store_id")
-            .eq(
-              "ip_hash",
-              ipHash
-            )
-            .gt(
-              "created_at",
-              fiveMinutesAgo
-            )
-        : Promise.resolve({
-            data: [],
-            error: null,
-          }),
-    ]);
-
-    if (
-      clientStoresResult.error ||
-      ipStoresResult.error
-    ) {
-      console.error(
-        "suspicious store check error:",
-        clientStoresResult.error ??
-          ipStoresResult.error
+    let recentQuery = supabase
+      .from(
+        "inventory_security_events"
+      )
+      .select(
+        "report_id, store_id, created_at"
+      )
+      .eq(
+        "client_hash",
+        clientHash
+      )
+      .in(
+        "event_type",
+        [
+          "submitted",
+          "pending",
+          "auto_rollback_pending",
+        ]
+      )
+      .not(
+        "report_id",
+        "is",
+        null
+      )
+      .gt(
+        "created_at",
+        tenMinutesAgo
+      )
+      .order(
+        "created_at",
+        { ascending: true }
       );
 
+    if (ipHash) {
+      recentQuery =
+        recentQuery.eq(
+          "ip_hash",
+          ipHash
+        );
+    }
+
+    const {
+      data: recentSecurityData,
+      error: recentSecurityError,
+    } = await recentQuery;
+
+    if (recentSecurityError) {
+      console.error(
+        "recent security check error:",
+        recentSecurityError
+      );
       return jsonError(
         "投稿情報の確認中にエラーが発生しました。",
         500
       );
     }
 
-    const clientStoreIds =
-      new Set<number>(
-        (
-          clientStoresResult.data ??
-          []
-        ).map((row) =>
-          Number(row.store_id)
-        )
-      );
+    const recentRows =
+      (recentSecurityData ??
+        []) as SecurityRow[];
 
-    const ipStoreIds =
-      new Set<number>(
-        (
-          ipStoresResult.data ??
-          []
-        ).map((row) =>
-          Number(row.store_id)
+    const recentStoreIds = [
+      ...new Set(
+        recentRows
+          .map((row) =>
+            Number(row.store_id)
+          )
+          .filter((id) =>
+            Number.isInteger(id)
+          )
+      ),
+    ];
+
+    let recentStoreMap =
+      new Map<number, StoreRow>();
+
+    if (recentStoreIds.length > 0) {
+      const {
+        data: recentStoresData,
+        error: recentStoresError,
+      } = await supabase
+        .from("stores")
+        .select(
+          "id, store_type, prefecture"
         )
+        .in(
+          "id",
+          recentStoreIds
+        );
+
+      if (recentStoresError) {
+        console.error(
+          "recent store type check error:",
+          recentStoresError
+        );
+        return jsonError(
+          "投稿情報の確認中にエラーが発生しました。",
+          500
+        );
+      }
+
+      recentStoreMap =
+        new Map(
+          (
+            recentStoresData ??
+            []
+          ).map((row) => [
+            Number(row.id),
+            row as StoreRow,
+          ])
+        );
+    }
+
+    const sameCategoryRows =
+      recentRows.filter((row) => {
+        const store =
+          recentStoreMap.get(
+            Number(row.store_id)
+          );
+
+        if (!store) return false;
+
+        return (
+          isOnlineStore(store) === online
+        );
+      });
+
+    const sameCategoryFiveMinuteRows =
+      sameCategoryRows.filter(
+        (row) =>
+          row.created_at >
+          fiveMinutesAgo
       );
 
     /*
-     * 今回投稿する店舗も加える。
-     * これで「5店舗目」からpending。
+     * 強い警戒:
+     * 実店舗 15件目で全件Pending、16件目以降ブロック
+     * オンライン 30件目で全件Pending、31件目以降ブロック
+     *
+     * ここでの recentRows は「今回の投稿より前」の件数。
      */
-    clientStoreIds.add(
-      Number(storeId)
-    );
+    const strongLimit =
+      online ? 30 : 15;
 
-    if (ipHash) {
-      ipStoreIds.add(
-        Number(storeId)
+    if (
+      ipHash &&
+      sameCategoryRows.length >=
+        strongLimit
+    ) {
+      await logSecurityEvent(
+        "rate_limit_client",
+        `${
+          online
+            ? "オンライン"
+            : "実店舗"
+        }の在庫投稿が10分以内に${strongLimit}件を超えたためブロック`
+      );
+
+      return jsonError(
+        "短時間に投稿が集中したため、一時的に投稿を制限しています。10分ほど時間をおいてから、もう一度お試しください。",
+        429
       );
     }
 
-    const suspiciousByClient =
-      clientStoreIds.size >= 5;
+    /*
+     * 軽い警戒:
+     * 実店舗のみ。
+     * 5分以内に今回を含め8件以上、
+     * かつ2店舗以上なら8件目以降をPending。
+     *
+     * オンラインは短時間の複数ショップ確認があり得るため、
+     * この8件判定は適用しない。
+     */
+    const physicalFiveMinuteStoreIds =
+      new Set(
+        sameCategoryFiveMinuteRows.map(
+          (row) =>
+            Number(row.store_id)
+        )
+      );
 
-    const suspiciousByIp =
+    physicalFiveMinuteStoreIds.add(
+      Number(storeId)
+    );
+
+    const lightPhysicalPending =
+      !online &&
+      sameCategoryFiveMinuteRows.length >=
+        7 &&
+      physicalFiveMinuteStoreIds.size >=
+        2;
+
+    /*
+     * 50枚以上:
+     * コメント必須 + その投稿をPending。
+     */
+    const highQuantityPending =
+      Number(quantity) >= 50;
+
+    /*
+     * 今回が強い警戒の到達点か。
+     * 実店舗15件目 / オンライン30件目。
+     */
+    const reachesStrongLimit =
       Boolean(ipHash) &&
-      ipStoreIds.size >= 5;
+      sameCategoryRows.length ===
+        strongLimit - 1;
 
-    const reviewStatus:
+    let reviewStatus:
       | "approved"
       | "pending" =
-      suspiciousByClient ||
-      suspiciousByIp
+      highQuantityPending ||
+      lightPhysicalPending ||
+      reachesStrongLimit
         ? "pending"
         : "approved";
 
@@ -731,108 +763,104 @@ export async function POST(
       | string
       | null = null;
 
-    if (
-      suspiciousByClient &&
-      suspiciousByIp
-    ) {
+    if (reachesStrongLimit) {
       reviewReason =
-        "5分以内に同一IP・同一ブラウザから異なる5店舗以上への投稿を検知";
+        `連続投稿による自動保留：${
+          online
+            ? "オンライン"
+            : "実店舗"
+        }の在庫投稿が10分以内に${strongLimit}件に到達`;
     } else if (
-      suspiciousByClient
+      highQuantityPending &&
+      lightPhysicalPending
     ) {
       reviewReason =
-        "5分以内に同一ブラウザから異なる5店舗以上への投稿を検知";
+        "大量在庫（50枚以上）＋短時間の連続投稿";
     } else if (
-      suspiciousByIp
+      highQuantityPending
     ) {
       reviewReason =
-        "5分以内に同一IPから異なる5店舗以上への投稿を検知";
+        "大量在庫（50枚以上）のため管理者確認";
+    } else if (
+      lightPhysicalPending
+    ) {
+      reviewReason =
+        "短時間の連続投稿：実店舗で5分以内に8件以上、かつ2店舗以上への投稿";
     }
 
     /*
-     * 在庫投稿
+     * 在庫投稿を登録。
+     * service_role から直接登録し、
+     * client/IP のレート制限履歴もこのAPIで管理する。
      */
     const {
-      data: reportId,
-      error: rpcError,
-    } = await supabase.rpc(
-      "submit_inventory_report_v2",
-      {
-        p_store_id:
-          Number(storeId),
-
-        p_product_id:
+      data: insertedReport,
+      error: insertError,
+    } = await supabase
+      .from("inventory_reports")
+      .insert({
+        store_id: Number(storeId),
+        product_id:
           Number(productId),
-
-        p_quantity:
-          Number(quantity),
-
-        p_comment:
-          typeof comment ===
-            "string" &&
-          comment.trim() !== ""
-            ? comment.trim()
-            : null,
-
-        p_client_id:
-          clientId,
-
-        p_review_status:
+        quantity: Number(quantity),
+        comment: normalizedComment,
+        review_status:
           reviewStatus,
-
-        p_review_reason:
+        review_reason:
           reviewReason,
-      }
-    );
+      })
+      .select("id")
+      .single();
 
-    if (rpcError) {
+    if (
+      insertError ||
+      !insertedReport
+    ) {
       console.error(
-        "submit_inventory_report_v2 error:",
-        rpcError
+        "inventory report insert error:",
+        insertError
       );
-
-      /*
-       * RPC側でレート制限に
-       * 引っかかった場合も記録。
-       */
-      const rpcMessage =
-        rpcError.message ?? "";
-
-      if (
-        rpcMessage.includes(
-          "同じ店舗・同じ商品"
-        )
-      ) {
-        await logSecurityEvent(
-          "same_item_block",
-          rpcMessage
-        );
-      } else if (
-        rpcMessage.includes(
-          "短時間に投稿が集中"
-        )
-      ) {
-        await logSecurityEvent(
-          "rate_limit_client",
-          rpcMessage
-        );
-      } else {
-        await logSecurityEvent(
-          "invalid_request",
-          rpcMessage ||
-            "RPC投稿エラー"
-        );
-      }
-
+      await logSecurityEvent(
+        "invalid_request",
+        insertError?.message ??
+          "在庫投稿の登録エラー"
+      );
       return jsonError(
-        rpcMessage ||
-          "投稿に失敗しました。",
+        "投稿に失敗しました。",
         400
       );
     }
 
+    const reportId =
+      Number(insertedReport.id);
+
     /*
-     * IPレート制限履歴
+     * ブラウザ側レート制限履歴
+     */
+    const {
+      error: clientRateInsertError,
+    } = await supabase
+      .from(
+        "inventory_rate_limits"
+      )
+      .insert({
+        client_hash:
+          clientHash,
+        store_id:
+          Number(storeId),
+        product_id:
+          Number(productId),
+      });
+
+    if (clientRateInsertError) {
+      console.error(
+        "client rate limit insert error:",
+        clientRateInsertError
+      );
+    }
+
+    /*
+     * IP側レート制限履歴
      */
     if (ipHash) {
       const {
@@ -858,37 +886,179 @@ export async function POST(
     }
 
     /*
-     * ★ 投稿が成功した1件目から
-     * すべてセキュリティ履歴へ保存
+     * 強い警戒の到達点:
+     * 同一IP + 同一ブラウザ + 同じ区分
+     * （実店舗 / オンライン）の直近10分を
+     * 1件目まで遡って全部Pendingへ変更。
      */
-    if (
-      reviewStatus === "pending"
+    if (reachesStrongLimit) {
+      const previousReportIds =
+        sameCategoryRows
+          .map((row) =>
+            Number(row.report_id)
+          )
+          .filter((id) =>
+            Number.isInteger(id)
+          );
+
+      const rollbackIds = [
+        ...new Set([
+          ...previousReportIds,
+          reportId,
+        ]),
+      ];
+
+      if (rollbackIds.length > 0) {
+        const {
+          error: rollbackError,
+        } = await supabase
+          .from(
+            "inventory_reports"
+          )
+          .update({
+            review_status:
+              "pending",
+            review_reason:
+              `連続投稿による自動保留：${
+                online
+                  ? "オンライン"
+                  : "実店舗"
+              }の在庫投稿が10分以内に${strongLimit}件に到達。公開後に自動で保留へ変更された投稿を含みます。`,
+            reviewed_at: null,
+            reviewed_by: null,
+          })
+          .in(
+            "id",
+            rollbackIds
+          );
+
+        if (rollbackError) {
+          console.error(
+            "auto rollback error:",
+            rollbackError
+          );
+          return jsonError(
+            "投稿は受け付けましたが、自動確認処理中にエラーが発生しました。",
+            500
+          );
+        }
+
+        /*
+         * 巻き戻された各投稿をセキュリティ履歴へ残す。
+         * 何が自動保留になったか report_id で追跡できる。
+         */
+        for (
+          const rollbackId of
+          rollbackIds
+        ) {
+          const original =
+            sameCategoryRows.find(
+              (row) =>
+                Number(
+                  row.report_id
+                ) === rollbackId
+            );
+
+          const {
+            data: rollbackReport,
+          } = await supabase
+            .from(
+              "inventory_reports"
+            )
+            .select(
+              "store_id, product_id, quantity, comment"
+            )
+            .eq(
+              "id",
+              rollbackId
+            )
+            .single();
+
+          const {
+            error:
+              rollbackLogError,
+          } = await supabase
+            .from(
+              "inventory_security_events"
+            )
+            .insert({
+              event_type:
+                "auto_rollback_pending",
+              report_id:
+                rollbackId,
+              ip_address: ip,
+              ip_hash: ipHash,
+              client_hash:
+                clientHash,
+              store_id:
+                rollbackReport
+                  ?.store_id ??
+                original?.store_id ??
+                null,
+              product_id:
+                rollbackReport
+                  ?.product_id ??
+                null,
+              quantity:
+                rollbackReport
+                  ?.quantity ??
+                null,
+              comment:
+                rollbackReport
+                  ?.comment ??
+                null,
+              review_status:
+                "pending",
+              reason:
+                `連続投稿による自動保留：${
+                  online
+                    ? "オンライン"
+                    : "実店舗"
+                }の直近10分の投稿をPendingへ変更`,
+            });
+
+          if (
+            rollbackLogError
+          ) {
+            console.error(
+              "rollback security log error:",
+              rollbackLogError
+            );
+          }
+        }
+      }
+    } else if (
+      reviewStatus ===
+      "pending"
     ) {
       await logSecurityEvent(
         "pending",
         reviewReason,
         "pending",
-        Number(reportId)
+        reportId
       );
     } else {
       await logSecurityEvent(
         "submitted",
         "正常投稿",
         "approved",
-        Number(reportId)
+        reportId
       );
     }
 
     return NextResponse.json({
       success: true,
       reportId,
+      reviewStatus:
+        reachesStrongLimit
+          ? "pending"
+          : reviewStatus,
     });
   } catch (error) {
     console.error(
       "inventory report API error:",
       error
     );
-
     return jsonError(
       "投稿中にエラーが発生しました。もう一度お試しください。",
       500
