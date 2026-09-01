@@ -1318,7 +1318,7 @@ async function handleBugReport() {
                 <p className="whitespace-nowrap">
   全国の実店舗・オンラインショップの在庫を
   <br />
-  7形態まとめて確認できます。
+  7種類まとめて確認できます。
 </p>
 
                 <span className="text-base md:text-2xl" aria-hidden="true">
