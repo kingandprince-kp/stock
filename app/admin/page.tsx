@@ -13,6 +13,7 @@ type InventoryReport = {
   store_id: number;
   product_id: number;
   quantity: number;
+  stock_status: "in_stock" | "low_stock" | "backorder" | "sold_out" | null;
   comment: string | null;
   created_at: string;
 };
@@ -34,6 +35,7 @@ type SecurityEvent = {
   store_id: number | null;
   product_id: number | null;
   quantity: number | null;
+  stock_status: "in_stock" | "low_stock" | "backorder" | "sold_out" | null;
   comment: string | null;
   review_status: "approved" | "pending" | "rejected" | null;
   reason: string | null;
@@ -46,6 +48,7 @@ type DeletionHistory = {
   store_id: number;
   product_id: number;
   quantity: number;
+  stock_status: "in_stock" | "low_stock" | "backorder" | "sold_out" | null;
   comment: string | null;
   original_created_at: string;
   deleted_by: string;
@@ -167,6 +170,23 @@ type RequestEdit = {
     | "check_store"
     | "not_target";
 };
+
+function formatInventoryValue(
+  quantity: number | null,
+  stockStatus: "in_stock" | "low_stock" | "backorder" | "sold_out" | null
+) {
+  if (stockStatus) {
+    const labels = {
+      in_stock: "○ 在庫あり",
+      low_stock: "△ 残りわずか",
+      backorder: "入荷待ち",
+      sold_out: "× 売り切れ",
+    } as const;
+    return labels[stockStatus];
+  }
+  if (quantity === null) return "数量不明";
+  return quantity === 0 ? "在庫なし" : `${quantity}枚`;
+}
 
 export default function AdminPage() {
   const [reports, setReports] =
@@ -587,6 +607,7 @@ export default function AdminPage() {
             store_id,
             product_id,
             quantity,
+            stock_status,
             comment,
             created_at
           `)
@@ -844,9 +865,7 @@ export default function AdminPage() {
       getProductName(report.product_id);
 
     const displayQuantity =
-      report.quantity === 0
-        ? "在庫なし"
-        : `${report.quantity}枚`;
+      formatInventoryValue(report.quantity, report.stock_status);
 
     const confirmed =
       window.confirm(
@@ -908,9 +927,7 @@ export default function AdminPage() {
       getProductName(deletion.product_id);
 
     const displayQuantity =
-      deletion.quantity === 0
-        ? "在庫なし"
-        : `${deletion.quantity}枚`;
+      formatInventoryValue(deletion.quantity, deletion.stock_status);
 
     const confirmed =
       window.confirm(
@@ -2335,10 +2352,10 @@ function ReviewReportsTab({ reports, stores, products, processingId, onApprove, 
   useEffect(()=>{setPendingSel(c=>c.filter(id=>pids.includes(id)));setHistorySel(c=>c.filter(id=>hids.includes(id)));},[reports]);
   const storeName=(id:number)=>{const x=stores.find(s=>s.id===id);return x?getDisplayStoreName(x):"店舗不明"}; const productName=(id:number)=>products.find(p=>p.id===id)?.name??"商品不明";
   const tp=(id:number)=>setPendingSel(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id]); const th=(id:number)=>setHistorySel(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id]);
-  const hist=(r:ReviewReport,label:"承認"|"却下")=><article key={r.id} className="rounded-xl border border-gray-200 bg-white p-4 text-gray-600"><div className="flex items-start gap-3"><SelectionCheckbox checked={historySel.includes(r.id)} onChange={()=>th(r.id)} label={`履歴 #${r.id} を選択`} /><div><div className="flex flex-wrap items-center gap-2"><b>{storeName(r.store_id)}</b><span className={"rounded-full px-2.5 py-1 text-xs font-bold "+(label==="承認"?"bg-green-100 text-green-700":"bg-red-100 text-red-700")}>{label}済み</span></div><div className="mt-1">{productName(r.product_id)}</div><div className="mt-1">{r.quantity===0?"在庫なし":`${r.quantity}枚`}</div><div className="mt-1 text-sm">投稿: {formatDate(r.created_at)}</div>{r.reviewed_at&&<div className="mt-1 text-sm">{label}: {formatDate(r.reviewed_at)}</div>}{r.review_reason&&<div className="mt-2 text-sm">判定理由: {r.review_reason}</div>}</div></div></article>;
+  const hist=(r:ReviewReport,label:"承認"|"却下")=><article key={r.id} className="rounded-xl border border-gray-200 bg-white p-4 text-gray-600"><div className="flex items-start gap-3"><SelectionCheckbox checked={historySel.includes(r.id)} onChange={()=>th(r.id)} label={`履歴 #${r.id} を選択`} /><div><div className="flex flex-wrap items-center gap-2"><b>{storeName(r.store_id)}</b><span className={"rounded-full px-2.5 py-1 text-xs font-bold "+(label==="承認"?"bg-green-100 text-green-700":"bg-red-100 text-red-700")}>{label}済み</span></div><div className="mt-1">{productName(r.product_id)}</div><div className="mt-1">{formatInventoryValue(r.quantity,r.stock_status)}</div><div className="mt-1 text-sm">投稿: {formatDate(r.created_at)}</div>{r.reviewed_at&&<div className="mt-1 text-sm">{label}: {formatDate(r.reviewed_at)}</div>}{r.review_reason&&<div className="mt-2 text-sm">判定理由: {r.review_reason}</div>}</div></div></article>;
   return <div className="mt-6"><h2 className="text-2xl font-bold">🔎 要確認の在庫投稿</h2><p className="mt-2 text-gray-500">自動判定で保留になった投稿です。承認するまで公開ページには表示されません。</p>
     {pending.length>0&&<div className="mt-5"><BulkSelectionBar count={pendingSel.length} allSelected={pids.every(id=>pendingSel.includes(id))} onToggleAll={()=>setPendingSel(pids.every(id=>pendingSel.includes(id))?[]:pids)}><button disabled={!pendingSel.length} onClick={()=>onBulkReview(pendingSel,"approve")} className="rounded-xl bg-green-700 px-4 py-2 font-bold text-white disabled:opacity-40">一括承認・公開</button><button disabled={!pendingSel.length} onClick={()=>onBulkReview(pendingSel,"reject")} className="rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-40">一括却下</button></BulkSelectionBar></div>}
-    {!pending.length?<div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">現在、要確認の投稿はありません。</div>:<div className="mt-4 space-y-4">{pending.map(r=><article key={r.id} className="rounded-2xl border border-orange-200 bg-orange-50 p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex items-start gap-3"><SelectionCheckbox checked={pendingSel.includes(r.id)} onChange={()=>tp(r.id)} label={`投稿 #${r.id} を選択`} /><div><div className="text-lg font-bold">{storeName(r.store_id)}</div><div className="mt-2">{productName(r.product_id)}</div><div className="mt-1 font-bold text-[#b95489]">{r.quantity===0?"在庫なし":`${r.quantity}枚`}</div><div className="mt-1 text-sm text-gray-500">{formatDate(r.created_at)}</div>{r.comment&&<div className="mt-3 rounded-xl bg-white p-3">💬 {r.comment}</div>}<div className="mt-3 rounded-xl bg-white p-3 text-sm"><b>判定理由: </b>{r.review_reason||"理由なし"}</div></div></div><div className="flex gap-2"><button disabled={processingId===r.id} onClick={()=>onApprove(r)} className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white">承認・公開</button><button disabled={processingId===r.id} onClick={()=>onReject(r)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white">却下</button></div></div></article>)}</div>}
+    {!pending.length?<div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">現在、要確認の投稿はありません。</div>:<div className="mt-4 space-y-4">{pending.map(r=><article key={r.id} className="rounded-2xl border border-orange-200 bg-orange-50 p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex items-start gap-3"><SelectionCheckbox checked={pendingSel.includes(r.id)} onChange={()=>tp(r.id)} label={`投稿 #${r.id} を選択`} /><div><div className="text-lg font-bold">{storeName(r.store_id)}</div><div className="mt-2">{productName(r.product_id)}</div><div className="mt-1 font-bold text-[#b95489]">{formatInventoryValue(r.quantity,r.stock_status)}</div><div className="mt-1 text-sm text-gray-500">{formatDate(r.created_at)}</div>{r.comment&&<div className="mt-3 rounded-xl bg-white p-3">💬 {r.comment}</div>}<div className="mt-3 rounded-xl bg-white p-3 text-sm"><b>判定理由: </b>{r.review_reason||"理由なし"}</div></div></div><div className="flex gap-2"><button disabled={processingId===r.id} onClick={()=>onApprove(r)} className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white">承認・公開</button><button disabled={processingId===r.id} onClick={()=>onReject(r)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white">却下</button></div></div></article>)}</div>}
     <div className="mt-7"><BulkSelectionBar count={historySel.length} allSelected={hids.length>0&&hids.every(id=>historySel.includes(id))} onToggleAll={()=>setHistorySel(hids.length>0&&hids.every(id=>historySel.includes(id))?[]:hids)}><button disabled={!historySel.length} onClick={()=>onDeleteHistory(historySel)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を削除</button></BulkSelectionBar></div>
     <div className="mt-3 space-y-3"><details className="rounded-2xl border border-green-200 bg-green-50/50"><summary className="cursor-pointer px-5 py-4 font-bold text-green-700">承認済みの履歴 ({approved.length}件)</summary><div className="space-y-3 border-t border-green-200 p-4">{approved.length?approved.map(r=>hist(r,"承認")):<div className="text-sm text-gray-500">承認済みの履歴はありません。</div>}</div></details><details className="rounded-2xl border border-gray-200 bg-gray-50"><summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">却下済みの履歴 ({rejected.length}件)</summary><div className="space-y-3 border-t border-gray-200 p-4">{rejected.length?rejected.map(r=>hist(r,"却下")):<div className="text-sm text-gray-500">却下済みの履歴はありません。</div>}</div></details></div>
   </div>;
@@ -2605,9 +2622,11 @@ function SecurityEventsTab({
                     </div>
                     <div className="mt-1 text-sm">
                       {productName(event.product_id)}
-                      {event.quantity !== null
-                        ? ` / ${event.quantity === 0 ? "在庫なし" : `${event.quantity}枚`}`
-                        : ""}
+                      {event.stock_status
+                        ? ` / ${formatInventoryValue(event.quantity,event.stock_status)}`
+                        : event.quantity !== null
+                          ? ` / ${formatInventoryValue(event.quantity,null)}`
+                          : ""}
                     </div>
                     </div>
                   </div>
@@ -3563,7 +3582,7 @@ function ReportsTab({
     </BulkSelectionBar>
     {reports.map((report) => {
       const store=stores.find((x)=>x.id===report.store_id); const product=products.find((x)=>x.id===report.product_id);
-      return <article key={report.id} className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"><div className="flex flex-wrap items-start justify-between gap-5"><div className="flex min-w-0 flex-1 items-start gap-3"><SelectionCheckbox checked={selected.includes(report.id)} onChange={()=>toggle(report.id)} label={`投稿 #${report.id} を選択`} /><div><div className="text-lg font-bold">{store?getDisplayStoreName(store):"店舗不明"}</div><div className="mt-3">{product?.name??"商品不明"}</div><div className="mt-1 font-bold text-[#b95489]">{report.quantity===0?"在庫なし":`${report.quantity}枚`}</div><div className="mt-1 text-sm text-gray-500">{formatDate(report.created_at)}</div>{report.comment&&<div className="mt-3 rounded-xl bg-white p-3">💬 {report.comment}</div>}</div></div><button type="button" disabled={deletingId===report.id} onClick={()=>onDelete(report)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white disabled:opacity-50">削除</button></div></article>;
+      return <article key={report.id} className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"><div className="flex flex-wrap items-start justify-between gap-5"><div className="flex min-w-0 flex-1 items-start gap-3"><SelectionCheckbox checked={selected.includes(report.id)} onChange={()=>toggle(report.id)} label={`投稿 #${report.id} を選択`} /><div><div className="text-lg font-bold">{store?getDisplayStoreName(store):"店舗不明"}</div><div className="mt-3">{product?.name??"商品不明"}</div><div className="mt-1 font-bold text-[#b95489]">{formatInventoryValue(report.quantity,report.stock_status)}</div><div className="mt-1 text-sm text-gray-500">{formatDate(report.created_at)}</div>{report.comment&&<div className="mt-3 rounded-xl bg-white p-3">💬 {report.comment}</div>}</div></div><button type="button" disabled={deletingId===report.id} onClick={()=>onDelete(report)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white disabled:opacity-50">削除</button></div></article>;
     })}
   </div>;
 }
@@ -3573,7 +3592,7 @@ function DeletionHistoryTab({ deletions, stores, products, restoringId, onRestor
 }) {
   const [selected,setSelected]=useState<number[]>([]); const ids=deletions.map(d=>d.id); const all=ids.length>0&&ids.every(id=>selected.includes(id));
   useEffect(()=>setSelected(c=>c.filter(id=>ids.includes(id))),[deletions]); const toggle=(id:number)=>setSelected(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id]); const restorable=selected.filter(id=>!deletions.find(d=>d.id===id)?.restored_at);
-  return <div className="mt-6 space-y-4">{deletions.length>0&&<BulkSelectionBar count={selected.length} allSelected={all} onToggleAll={()=>setSelected(all?[]:ids)}><button disabled={!restorable.length} onClick={()=>onBulkRestore(restorable)} className="rounded-xl bg-[#6f4b89] px-4 py-2 font-bold text-white disabled:opacity-40">選択した未復元を一括復元</button><button disabled={!selected.length} onClick={()=>onDeleteHistory(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を完全削除</button></BulkSelectionBar>}{!deletions.length&&<div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">削除履歴はありません。</div>}{deletions.map(d=>{const store=stores.find(x=>x.id===d.store_id);const product=products.find(x=>x.id===d.product_id);const restored=Boolean(d.restored_at);return <article key={d.id} className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"><div className="flex flex-wrap items-start justify-between gap-5"><div className="flex items-start gap-3"><SelectionCheckbox checked={selected.includes(d.id)} onChange={()=>toggle(d.id)} label={`削除履歴 #${d.id} を選択`} /><div><div className="text-lg font-bold">{store?getDisplayStoreName(store):"店舗不明"}</div><div className="mt-2">{product?.name??"商品不明"}</div><div className="mt-1 font-bold">{d.quantity===0?"在庫なし":`${d.quantity}枚`}</div><div className="mt-2 text-sm text-gray-500">削除: {formatDate(d.deleted_at)}</div>{restored&&<div className="mt-1 text-sm font-bold text-green-700">復元済み</div>}</div></div>{!restored&&<button disabled={restoringId===d.id} onClick={()=>onRestore(d)} className="rounded-xl bg-[#6f4b89] px-5 py-3 font-bold text-white disabled:opacity-50">復元</button>}</div></article>})}</div>;
+  return <div className="mt-6 space-y-4">{deletions.length>0&&<BulkSelectionBar count={selected.length} allSelected={all} onToggleAll={()=>setSelected(all?[]:ids)}><button disabled={!restorable.length} onClick={()=>onBulkRestore(restorable)} className="rounded-xl bg-[#6f4b89] px-4 py-2 font-bold text-white disabled:opacity-40">選択した未復元を一括復元</button><button disabled={!selected.length} onClick={()=>onDeleteHistory(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を完全削除</button></BulkSelectionBar>}{!deletions.length&&<div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">削除履歴はありません。</div>}{deletions.map(d=>{const store=stores.find(x=>x.id===d.store_id);const product=products.find(x=>x.id===d.product_id);const restored=Boolean(d.restored_at);return <article key={d.id} className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"><div className="flex flex-wrap items-start justify-between gap-5"><div className="flex items-start gap-3"><SelectionCheckbox checked={selected.includes(d.id)} onChange={()=>toggle(d.id)} label={`削除履歴 #${d.id} を選択`} /><div><div className="text-lg font-bold">{store?getDisplayStoreName(store):"店舗不明"}</div><div className="mt-2">{product?.name??"商品不明"}</div><div className="mt-1 font-bold">{formatInventoryValue(d.quantity,d.stock_status)}</div><div className="mt-2 text-sm text-gray-500">削除: {formatDate(d.deleted_at)}</div>{restored&&<div className="mt-1 text-sm font-bold text-green-700">復元済み</div>}</div></div>{!restored&&<button disabled={restoringId===d.id} onClick={()=>onRestore(d)} className="rounded-xl bg-[#6f4b89] px-5 py-3 font-bold text-white disabled:opacity-50">復元</button>}</div></article>})}</div>;
 }
 
 function SalesTab({

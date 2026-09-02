@@ -13,6 +13,7 @@ type RequestBody = {
   storeId?: number;
   productId?: number;
   quantity?: number;
+  stockStatus?: "in_stock" | "low_stock" | "backorder" | "sold_out";
   comment?: string | null;
   clientId?: string;
   turnstileToken?: string;
@@ -30,6 +31,24 @@ type StoreRow = {
   store_type: string | null;
   prefecture: string | null;
 };
+
+type OnlineStockStatus =
+  | "in_stock"
+  | "low_stock"
+  | "backorder"
+  | "sold_out";
+
+type ProductRow = {
+  id: number;
+  online_only: boolean;
+};
+
+const ONLINE_STOCK_STATUSES = new Set<OnlineStockStatus>([
+  "in_stock",
+  "low_stock",
+  "backorder",
+  "sold_out",
+]);
 
 type SecurityRow = {
   report_id: number | null;
@@ -107,6 +126,7 @@ export async function POST(
       storeId,
       productId,
       quantity,
+      stockStatus,
       comment,
       clientId,
       turnstileToken,
@@ -179,6 +199,11 @@ export async function POST(
               Number.isInteger(quantity)
                 ? Number(quantity)
                 : null,
+            stock_status:
+              typeof stockStatus === "string" &&
+              ONLINE_STOCK_STATUSES.has(stockStatus as OnlineStockStatus)
+                ? stockStatus
+                : null,
             comment:
               typeof comment === "string" &&
               comment.trim() !== ""
@@ -225,20 +250,6 @@ export async function POST(
     }
 
     if (
-      !Number.isInteger(quantity) ||
-      Number(quantity) < 0 ||
-      Number(quantity) > 100
-    ) {
-      await logSecurityEvent(
-        "invalid_request",
-        "在庫枚数が0〜100の範囲外"
-      );
-      return jsonError(
-        "在庫枚数は0〜100の整数で入力してください。"
-      );
-    }
-
-    if (
       typeof comment === "string" &&
       comment.length > 500
     ) {
@@ -256,19 +267,6 @@ export async function POST(
       comment.trim() !== ""
         ? comment.trim()
         : null;
-
-    if (
-      Number(quantity) >= 50 &&
-      !normalizedComment
-    ) {
-      await logSecurityEvent(
-        "invalid_request",
-        "50枚以上の投稿でコメント未入力"
-      );
-      return jsonError(
-        "50枚以上の在庫情報は、確認できた状況をコメント欄に入力してください。"
-      );
-    }
 
     if (
       typeof clientId !== "string" ||
@@ -410,6 +408,77 @@ export async function POST(
 
     const online =
       isOnlineStore(currentStore);
+
+    const { data: currentProductData, error: currentProductError } =
+      await supabase
+        .from("products")
+        .select("id, online_only")
+        .eq("id", Number(productId))
+        .single();
+
+    if (currentProductError || !currentProductData) {
+      await logSecurityEvent(
+        "invalid_request",
+        "商品情報を取得できない"
+      );
+      return jsonError("商品情報を確認できませんでした。");
+    }
+
+    const currentProduct = currentProductData as ProductRow;
+
+    if (currentProduct.online_only && !online) {
+      await logSecurityEvent(
+        "invalid_request",
+        "オンライン限定商品を実店舗へ投稿"
+      );
+      return jsonError(
+        "この商品はオンラインショップのみ投稿できます。"
+      );
+    }
+
+    const normalizedStockStatus =
+      typeof stockStatus === "string" &&
+      ONLINE_STOCK_STATUSES.has(stockStatus as OnlineStockStatus)
+        ? (stockStatus as OnlineStockStatus)
+        : null;
+
+    if (online) {
+      if (!normalizedStockStatus) {
+        await logSecurityEvent(
+          "invalid_request",
+          "オンライン在庫状態が不正"
+        );
+        return jsonError(
+          "オンラインショップの在庫状況を選択してください。"
+        );
+      }
+    } else {
+      if (
+        !Number.isInteger(quantity) ||
+        Number(quantity) < 0 ||
+        Number(quantity) > 100
+      ) {
+        await logSecurityEvent(
+          "invalid_request",
+          "在庫枚数が0〜100の範囲外"
+        );
+        return jsonError(
+          "在庫枚数は0〜100の整数で入力してください。"
+        );
+      }
+
+      if (Number(quantity) >= 50 && !normalizedComment) {
+        await logSecurityEvent(
+          "invalid_request",
+          "50枚以上の投稿でコメント未入力"
+        );
+        return jsonError(
+          "50枚以上の在庫情報は、確認できた状況をコメント欄に入力してください。"
+        );
+      }
+    }
+
+    const storedQuantity = online ? 0 : Number(quantity);
 
     const now = Date.now();
 
@@ -739,7 +808,7 @@ export async function POST(
      * コメント必須 + その投稿をPending。
      */
     const highQuantityPending =
-      Number(quantity) >= 50;
+      !online && storedQuantity >= 50;
 
     /*
      * 今回が強い警戒の到達点か。
@@ -802,7 +871,8 @@ export async function POST(
         store_id: Number(storeId),
         product_id:
           Number(productId),
-        quantity: Number(quantity),
+        quantity: storedQuantity,
+        stock_status: online ? normalizedStockStatus : null,
         comment: normalizedComment,
         review_status:
           reviewStatus,
@@ -966,7 +1036,7 @@ export async function POST(
               "inventory_reports"
             )
             .select(
-              "store_id, product_id, quantity, comment"
+              "store_id, product_id, quantity, stock_status, comment"
             )
             .eq(
               "id",
@@ -1002,6 +1072,10 @@ export async function POST(
               quantity:
                 rollbackReport
                   ?.quantity ??
+                null,
+              stock_status:
+                rollbackReport
+                  ?.stock_status ??
                 null,
               comment:
                 rollbackReport

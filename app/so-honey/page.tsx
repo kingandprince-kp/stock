@@ -145,13 +145,21 @@ type Product = {
   id: number;
   name: string;
   sort_order: number | null;
+  online_only: boolean;
 };
+
+type OnlineStockStatus =
+  | "in_stock"
+  | "low_stock"
+  | "backorder"
+  | "sold_out";
 
 type InventoryReport = {
   id: number;
   store_id: number;
   product_id: number;
   quantity: number;
+  stock_status: OnlineStockStatus | null;
   comment: string | null;
   created_at: string;
 };
@@ -191,6 +199,8 @@ export default function Home() {
   const [reportStoreId, setReportStoreId] = useState("");
   const [reportProductId, setReportProductId] = useState("");
  const [reportQuantity, setReportQuantity] = useState("");
+const [reportStockStatus, setReportStockStatus] =
+  useState<OnlineStockStatus>("in_stock");
 const [reportComment, setReportComment] = useState("");
 
 const [turnstileToken, setTurnstileToken] =
@@ -392,7 +402,7 @@ const percent =
    const { data, error } = await supabase
   .from("inventory_reports")
   .select(
-    "id, store_id, product_id, quantity, comment, created_at"
+    "id, store_id, product_id, quantity, stock_status, comment, created_at"
   )
   .eq("review_status", "approved")
   .order("created_at", { ascending: false })
@@ -450,7 +460,7 @@ const percent =
 
         supabase
           .from("products")
-          .select("id, name, sort_order")
+          .select("id, name, sort_order, online_only")
           .order("sort_order", { ascending: true }),
       ]);
 
@@ -566,6 +576,26 @@ setLoading(false);
     search,
   ]);
 
+  const reportProducts = useMemo(
+    () =>
+      products.filter(
+        (product) =>
+          reportMode === "online" || !product.online_only
+      ),
+    [products, reportMode]
+  );
+
+  useEffect(() => {
+    if (
+      reportProducts.length > 0 &&
+      !reportProducts.some(
+        (product) => String(product.id) === reportProductId
+      )
+    ) {
+      setReportProductId(String(reportProducts[0].id));
+    }
+  }, [reportProducts, reportProductId]);
+
   const reportCandidates = useMemo(() => {
     const keyword =
       reportStoreSearch.trim().toLowerCase();
@@ -658,175 +688,152 @@ setLoading(false);
     }).format(new Date(dateString));
 
  async function handleSubmitReport() {
-  setSubmitMessage("");
-  setSubmitError("");
+   setSubmitMessage("");
+   setSubmitError("");
 
-  if (!reportStoreId) {
-    setSubmitError("店舗を選択してください。");
-    return;
-  }
+   if (!reportStoreId) {
+     setSubmitError("店舗を選択してください。");
+     return;
+   }
 
-  if (!reportProductId) {
-    setSubmitError("商品を選択してください。");
-    return;
-  }
+   if (!reportProductId) {
+     setSubmitError("商品を選択してください。");
+     return;
+   }
 
-  if (reportQuantity.trim() === "") {
-    setSubmitError("在庫枚数を入力してください。");
-    return;
-  }
+   const online = reportMode === "online";
+   let quantity = 0;
 
-  const quantity = Number(reportQuantity);
+   if (!online) {
+     if (reportQuantity.trim() === "") {
+       setSubmitError("在庫枚数を入力してください。");
+       return;
+     }
 
-  if (
-    !Number.isInteger(quantity) ||
-    quantity < 0 ||
-    quantity > 100
-  ) {
-    setSubmitError(
-      "在庫枚数は0〜100の整数で入力してください。"
-    );
-    return;
-  }
+     quantity = Number(reportQuantity);
 
-  if (reportComment.length > 500) {
-    setSubmitError(
-      "コメントは500文字以内で入力してください。"
-    );
-    return;
-  }
+     if (
+       !Number.isInteger(quantity) ||
+       quantity < 0 ||
+       quantity > 100
+     ) {
+       setSubmitError(
+         "在庫枚数は0〜100の整数で入力してください。"
+       );
+       return;
+     }
+   }
 
-  if (quantity >= 50 && reportComment.trim() === "") {
-    setSubmitError(
-      "50枚以上の在庫情報は確認のためコメント入力が必要です。入荷状況や店頭・オンラインで確認できた内容をご記入ください。"
-    );
-    return;
-  }
+   if (reportComment.length > 500) {
+     setSubmitError(
+       "コメントは500文字以内で入力してください。"
+     );
+     return;
+   }
 
-  if (!turnstileReady || !turnstileToken) {
-    setSubmitError(
-      "Bot確認が完了していません。少し待ってからもう一度お試しください。"
-    );
-    return;
-  }
+   if (
+     !online &&
+     quantity >= 50 &&
+     reportComment.trim() === ""
+   ) {
+     setSubmitError(
+       "50枚以上の在庫情報は確認のためコメント入力が必要です。入荷状況や店頭で確認できた内容をご記入ください。"
+     );
+     return;
+   }
 
-  setSubmitting(true);
+   if (!turnstileReady || !turnstileToken) {
+     setSubmitError(
+       "Bot確認が完了していません。少し待ってからもう一度お試しください。"
+     );
+     return;
+   }
 
-  try {
-    // ブラウザごとの識別ID
-    let clientId = localStorage.getItem(
-      "kp_inventory_client_id"
-    );
+   setSubmitting(true);
 
-    if (!clientId) {
-      clientId = crypto.randomUUID();
+   try {
+     let clientId = localStorage.getItem(
+       "kp_inventory_client_id"
+     );
 
-      localStorage.setItem(
-        "kp_inventory_client_id",
-        clientId
-      );
-    }
+     if (!clientId) {
+       clientId = crypto.randomUUID();
+       localStorage.setItem(
+         "kp_inventory_client_id",
+         clientId
+       );
+     }
 
-    // Supabaseをブラウザから直接呼ばず、
-    // Next.jsのサーバーAPIを経由する
-    const response = await fetch(
-      "/api/inventory-report",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          storeId: Number(reportStoreId),
-          productId: Number(reportProductId),
-          quantity,
-          comment:
-            reportComment.trim() === ""
-              ? null
-              : reportComment.trim(),
-          clientId,
-          turnstileToken,
-        }),
-      }
-    );
+     const response = await fetch(
+       "/api/inventory-report",
+       {
+         method: "POST",
+         headers: {
+           "Content-Type": "application/json",
+         },
+         body: JSON.stringify({
+           storeId: Number(reportStoreId),
+           productId: Number(reportProductId),
+           quantity: online ? undefined : quantity,
+           stockStatus: online
+             ? reportStockStatus
+             : undefined,
+           comment:
+             reportComment.trim() === ""
+               ? null
+               : reportComment.trim(),
+           clientId,
+           turnstileToken,
+         }),
+       }
+     );
 
-    const result = (await response.json()) as {
-      success?: boolean;
-      message?: string;
-      reportId?: number;
-    };
+     const result = (await response.json()) as {
+       success?: boolean;
+       message?: string;
+       reportId?: number;
+     };
 
-    // Turnstileトークンは1回限りなので、
-    // 投稿結果にかかわらず次回用にリセット
-    const turnstile = (
-      window as typeof window & {
-        turnstile?: {
-          reset: (widgetId?: string) => void;
-        };
-      }
-    ).turnstile;
+     const turnstile = (
+       window as typeof window & {
+         turnstile?: {
+           reset: (widgetId?: string) => void;
+         };
+       }
+     ).turnstile;
 
-    if (
-      turnstile &&
-      turnstileWidgetIdRef.current
-    ) {
-      turnstile.reset(
-        turnstileWidgetIdRef.current
-      );
-    }
+     if (turnstile && turnstileWidgetIdRef.current) {
+       turnstile.reset(turnstileWidgetIdRef.current);
+     }
 
-    setTurnstileToken("");
-    setTurnstileReady(false);
+     setTurnstileToken("");
+     setTurnstileReady(false);
 
-    if (!response.ok || !result.success) {
-      setSubmitError(
-        result.message ||
-          "投稿に失敗しました。もう一度お試しください。"
-      );
-      return;
-    }
+     if (!response.ok || !result.success) {
+       setSubmitError(
+         result.message ||
+           "投稿に失敗しました。もう一度お試しください。"
+       );
+       return;
+     }
 
-    setSubmitMessage(
-      "在庫情報を投稿しました。在庫チェッカーへのご協力、ありがとうございます!"
-    );
+     setSubmitMessage(
+       "在庫情報を投稿しました。在庫チェッカーへのご協力、ありがとうございます!"
+     );
 
-    setReportQuantity("");
-    setReportComment("");
-
-    await loadInventoryReports();
-  } catch (error) {
-    console.error(
-      "inventory report API error:",
-      error
-    );
-
-    const turnstile = (
-      window as typeof window & {
-        turnstile?: {
-          reset: (widgetId?: string) => void;
-        };
-      }
-    ).turnstile;
-
-    if (
-      turnstile &&
-      turnstileWidgetIdRef.current
-    ) {
-      turnstile.reset(
-        turnstileWidgetIdRef.current
-      );
-    }
-
-    setTurnstileToken("");
-    setTurnstileReady(false);
-
-    setSubmitError(
-      "投稿中にエラーが発生しました。もう一度お試しください。"
-    );
-  } finally {
-    setSubmitting(false);
-  }
-}
+     setReportQuantity("");
+     setReportStockStatus("in_stock");
+     setReportComment("");
+     await loadInventoryReports();
+   } catch (error) {
+     console.error(error);
+     setSubmitError(
+       "投稿中にエラーが発生しました。もう一度お試しください。"
+     );
+   } finally {
+     setSubmitting(false);
+   }
+ }
 
 async function handleStoreRequest() {
   setRequestMessage("");
@@ -1797,7 +1804,7 @@ async function handleBugReport() {
                 }
                 className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] md:rounded-2xl md:p-3.5 md:text-base"
               >
-                {products.map((product) => (
+                {reportProducts.map((product) => (
                   <option key={product.id} value={product.id}>
                     {product.name}
                   </option>
@@ -1873,37 +1880,64 @@ async function handleBugReport() {
             </div>
           )}
 
-          <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
-            <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
-              🔢 在庫枚数
-            </span>
-
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              autoComplete="off"
-              value={reportQuantity}
-              onChange={(e) => {
-                const value = e.target.value;
-
-                if (value === "") {
-  setReportQuantity("");
-  return;
-}
-
-if (/^[0-9]+$/.test(value)) {
-  const number = Number(value);
-
-  if (number >= 0 && number <= 100) {
-    setReportQuantity(value);
-  }
-}
-              }}
-              placeholder="例: 5"
-              className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 md:text-base"
-            />
-          </label>
+          {reportMode === "physical" ? (
+            <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
+              <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
+                🔢 在庫枚数
+              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="off"
+                value={reportQuantity}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === "") {
+                    setReportQuantity("");
+                    return;
+                  }
+                  if (/^[0-9]+$/.test(value)) {
+                    const number = Number(value);
+                    if (number >= 0 && number <= 100) {
+                      setReportQuantity(value);
+                    }
+                  }
+                }}
+                placeholder="例: 5"
+                className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 md:text-base"
+              />
+            </label>
+          ) : (
+            <div className="mt-3 md:mt-5">
+              <div className="text-[12px] font-bold text-[#211d21] md:text-base">
+                🛒 在庫状況
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2 md:gap-3">
+                {[
+                  ["in_stock", "○ 在庫あり"],
+                  ["low_stock", "△ 残りわずか"],
+                  ["backorder", "入荷待ち"],
+                  ["sold_out", "× 売り切れ"],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() =>
+                      setReportStockStatus(value as OnlineStockStatus)
+                    }
+                    className={`rounded-xl border px-3 py-2.5 text-[12px] font-bold md:px-4 md:py-3 md:text-base ${
+                      reportStockStatus === value
+                        ? "border-[#9e638d] bg-[#ead8e6] text-[#4f2f46]"
+                        : "border-[#d9c9d8] bg-[#fdfafd] text-[#5f545d]"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
             <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
@@ -2149,9 +2183,11 @@ if (/^[0-9]+$/.test(value)) {
 
                     <div className="shrink-0 text-right">
                       <div className="whitespace-nowrap text-[12px] font-bold leading-4 md:text-base md:leading-normal">
-                        {report.quantity === 0
-                          ? "在庫なし"
-                          : `${report.quantity}枚`}
+                        {report.stock_status
+                          ? formatStockStatus(report.stock_status)
+                          : report.quantity === 0
+                            ? "在庫なし"
+                            : `${report.quantity}枚`}
                       </div>
 
                       <div className="mt-0.5 text-[9px] leading-3 text-[#999098] md:mt-0 md:text-sm md:leading-normal">
@@ -2606,7 +2642,13 @@ function StoreCard({
     }
   }
 
-  const storeReports = products
+  const online = isOnlineStore(store);
+
+  const storeProducts = online
+    ? products
+    : products.filter((product) => !product.online_only);
+
+  const storeReports = storeProducts
     .map((product) =>
       getLatestReport(store.id, product.id)
     )
@@ -2624,8 +2666,6 @@ function StoreCard({
             : newest
         )
       : null;
-
-  const online = isOnlineStore(store);
 
   return (
     <article className="rounded-2xl border border-[#e8d9e7] bg-white p-3.5 shadow-sm md:rounded-3xl md:p-6">
@@ -2783,7 +2823,7 @@ function StoreCard({
         </div>
 
         <div className="mt-2 grid grid-cols-2 gap-1.5 sm:gap-2 lg:mt-4 lg:grid-cols-4 lg:gap-3">
-          {products.map((product) => {
+          {storeProducts.map((product) => {
             const report = getLatestReport(
               store.id,
               product.id
@@ -2801,6 +2841,12 @@ function StoreCard({
                 {!report ? (
                   <div className="mt-1.5 text-[11px] font-bold text-[#625861] md:mt-2 md:text-base">
                     情報なし
+                  </div>
+                ) : online && report.stock_status ? (
+                  <div className="mt-1.5 md:mt-4">
+                    <span className="inline-block rounded-full bg-[#f0dfec] px-2 py-0.5 text-[10px] font-bold text-[#6d4966] md:px-3 md:py-1.5 md:text-base">
+                      {formatStockStatus(report.stock_status)}
+                    </span>
                   </div>
                 ) : report.quantity === 0 ? (
                   <div className="mt-1.5 md:mt-4">
@@ -2925,6 +2971,16 @@ function StoreCard({
       )}
     </article>
   );
+}
+
+function formatStockStatus(status: OnlineStockStatus) {
+  const labels: Record<OnlineStockStatus, string> = {
+    in_stock: "○ 在庫あり",
+    low_stock: "△ 残りわずか",
+    backorder: "入荷待ち",
+    sold_out: "× 売り切れ",
+  };
+  return labels[status];
 }
 
 function comparePhysicalStores(
