@@ -1352,12 +1352,10 @@ export default function AdminPage() {
 
     if (
       todaySales.trim() === "" ||
-      weeklySales.trim() === "" ||
-      totalSales.trim() === "" ||
       salesGoal.trim() === ""
     ) {
       setErrorMessage(
-        "売上・目標枚数をすべて入力してください。"
+        "本日の売上と目標枚数を入力してください。"
       );
       return;
     }
@@ -1388,28 +1386,70 @@ export default function AdminPage() {
       return number;
     }
 
-    const today = parseSalesValue(todaySales);
-    const week = parseSalesValue(weeklySales);
-    const total = parseSalesValue(totalSales);
-    const goal = Number(salesGoal);
+    function getJstDateKey(
+      date: Date
+    ) {
+      const parts = new Intl.DateTimeFormat(
+        "en-CA",
+        {
+          timeZone: "Asia/Tokyo",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }
+      ).formatToParts(date);
+
+      const year =
+        parts.find((part) => part.type === "year")
+          ?.value ?? "";
+      const month =
+        parts.find((part) => part.type === "month")
+          ?.value ?? "";
+      const day =
+        parts.find((part) => part.type === "day")
+          ?.value ?? "";
+
+      return `${year}-${month}-${day}`;
+    }
+
+    function getJstWeekKey(
+      date: Date
+    ) {
+      const dateKey = getJstDateKey(date);
+      const [year, month, day] =
+        dateKey.split("-").map(Number);
+
+      const utcDate = new Date(
+        Date.UTC(year, month - 1, day)
+      );
+
+      const dayOfWeek = utcDate.getUTCDay();
+      const daysFromMonday =
+        (dayOfWeek + 6) % 7;
+
+      utcDate.setUTCDate(
+        utcDate.getUTCDate() - daysFromMonday
+      );
+
+      return [
+        utcDate.getUTCFullYear(),
+        String(
+          utcDate.getUTCMonth() + 1
+        ).padStart(2, "0"),
+        String(
+          utcDate.getUTCDate()
+        ).padStart(2, "0"),
+      ].join("-");
+    }
+
+    const today =
+      parseSalesValue(todaySales);
+    const goal =
+      Number(salesGoal);
 
     if (today === "invalid") {
       setErrorMessage(
         "本日の売上は「-」または0以上の整数で入力してください。"
-      );
-      return;
-    }
-
-    if (week === "invalid") {
-      setErrorMessage(
-        "今週の売上は「-」または0以上の整数で入力してください。"
-      );
-      return;
-    }
-
-    if (total === "invalid") {
-      setErrorMessage(
-        "累計売上は「-」または0以上の整数で入力してください。"
       );
       return;
     }
@@ -1424,6 +1464,68 @@ export default function AdminPage() {
       return;
     }
 
+    const now = new Date();
+
+    const previousUpdatedAt =
+      salesData?.updated_at
+        ? new Date(salesData.updated_at)
+        : null;
+
+    const sameJstDay =
+      previousUpdatedAt !== null &&
+      getJstDateKey(previousUpdatedAt) ===
+        getJstDateKey(now);
+
+    const sameJstWeek =
+      previousUpdatedAt !== null &&
+      getJstWeekKey(previousUpdatedAt) ===
+        getJstWeekKey(now);
+
+    const previousToday =
+      salesData?.today_sales ?? 0;
+
+    const previousWeek =
+      salesData?.weekly_sales ?? 0;
+
+    const previousTotal =
+      salesData?.total_sales ?? 0;
+
+    let week: number | null;
+    let total: number | null;
+
+    if (today === null) {
+      if (sameJstDay) {
+        week = Math.max(
+          0,
+          previousWeek - previousToday
+        );
+        total = Math.max(
+          0,
+          previousTotal - previousToday
+        );
+      } else {
+        week = sameJstWeek
+          ? previousWeek
+          : null;
+        total =
+          salesData?.total_sales ?? null;
+      }
+    } else if (sameJstDay) {
+      week = Math.max(
+        0,
+        previousWeek - previousToday + today
+      );
+      total = Math.max(
+        0,
+        previousTotal - previousToday + today
+      );
+    } else {
+      week = sameJstWeek
+        ? previousWeek + today
+        : today;
+      total = previousTotal + today;
+    }
+
     const displaySales = (
       value: number | null
     ) =>
@@ -1432,7 +1534,7 @@ export default function AdminPage() {
         : `${value.toLocaleString()}枚`;
 
     const confirmed = window.confirm(
-      `売上情報を更新します。\n\n本日: ${displaySales(today)}\n今週: ${displaySales(week)}\n累計: ${displaySales(total)}\n目標: ${goal.toLocaleString()}枚`
+      `売上情報を更新します。\n\n本日: ${displaySales(today)}\n今週（月〜日）: ${displaySales(week)}\n累計: ${displaySales(total)}\n目標: ${goal.toLocaleString()}枚`
     );
 
     if (!confirmed) return;
@@ -1460,7 +1562,7 @@ export default function AdminPage() {
     await loadSalesData();
 
     setMessage(
-      "売上情報を更新しました。"
+      "本日の売上を反映し、今週（月〜日）と累計を自動更新しました。"
     );
 
     setSalesUpdating(false);
@@ -3481,8 +3583,6 @@ function SalesTab({
   totalSales,
   salesGoal,
   setTodaySales,
-  setWeeklySales,
-  setTotalSales,
   setSalesGoal,
   salesUpdating,
   onSubmit,
@@ -3513,11 +3613,38 @@ function SalesTab({
     value: string
   ) => string;
 }) {
+  const displayAutoValue = (
+    value: string
+  ) => {
+    const trimmed = value.trim();
+
+    if (
+      trimmed === "" ||
+      trimmed === "-" ||
+      trimmed === "－" ||
+      trimmed === "ー" ||
+      trimmed === "―"
+    ) {
+      return "－";
+    }
+
+    const number = Number(trimmed);
+
+    return Number.isFinite(number)
+      ? `${number.toLocaleString()}枚`
+      : "－";
+  };
+
   return (
     <div className="mt-6 rounded-3xl border border-[#eaddea] bg-[#fcf9fc] p-5 md:p-7">
       <h2 className="text-2xl font-bold">
         📈 売上情報
       </h2>
+
+      <p className="mt-2 text-sm leading-6 text-gray-600">
+        本日の売上を入力すると、今週（月曜日〜日曜日）と累計を自動で合算します。
+        同じ日に数字を修正した場合も、差額を自動で反映します。
+      </p>
 
       {salesData && (
         <div className="mt-2 text-sm text-gray-500">
@@ -3540,19 +3667,33 @@ function SalesTab({
             allowDash
           />
 
-          <SalesInput
-            label="📅 今週の売上"
-            value={weeklySales}
-            onChange={setWeeklySales}
-            allowDash
-          />
+          <div className="rounded-xl border border-[#e3d6e2] bg-[#f5eef4] p-4">
+            <div className="font-bold">
+              📅 今週の売上（月〜日）
+            </div>
+            <div className="mt-2 text-2xl font-bold text-[#6d4966]">
+              {displayAutoValue(
+                weeklySales
+              )}
+            </div>
+            <div className="mt-1 text-xs text-gray-500">
+              本日の売上を更新すると自動計算
+            </div>
+          </div>
 
-          <SalesInput
-            label="👑 累計売上"
-            value={totalSales}
-            onChange={setTotalSales}
-            allowDash
-          />
+          <div className="rounded-xl border border-[#e3d6e2] bg-[#f5eef4] p-4">
+            <div className="font-bold">
+              👑 累計売上
+            </div>
+            <div className="mt-2 text-2xl font-bold text-[#6d4966]">
+              {displayAutoValue(
+                totalSales
+              )}
+            </div>
+            <div className="mt-1 text-xs text-gray-500">
+              本日の売上を更新すると自動計算
+            </div>
+          </div>
 
           <SalesInput
             label="🎯 目標枚数"
@@ -3570,7 +3711,7 @@ function SalesTab({
         >
           {salesUpdating
             ? "更新中…"
-            : "売上情報を更新"}
+            : "本日の売上を反映"}
         </button>
       </form>
     </div>
