@@ -1650,11 +1650,11 @@ async function handleBugReport() {
             isAndroid ? "bg-white" : "bg-white/90"
           }`}
         >
-          <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] md:text-sm">
+          <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] opacity-100 [-webkit-text-fill-color:#9b6c91] md:text-sm">
             STOCK SEARCH
           </div>
 
-          <h2 className="mt-1 text-lg font-bold text-[#1d191d] md:text-3xl">
+          <h2 className="mt-1 text-lg font-bold text-[#1d191d] opacity-100 [-webkit-text-fill-color:#1d191d] md:text-3xl">
             🏬 店舗を探す
           </h2>
 
@@ -1743,11 +1743,11 @@ async function handleBugReport() {
           <div className="mt-5 border-t border-[#eaddea] pt-4 md:mt-9 md:pt-7">
             <div className="flex flex-wrap items-end justify-between gap-2 md:gap-3">
               <div>
-                <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] md:text-sm">
+                <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] opacity-100 [-webkit-text-fill-color:#9b6c91] md:text-sm">
                   STOCK LIST
                 </div>
 
-                <h3 className="mt-1 text-lg font-bold text-[#1d191d] md:text-3xl">
+                <h3 className="mt-1 text-lg font-bold text-[#1d191d] opacity-100 [-webkit-text-fill-color:#1d191d] md:text-3xl">
                   🎈{" "}
                   {searchMode === "physical"
                     ? "店舗別 在庫一覧"
@@ -1800,11 +1800,11 @@ async function handleBugReport() {
             isAndroid ? "bg-white" : "bg-white/90"
           }`}
         >
-          <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] md:text-sm">
+          <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] opacity-100 [-webkit-text-fill-color:#9b6c91] md:text-sm">
             REPORT STOCK
           </div>
 
-          <h2 className="mt-1 text-lg font-bold text-[#1d191d] md:text-3xl">
+          <h2 className="mt-1 text-lg font-bold text-[#1d191d] opacity-100 [-webkit-text-fill-color:#1d191d] md:text-3xl">
             ✍️ 在庫情報を投稿
           </h2>
 
@@ -2074,7 +2074,7 @@ async function handleBugReport() {
               className="flex w-full items-center justify-between gap-2 text-left md:gap-3"
             >
               <div>
-                <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] md:text-sm">
+                <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] opacity-100 [-webkit-text-fill-color:#9b6c91] md:text-sm">
                   STORE REQUEST
                 </div>
 
@@ -2232,11 +2232,11 @@ async function handleBugReport() {
             isAndroid ? "bg-white" : "bg-white/90"
           }`}
         >
-          <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] md:text-sm">
+          <div className="text-[10px] font-bold tracking-[0.12em] text-[#9b6c91] opacity-100 [-webkit-text-fill-color:#9b6c91] md:text-sm">
             LATEST REPORTS
           </div>
 
-          <h2 className="mt-1 text-lg font-bold text-[#1d191d] md:text-3xl">
+          <h2 className="mt-1 text-lg font-bold text-[#1d191d] opacity-100 [-webkit-text-fill-color:#1d191d] md:text-3xl">
             🕒 最新の在庫投稿
           </h2>
 
@@ -2251,17 +2251,17 @@ async function handleBugReport() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="truncate text-[11px] font-bold leading-4 text-[#241f24] md:text-base md:leading-normal">
+                      <div className="truncate text-[11px] font-bold leading-4 text-[#241f24] opacity-100 [-webkit-text-fill-color:#241f24] md:text-base md:leading-normal">
                         {getStoreName(report.store_id)}
                       </div>
 
-                      <div className="mt-0.5 truncate text-[10px] leading-4 text-[#766a75] md:mt-1 md:text-base md:leading-normal">
+                      <div className="mt-0.5 truncate text-[10px] leading-4 text-[#766a75] opacity-100 [-webkit-text-fill-color:#766a75] md:mt-1 md:text-base md:leading-normal">
                         {getProductName(report.product_id)}
                       </div>
                     </div>
 
                     <div className="shrink-0 text-right">
-                      <div className="whitespace-nowrap text-[12px] font-bold leading-4 md:text-base md:leading-normal">
+                      <div className="whitespace-nowrap text-[12px] font-bold leading-4 text-[#241f24] opacity-100 [-webkit-text-fill-color:#241f24] md:text-base md:leading-normal">
                         {report.stock_status
                           ? formatStockStatus(report.stock_status)
                           : report.quantity === 0
@@ -2269,14 +2269,14 @@ async function handleBugReport() {
                             : `${report.quantity}枚`}
                       </div>
 
-                      <div className="mt-0.5 text-[9px] leading-3 text-[#999098] md:mt-0 md:text-sm md:leading-normal">
+                      <div className="mt-0.5 text-[9px] leading-3 text-[#766a75] opacity-100 [-webkit-text-fill-color:#766a75] md:mt-0 md:text-sm md:leading-normal">
                         {formatDate(report.created_at)}
                       </div>
                     </div>
                   </div>
 
                   {report.comment && (
-                    <div className="mt-1 rounded-md bg-white px-2 py-1.5 text-[10px] leading-4 text-[#605760] md:mt-3 md:rounded-xl md:p-3 md:text-base md:leading-6">
+                    <div className="mt-1 rounded-md bg-white px-2 py-1.5 text-[10px] leading-4 text-[#605760] opacity-100 [-webkit-text-fill-color:#605760] md:mt-3 md:rounded-xl md:p-3 md:text-base md:leading-6">
                       {report.comment}
                     </div>
                   )}
@@ -2285,7 +2285,7 @@ async function handleBugReport() {
                       type="button"
                       disabled={deletingOwnReportId === report.id}
                       onClick={() => void handleDeleteOwnReport(report.id)}
-                      className="mt-2 rounded-full border border-[#d7c7d4] bg-white px-2.5 py-1 text-[9px] font-bold text-[#775f70] disabled:opacity-50 md:mt-3 md:px-3 md:py-1.5 md:text-xs"
+                      className="mt-2 rounded-full border border-[#d7c7d4] bg-white px-2.5 py-1 text-[9px] font-bold text-[#775f70] opacity-100 [-webkit-text-fill-color:#775f70] disabled:opacity-50 md:mt-3 md:px-3 md:py-1.5 md:text-xs"
                     >
                       {deletingOwnReportId === report.id
                         ? "削除中…"
@@ -2976,7 +2976,7 @@ function StoreCard({
                     type="button"
                     disabled={deletingOwnReportId === report.id}
                     onClick={() => void onDeleteOwnReport(report.id)}
-                    className="mt-2 rounded-full border border-[#d7c7d4] bg-white px-2.5 py-1 text-[9px] font-bold text-[#775f70] disabled:opacity-50 md:mt-3 md:px-3 md:py-1.5 md:text-xs"
+                    className="mt-2 rounded-full border border-[#d7c7d4] bg-white px-2.5 py-1 text-[9px] font-bold text-[#775f70] opacity-100 [-webkit-text-fill-color:#775f70] disabled:opacity-50 md:mt-3 md:px-3 md:py-1.5 md:text-xs"
                   >
                     {deletingOwnReportId === report.id
                       ? "削除中…"
