@@ -1318,7 +1318,7 @@ async function handleBugReport() {
                 <p className="whitespace-nowrap">
   全国の実店舗・オンラインショップの在庫を
   <br />
-  7種類まとめて確認できます。
+  7形態まとめて確認できます。
 </p>
 
                 <span className="text-base md:text-2xl" aria-hidden="true">
@@ -2848,21 +2848,29 @@ function StoreCard({
       {open && (
         <div className="mt-2 rounded-xl border border-[#e8d9e7] bg-[#fcf9fc] p-3 md:mt-3 md:rounded-2xl md:p-5">
           {online ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 md:gap-4">
-              <div className="text-[12px] font-bold md:text-base">
-                🛒 オンラインショップ
+            <div>
+              <div className="flex flex-wrap items-center justify-between gap-3 md:gap-4">
+                <div className="text-[12px] font-bold md:text-base">
+                  🛒 オンラインショップ
+                </div>
+
+                {store.online_url && (
+                  <a
+                    href={store.online_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center rounded-full bg-[#211d21] px-4 py-2 text-[11px] font-bold text-white md:px-5 md:py-2.5 md:text-base"
+                  >
+                    <span>商品ページを見る</span>
+                    <ExternalArrow />
+                  </a>
+                )}
               </div>
 
-              {store.online_url && (
-                <a
-                  href={store.online_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center rounded-full bg-[#211d21] px-4 py-2 text-[11px] font-bold text-white md:px-5 md:py-2.5 md:text-base"
-                >
-                  <span>公式サイトを見る</span>
-                  <ExternalArrow />
-                </a>
+              {store.id === 308 && (
+                <div className="mt-3 rounded-xl border border-[#ead7a7] bg-[#fff9e8] px-3 py-2 text-[10px] font-bold leading-5 text-[#6f5724] md:px-4 md:py-3 md:text-sm md:leading-6">
+                  ※Amazonは、販売元・出荷元ともにAmazon.co.jpの商品が集計対象です。購入時にご確認ください。
+                </div>
               )}
             </div>
           ) : (
