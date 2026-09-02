@@ -171,6 +171,9 @@ type SalesSummary = {
   weekly_sales: number | null;
   total_sales: number | null;
   goal: number;
+  sales_date: string;
+  week_start: string;
+  week_end: string;
   updated_at: string;
 };
 
@@ -386,6 +389,23 @@ const today = salesData?.today_sales ?? null;
 const week = salesData?.weekly_sales ?? null;
 const goal = salesData?.goal ?? GOAL;
 
+const salesDateLabel =
+  salesData?.sales_date
+    ? `${formatShortSalesDate(
+        salesData.sales_date
+      )}付`
+    : "本日";
+
+const salesWeekLabel =
+  salesData?.week_start &&
+  salesData?.week_end
+    ? `${formatShortSalesDate(
+        salesData.week_start
+      )}〜${formatShortSalesDate(
+        salesData.week_end
+      )}`
+    : "今週";
+
 const salesForProgress = sales ?? 0;
 
 const remain = Math.max(
@@ -435,7 +455,7 @@ const percent =
 
   const loadSalesData = useCallback(async () => {
   const { data, error } = await supabase.rpc(
-    "get_sales_summary"
+    "get_sales_summary_v2"
   );
 
   if (error) {
@@ -1462,9 +1482,21 @@ async function handleBugReport() {
           </div>
 
           <div className="relative z-10 mt-3 grid grid-cols-3 gap-1.5 md:mt-5 md:gap-3">
-            <StatCard icon="📊" title="本日" value={today} />
-            <StatCard icon="📅" title="今週" value={week} />
-            <StatCard icon="👑" title="累計" value={sales} />
+            <StatCard
+              icon="📊"
+              title={salesDateLabel}
+              value={today}
+            />
+            <StatCard
+              icon="📅"
+              title={salesWeekLabel}
+              value={week}
+            />
+            <StatCard
+              icon="👑"
+              title="累計"
+              value={sales}
+            />
           </div>
         </section>
 
@@ -3345,6 +3377,15 @@ function ExternalArrow() {
   );
 }
 
+function formatShortSalesDate(
+  value: string
+) {
+  const [, month, day] =
+    value.split("-");
+
+  return `${Number(month)}/${Number(day)}`;
+}
+
 function StatCard({
   icon,
   title,
@@ -3365,11 +3406,11 @@ function StatCard({
         </span>
 
         <div className="min-w-0 text-left">
-          <div className="whitespace-nowrap text-[10px] font-bold leading-4 text-[#9b6c91] md:text-sm">
+          <div className="whitespace-nowrap text-[10px] font-bold leading-4 text-[#9b6c91] opacity-100 [-webkit-text-fill-color:#9b6c91] md:text-sm">
             {title}
           </div>
 
-          <div className="whitespace-nowrap text-base font-bold leading-5 text-[#171417] md:text-xl">
+          <div className="whitespace-nowrap text-base font-bold leading-5 text-[#171417] opacity-100 [-webkit-text-fill-color:#171417] md:text-xl">
             {value === null ? (
               "－"
             ) : (

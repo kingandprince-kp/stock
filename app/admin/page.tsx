@@ -142,6 +142,15 @@ type SalesSummary = {
   weekly_sales: number | null;
   total_sales: number | null;
   goal: number;
+  sales_date: string;
+  week_start: string;
+  week_end: string;
+  updated_at: string;
+};
+
+type SalesDaily = {
+  sales_date: string;
+  sales: number | null;
   updated_at: string;
 };
 
@@ -201,6 +210,81 @@ function formatInventoryValue(
   return quantity === 0 ? "在庫なし" : `${quantity}枚`;
 }
 
+function formatSalesInputValue(
+  value: number | null | undefined
+) {
+  return value == null ? "-" : String(value);
+}
+
+function parseDateKey(value: string) {
+  const [year, month, day] =
+    value.split("-").map(Number);
+
+  return new Date(
+    Date.UTC(year, month - 1, day)
+  );
+}
+
+function addDaysToDateKey(
+  value: string,
+  days: number
+) {
+  const date = parseDateKey(value);
+
+  date.setUTCDate(
+    date.getUTCDate() + days
+  );
+
+  return [
+    date.getUTCFullYear(),
+    String(
+      date.getUTCMonth() + 1
+    ).padStart(2, "0"),
+    String(
+      date.getUTCDate()
+    ).padStart(2, "0"),
+  ].join("-");
+}
+
+function formatShortDateKey(
+  value: string
+) {
+  const [, month, day] =
+    value.split("-");
+
+  return `${Number(month)}/${Number(day)}`;
+}
+
+function getWeekRangeFromDateKey(
+  value: string
+) {
+  const date = parseDateKey(value);
+  const daysFromMonday =
+    (date.getUTCDay() + 6) % 7;
+
+  date.setUTCDate(
+    date.getUTCDate() - daysFromMonday
+  );
+
+  const start = [
+    date.getUTCFullYear(),
+    String(
+      date.getUTCMonth() + 1
+    ).padStart(2, "0"),
+    String(
+      date.getUTCDate()
+    ).padStart(2, "0"),
+  ].join("-");
+
+  return {
+    start,
+    end: addDaysToDateKey(
+      start,
+      6
+    ),
+  };
+}
+
 export default function AdminPage() {
   const [reports, setReports] =
     useState<InventoryReport[]>([]);
@@ -246,6 +330,12 @@ export default function AdminPage() {
 
   const [salesData, setSalesData] =
     useState<SalesSummary | null>(null);
+
+  const [salesDaily, setSalesDaily] =
+    useState<SalesDaily[]>([]);
+
+  const [salesDate, setSalesDate] =
+    useState("2026-09-02");
 
   const [accessDaily, setAccessDaily] =
     useState<AccessDaily[]>([]);
@@ -560,47 +650,81 @@ export default function AdminPage() {
 
   const loadSalesData =
     useCallback(async () => {
-      const { data, error } =
-        await supabase.rpc(
-          "get_sales_summary"
-        );
+      const [summaryResult, dailyResult] =
+        await Promise.all([
+          supabase.rpc(
+            "get_sales_summary_v2"
+          ),
+          supabase.rpc(
+            "get_sales_daily_admin"
+          ),
+        ]);
 
-      if (error) {
-        console.error(error);
-
+      if (summaryResult.error) {
+        console.error(summaryResult.error);
         setErrorMessage(
-          `売上データを取得できませんでした: ${error.message}`
+          `売上データを取得できませんでした: ${summaryResult.error.message}`
         );
+        return;
+      }
 
+      if (dailyResult.error) {
+        console.error(dailyResult.error);
+        setErrorMessage(
+          `日別売上を取得できませんでした: ${dailyResult.error.message}`
+        );
         return;
       }
 
       const latest =
-        Array.isArray(data) &&
-        data.length > 0
-          ? (data[0] as SalesSummary)
+        Array.isArray(
+          summaryResult.data
+        ) &&
+        summaryResult.data.length > 0
+          ? (summaryResult.data[0] as SalesSummary)
           : null;
 
+      const daily =
+        (dailyResult.data ?? []) as SalesDaily[];
+
       setSalesData(latest);
+      setSalesDaily(daily);
 
-      if (latest) {
-        const formatSalesInputValue = (
-          value: number | null | undefined
-        ) =>
-          value == null || String(value).toLowerCase() === "null"
-            ? "-"
-            : String(value);
+      const nextDate =
+        latest?.sales_date
+          ? addDaysToDateKey(
+              latest.sales_date,
+              1
+            )
+          : "2026-09-01";
 
-        setTodaySales(
-          formatSalesInputValue(latest.today_sales)
+      setSalesDate(nextDate);
+
+      const existingNext =
+        daily.find(
+          (item) =>
+            item.sales_date === nextDate
         );
 
+      setTodaySales(
+        existingNext
+          ? formatSalesInputValue(
+              existingNext.sales
+            )
+          : "-"
+      );
+
+      if (latest) {
         setWeeklySales(
-          formatSalesInputValue(latest.weekly_sales)
+          formatSalesInputValue(
+            latest.weekly_sales
+          )
         );
 
         setTotalSales(
-          formatSalesInputValue(latest.total_sales)
+          formatSalesInputValue(
+            latest.total_sales
+          )
         );
 
         setSalesGoal(
@@ -1411,11 +1535,12 @@ export default function AdminPage() {
     setErrorMessage("");
 
     if (
+      !salesDate ||
       todaySales.trim() === "" ||
       salesGoal.trim() === ""
     ) {
       setErrorMessage(
-        "本日の売上と目標枚数を入力してください。"
+        "売上対象日・その日の売上・目標枚数を入力してください。"
       );
       return;
     }
@@ -1423,7 +1548,8 @@ export default function AdminPage() {
     function parseSalesValue(
       value: string
     ): number | null | "invalid" {
-      const trimmed = value.trim();
+      const trimmed =
+        value.trim();
 
       if (
         trimmed === "-" ||
@@ -1434,7 +1560,8 @@ export default function AdminPage() {
         return null;
       }
 
-      const number = Number(trimmed);
+      const number =
+        Number(trimmed);
 
       if (
         !Number.isInteger(number) ||
@@ -1446,70 +1573,15 @@ export default function AdminPage() {
       return number;
     }
 
-    function getJstDateKey(
-      date: Date
-    ) {
-      const parts = new Intl.DateTimeFormat(
-        "en-CA",
-        {
-          timeZone: "Asia/Tokyo",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        }
-      ).formatToParts(date);
-
-      const year =
-        parts.find((part) => part.type === "year")
-          ?.value ?? "";
-      const month =
-        parts.find((part) => part.type === "month")
-          ?.value ?? "";
-      const day =
-        parts.find((part) => part.type === "day")
-          ?.value ?? "";
-
-      return `${year}-${month}-${day}`;
-    }
-
-    function getJstWeekKey(
-      date: Date
-    ) {
-      const dateKey = getJstDateKey(date);
-      const [year, month, day] =
-        dateKey.split("-").map(Number);
-
-      const utcDate = new Date(
-        Date.UTC(year, month - 1, day)
-      );
-
-      const dayOfWeek = utcDate.getUTCDay();
-      const daysFromMonday =
-        (dayOfWeek + 6) % 7;
-
-      utcDate.setUTCDate(
-        utcDate.getUTCDate() - daysFromMonday
-      );
-
-      return [
-        utcDate.getUTCFullYear(),
-        String(
-          utcDate.getUTCMonth() + 1
-        ).padStart(2, "0"),
-        String(
-          utcDate.getUTCDate()
-        ).padStart(2, "0"),
-      ].join("-");
-    }
-
-    const today =
+    const daySales =
       parseSalesValue(todaySales);
+
     const goal =
       Number(salesGoal);
 
-    if (today === "invalid") {
+    if (daySales === "invalid") {
       setErrorMessage(
-        "本日の売上は「-」または0以上の整数で入力してください。"
+        "売上は「-」または0以上の整数で入力してください。"
       );
       return;
     }
@@ -1524,66 +1596,44 @@ export default function AdminPage() {
       return;
     }
 
-    const now = new Date();
+    const {
+      data: previewData,
+      error: previewError,
+    } = await supabase.rpc(
+      "preview_sales_day_admin",
+      {
+        p_sales_date:
+          salesDate,
+        p_sales:
+          daySales,
+      }
+    );
 
-    const previousUpdatedAt =
-      salesData?.updated_at
-        ? new Date(salesData.updated_at)
+    if (previewError) {
+      setErrorMessage(
+        `売上の自動計算に失敗しました: ${previewError.message}`
+      );
+      return;
+    }
+
+    const preview =
+      Array.isArray(
+        previewData
+      ) &&
+      previewData.length > 0
+        ? previewData[0] as {
+            week_start: string;
+            week_end: string;
+            weekly_sales: number | null;
+            total_sales: number | null;
+          }
         : null;
 
-    const sameJstDay =
-      previousUpdatedAt !== null &&
-      getJstDateKey(previousUpdatedAt) ===
-        getJstDateKey(now);
-
-    const sameJstWeek =
-      previousUpdatedAt !== null &&
-      getJstWeekKey(previousUpdatedAt) ===
-        getJstWeekKey(now);
-
-    const previousToday =
-      salesData?.today_sales ?? 0;
-
-    const previousWeek =
-      salesData?.weekly_sales ?? 0;
-
-    const previousTotal =
-      salesData?.total_sales ?? 0;
-
-    let week: number | null;
-    let total: number | null;
-
-    if (today === null) {
-      if (sameJstDay) {
-        week = Math.max(
-          0,
-          previousWeek - previousToday
-        );
-        total = Math.max(
-          0,
-          previousTotal - previousToday
-        );
-      } else {
-        week = sameJstWeek
-          ? previousWeek
-          : null;
-        total =
-          salesData?.total_sales ?? null;
-      }
-    } else if (sameJstDay) {
-      week = Math.max(
-        0,
-        previousWeek - previousToday + today
+    if (!preview) {
+      setErrorMessage(
+        "売上の自動計算結果を取得できませんでした。"
       );
-      total = Math.max(
-        0,
-        previousTotal - previousToday + today
-      );
-    } else {
-      week = sameJstWeek
-        ? previousWeek + today
-        : today;
-      total = previousTotal + today;
+      return;
     }
 
     const displaySales = (
@@ -1593,23 +1643,27 @@ export default function AdminPage() {
         ? "－"
         : `${value.toLocaleString()}枚`;
 
-    const confirmed = window.confirm(
-      `売上情報を更新します。\n\n本日: ${displaySales(today)}\n今週（月〜日）: ${displaySales(week)}\n累計: ${displaySales(total)}\n目標: ${goal.toLocaleString()}枚`
-    );
+    const confirmed =
+      window.confirm(
+        `売上情報を更新します。\n\n対象日: ${formatShortDateKey(salesDate)}付\nその日の売上: ${displaySales(daySales)}\n週 (${formatShortDateKey(preview.week_start)}〜${formatShortDateKey(preview.week_end)}): ${displaySales(preview.weekly_sales)}\n累計: ${displaySales(preview.total_sales)}\n目標: ${goal.toLocaleString()}枚`
+      );
 
     if (!confirmed) return;
 
     setSalesUpdating(true);
 
-    const { error } = await supabase.rpc(
-      "update_sales_admin",
-      {
-        p_today_sales: today,
-        p_weekly_sales: week,
-        p_total_sales: total,
-        p_goal: goal,
-      }
-    );
+    const { error } =
+      await supabase.rpc(
+        "upsert_sales_day_admin",
+        {
+          p_sales_date:
+            salesDate,
+          p_sales:
+            daySales,
+          p_goal:
+            goal,
+        }
+      );
 
     if (error) {
       setErrorMessage(
@@ -1619,13 +1673,36 @@ export default function AdminPage() {
       return;
     }
 
+    const savedDate =
+      salesDate;
+
     await loadSalesData();
 
     setMessage(
-      "本日の売上を反映し、今週（月〜日）と累計を自動更新しました。"
+      `${formatShortDateKey(savedDate)}付の売上を反映しました。次の入力日は自動で${formatShortDateKey(addDaysToDateKey(savedDate, 1))}に進みます。`
     );
 
     setSalesUpdating(false);
+  }
+
+  function handleSalesDateChange(
+    value: string
+  ) {
+    setSalesDate(value);
+
+    const existing =
+      salesDaily.find(
+        (item) =>
+          item.sales_date === value
+      );
+
+    setTodaySales(
+      existing
+        ? formatSalesInputValue(
+            existing.sales
+          )
+        : "-"
+    );
   }
 
   function getStore(
@@ -2140,26 +2217,16 @@ export default function AdminPage() {
           ) : (
             <SalesTab
               salesData={salesData}
-              todaySales={
-                todaySales
-              }
-              weeklySales={
-                weeklySales
-              }
-              totalSales={
-                totalSales
-              }
-              salesGoal={
-                salesGoal
+              salesDate={salesDate}
+              todaySales={todaySales}
+              weeklySales={weeklySales}
+              totalSales={totalSales}
+              salesGoal={salesGoal}
+              setSalesDate={
+                handleSalesDateChange
               }
               setTodaySales={
                 setTodaySales
-              }
-              setWeeklySales={
-                setWeeklySales
-              }
-              setTotalSales={
-                setTotalSales
               }
               setSalesGoal={
                 setSalesGoal
@@ -3759,10 +3826,12 @@ function DeletionHistoryTab({ deletions, stores, products, restoringId, onRestor
 
 function SalesTab({
   salesData,
+  salesDate,
   todaySales,
   weeklySales,
   totalSales,
   salesGoal,
+  setSalesDate,
   setTodaySales,
   setSalesGoal,
   salesUpdating,
@@ -3770,17 +3839,15 @@ function SalesTab({
   formatDate,
 }: {
   salesData: SalesSummary | null;
+  salesDate: string;
   todaySales: string;
   weeklySales: string;
   totalSales: string;
   salesGoal: string;
+  setSalesDate: (
+    value: string
+  ) => void;
   setTodaySales: (
-    value: string
-  ) => void;
-  setWeeklySales: (
-    value: string
-  ) => void;
-  setTotalSales: (
     value: string
   ) => void;
   setSalesGoal: (
@@ -3797,7 +3864,8 @@ function SalesTab({
   const displayAutoValue = (
     value: string
   ) => {
-    const trimmed = value.trim();
+    const trimmed =
+      value.trim();
 
     if (
       trimmed === "" ||
@@ -3809,12 +3877,18 @@ function SalesTab({
       return "－";
     }
 
-    const number = Number(trimmed);
+    const number =
+      Number(trimmed);
 
     return Number.isFinite(number)
       ? `${number.toLocaleString()}枚`
       : "－";
   };
+
+  const selectedWeek =
+    getWeekRangeFromDateKey(
+      salesDate
+    );
 
   return (
     <div className="mt-6 rounded-3xl border border-[#eaddea] bg-[#fcf9fc] p-5 md:p-7">
@@ -3823,16 +3897,40 @@ function SalesTab({
       </h2>
 
       <p className="mt-2 text-sm leading-6 text-gray-600">
-        本日の売上を入力すると、今週（月曜日〜日曜日）と累計を自動で合算します。
-        同じ日に数字を修正した場合も、差額を自動で反映します。
+        「何日付の売上か」を指定して入力します。
+        登録後は次の日へ自動で進みます。
+        過去の日付を選べば、その日の数字を修正できます。
+        週は月曜日〜日曜日で自動集計します。
       </p>
 
       {salesData && (
-        <div className="mt-2 text-sm text-gray-500">
-          最終更新:{" "}
-          {formatDate(
-            salesData.updated_at
-          )}
+        <div className="mt-3 rounded-xl bg-white p-3 text-sm text-gray-600">
+          <div>
+            現在公開中：
+            <b className="ml-1">
+              {formatShortDateKey(
+                salesData.sales_date
+              )}付
+            </b>
+          </div>
+
+          <div className="mt-1">
+            週：
+            {formatShortDateKey(
+              salesData.week_start
+            )}
+            〜
+            {formatShortDateKey(
+              salesData.week_end
+            )}
+          </div>
+
+          <div className="mt-1 text-xs text-gray-500">
+            最終更新：
+            {formatDate(
+              salesData.updated_at
+            )}
+          </div>
         </div>
       )}
 
@@ -3841,8 +3939,36 @@ function SalesTab({
         className="mt-6"
       >
         <div className="grid gap-5 md:grid-cols-2">
+          <label className="rounded-xl border border-[#e3d6e2] bg-white p-4">
+            <div className="font-bold">
+              📅 売上対象日
+            </div>
+
+            <input
+              type="date"
+              value={salesDate}
+              onChange={(event) =>
+                setSalesDate(
+                  event.target.value
+                )
+              }
+              className="mt-3 w-full rounded-xl border border-[#d9c9d8] bg-white p-3 text-base text-[#211d21]"
+            />
+
+            <div className="mt-2 text-xs text-gray-500">
+              保存後、次の入力日は自動で
+              {formatShortDateKey(
+                addDaysToDateKey(
+                  salesDate,
+                  1
+                )
+              )}
+              に進みます。
+            </div>
+          </label>
+
           <SalesInput
-            label="📊 本日の売上"
+            label={`📊 ${formatShortDateKey(salesDate)}付の売上`}
             value={todaySales}
             onChange={setTodaySales}
             allowDash
@@ -3850,29 +3976,49 @@ function SalesTab({
 
           <div className="rounded-xl border border-[#e3d6e2] bg-[#f5eef4] p-4">
             <div className="font-bold">
-              📅 今週の売上（月〜日）
+              📅 対象週（月〜日）
             </div>
-            <div className="mt-2 text-2xl font-bold text-[#6d4966]">
-              {displayAutoValue(
-                weeklySales
+
+            <div className="mt-2 text-xl font-bold text-[#6d4966]">
+              {formatShortDateKey(
+                selectedWeek.start
+              )}
+              〜
+              {formatShortDateKey(
+                selectedWeek.end
               )}
             </div>
+
             <div className="mt-1 text-xs text-gray-500">
-              本日の売上を更新すると自動計算
+              保存時に日別売上から自動再計算
             </div>
           </div>
 
           <div className="rounded-xl border border-[#e3d6e2] bg-[#f5eef4] p-4">
             <div className="font-bold">
-              👑 累計売上
+              📊 現在公開中の週売上
             </div>
+
+            <div className="mt-2 text-2xl font-bold text-[#6d4966]">
+              {displayAutoValue(
+                weeklySales
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-[#e3d6e2] bg-[#f5eef4] p-4">
+            <div className="font-bold">
+              👑 現在の累計売上
+            </div>
+
             <div className="mt-2 text-2xl font-bold text-[#6d4966]">
               {displayAutoValue(
                 totalSales
               )}
             </div>
+
             <div className="mt-1 text-xs text-gray-500">
-              本日の売上を更新すると自動計算
+              保存後、自動で再計算
             </div>
           </div>
 
@@ -3892,7 +4038,7 @@ function SalesTab({
         >
           {salesUpdating
             ? "更新中…"
-            : "本日の売上を反映"}
+            : `${formatShortDateKey(salesDate)}付の売上を反映`}
         </button>
       </form>
     </div>
