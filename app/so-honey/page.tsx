@@ -2110,33 +2110,65 @@ async function handleBugReport() {
                   STORE REQUEST
                 </div>
 
-                <div className="mt-0.5 text-sm font-bold text-[#2c252b] md:mt-1 md:text-2xl">
+                <div className="mt-0.5 text-sm font-bold text-[#2c252b] opacity-100 [-webkit-text-fill-color:#2c252b] md:mt-1 md:text-2xl">
                   🏪 店舗が見つからない場合
                 </div>
 
-                <div className="mt-1 text-[11px] text-[#766a75] md:mt-2 md:text-base">
+                <div className="mt-1 text-[11px] text-[#766a75] opacity-100 [-webkit-text-fill-color:#766a75] md:mt-2 md:text-base">
                   登録されていない店舗を追加リクエストできます。
                 </div>
               </div>
 
-              <span className="shrink-0 text-base font-bold text-[#9d6c91] md:text-lg">
+              <span className="shrink-0 text-base font-bold text-[#9d6c91] opacity-100 [-webkit-text-fill-color:#9d6c91] md:text-lg">
                 {requestOpen ? "∧" : "∨"}
               </span>
             </button>
 
             {requestOpen && (
               <div className="mt-4 border-t border-[#eaddea] pt-4 md:mt-5 md:pt-5">
-                <div className="mb-3 rounded-lg bg-[#f2e5f0] p-2.5 text-[11px] leading-5 text-[#64515f] md:mb-5 md:rounded-xl md:p-3 md:text-sm md:leading-6">
+                <div className="mb-3 rounded-lg bg-[#f2e5f0] p-2.5 text-[11px] leading-5 text-[#64515f] opacity-100 [-webkit-text-fill-color:#64515f] md:mb-5 md:rounded-xl md:p-3 md:text-sm md:leading-6">
                   {reportMode === "online"
                     ? "オンラインショップの追加リクエスト"
                     : `追加先: ${reportPrefecture}`}
                 </div>
 
+                {reportMode === "physical" && (
+                  <label className="mb-3 block md:mb-4">
+                    <div className="mb-1.5 text-[12px] font-bold text-[#211d21] opacity-100 [-webkit-text-fill-color:#211d21] md:mb-2 md:text-base">
+                      📍 追加先の都道府県
+                      <span className="ml-1 text-[11px] text-[#c44f82] opacity-100 [-webkit-text-fill-color:#c44f82] md:text-sm">
+                        必須
+                      </span>
+                    </div>
+
+                    <select
+                      value={reportPrefecture}
+                      onChange={(e) => {
+                        setReportPrefecture(e.target.value);
+                        setReportStoreId("");
+                        setReportStoreSearch("");
+                        setRequestMessage("");
+                        setRequestError("");
+                      }}
+                      className="w-full rounded-lg border border-[#d9c9d8] bg-white p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] md:rounded-xl md:p-3.5 md:text-base"
+                    >
+                      {PREFECTURES.map((pref) => (
+                        <option
+                          key={pref}
+                          value={pref}
+                        >
+                          {pref}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
                 <div className="grid gap-3 md:grid-cols-2 md:gap-4">
                   <label className="block">
-                    <div className="mb-1.5 text-[12px] font-bold md:mb-2 md:text-base">
+                    <div className="mb-1.5 text-[12px] font-bold text-[#211d21] opacity-100 [-webkit-text-fill-color:#211d21] md:mb-2 md:text-base">
                       🏢 チェーン名
-                      <span className="ml-2 text-[11px] font-normal text-[#8a8089] md:text-sm">
+                      <span className="ml-2 text-[11px] font-normal text-[#8a8089] opacity-100 [-webkit-text-fill-color:#8a8089] md:text-sm">
                         任意
                       </span>
                     </div>
@@ -2151,16 +2183,16 @@ async function handleBugReport() {
                         setRequestError("");
                       }}
                       placeholder="例: タワーレコード"
-                      className="w-full rounded-lg border border-[#d9c9d8] bg-white p-2.5 text-[12px] md:rounded-xl md:p-3.5 md:text-base"
+                      className="w-full rounded-lg border border-[#d9c9d8] bg-white p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-xl md:p-3.5 md:text-base"
                     />
                   </label>
 
                   <label className="block">
-                    <div className="mb-1.5 text-[12px] font-bold md:mb-2 md:text-base">
+                    <div className="mb-1.5 text-[12px] font-bold text-[#211d21] opacity-100 [-webkit-text-fill-color:#211d21] md:mb-2 md:text-base">
                       {reportMode === "online"
                         ? "🛒 ショップ名"
                         : "🏪 店舗名"}
-                      <span className="ml-1 text-[11px] text-[#c44f82] md:text-sm">
+                      <span className="ml-1 text-[11px] text-[#c44f82] opacity-100 [-webkit-text-fill-color:#c44f82] md:text-sm">
                         必須
                       </span>
                     </div>
@@ -2179,16 +2211,16 @@ async function handleBugReport() {
                           ? "例: UNIVERSAL MUSIC STORE"
                           : "例: 札幌パルコ店"
                       }
-                      className="w-full rounded-lg border border-[#d9c9d8] bg-white p-2.5 text-[12px] md:rounded-xl md:p-3.5 md:text-base"
+                      className="w-full rounded-lg border border-[#d9c9d8] bg-white p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-xl md:p-3.5 md:text-base"
                     />
                   </label>
                 </div>
 
                 {reportMode === "physical" && (
                   <label className="mt-3 block md:mt-4">
-                    <div className="mb-1.5 text-[12px] font-bold md:mb-2 md:text-base">
+                    <div className="mb-1.5 text-[12px] font-bold text-[#211d21] opacity-100 [-webkit-text-fill-color:#211d21] md:mb-2 md:text-base">
                       📍 市区町村
-                      <span className="ml-2 text-[11px] font-normal text-[#8a8089] md:text-sm">
+                      <span className="ml-2 text-[11px] font-normal text-[#8a8089] opacity-100 [-webkit-text-fill-color:#8a8089] md:text-sm">
                         任意
                       </span>
                     </div>
@@ -2203,15 +2235,15 @@ async function handleBugReport() {
                         setRequestError("");
                       }}
                       placeholder="例: 札幌市中央区"
-                      className="w-full rounded-lg border border-[#d9c9d8] bg-white p-2.5 text-[12px] md:rounded-xl md:p-3.5 md:text-base"
+                      className="w-full rounded-lg border border-[#d9c9d8] bg-white p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-xl md:p-3.5 md:text-base"
                     />
                   </label>
                 )}
 
                 <label className="mt-3 block md:mt-4">
-                  <div className="mb-1.5 text-[12px] font-bold md:mb-2 md:text-base">
+                  <div className="mb-1.5 text-[12px] font-bold text-[#211d21] opacity-100 [-webkit-text-fill-color:#211d21] md:mb-2 md:text-base">
                     💬 補足
-                    <span className="ml-2 text-[11px] font-normal text-[#8a8089] md:text-sm">
+                    <span className="ml-2 text-[11px] font-normal text-[#8a8089] opacity-100 [-webkit-text-fill-color:#8a8089] md:text-sm">
                       任意・500文字まで
                     </span>
                   </div>
@@ -2226,7 +2258,7 @@ async function handleBugReport() {
                       setRequestError("");
                     }}
                     placeholder="例: 新しくオープンした店舗です。公式サイトでCD取扱いを確認しました。"
-                    className="w-full rounded-lg border border-[#d9c9d8] bg-white p-2.5 text-[12px] md:rounded-xl md:p-3.5 md:text-base"
+                    className="w-full rounded-lg border border-[#d9c9d8] bg-white p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-xl md:p-3.5 md:text-base"
                   />
                 </label>
 
@@ -2246,7 +2278,7 @@ async function handleBugReport() {
                   type="button"
                   onClick={handleStoreRequest}
                   disabled={requestSubmitting}
-                  className="mt-3 rounded-lg bg-[#b65d92] px-5 py-2.5 text-[12px] font-bold text-white transition hover:bg-[#a84e84] disabled:opacity-50 md:mt-4 md:rounded-xl md:px-6 md:py-3.5 md:text-base"
+                  className="mt-3 rounded-lg bg-[#b65d92] px-5 py-2.5 text-[12px] font-bold text-white opacity-100 [-webkit-text-fill-color:#ffffff] transition hover:bg-[#a84e84] disabled:opacity-50 md:mt-4 md:rounded-xl md:px-6 md:py-3.5 md:text-base"
                 >
                   {requestSubmitting
                     ? "送信中…"
