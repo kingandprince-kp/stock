@@ -73,6 +73,72 @@ function isOnlineStore(store: StoreRow) {
   );
 }
 
+export async function GET(request: Request) {
+  try {
+    const supabaseUrl =
+      process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return jsonError("サーバー設定に問題があります。", 500);
+    }
+
+    const supabase = createClient(
+      supabaseUrl,
+      serviceRoleKey,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
+    );
+
+    const url = new URL(request.url);
+    const clientId = url.searchParams.get("clientId");
+
+    const clientHash =
+      clientId &&
+      clientId.length >= 10 &&
+      clientId.length <= 200
+        ? createHash("sha256").update(clientId).digest("hex")
+        : null;
+
+    const { data, error } = await supabase
+      .from("inventory_reports")
+      .select(
+        "id, store_id, product_id, quantity, stock_status, comment, created_at, client_hash"
+      )
+      .eq("review_status", "approved")
+      .order("created_at", { ascending: false })
+      .limit(5000);
+
+    if (error) {
+      console.error("inventory reports GET error:", error);
+      return jsonError("在庫情報を読み込めませんでした。", 500);
+    }
+
+    const reports = (data ?? []).map((row) => ({
+      id: row.id,
+      store_id: row.store_id,
+      product_id: row.product_id,
+      quantity: row.quantity,
+      stock_status: row.stock_status,
+      comment: row.comment,
+      created_at: row.created_at,
+      is_own:
+        Boolean(clientHash) &&
+        row.client_hash === clientHash,
+    }));
+
+    return NextResponse.json({ success: true, reports });
+  } catch (error) {
+    console.error("inventory reports GET unexpected error:", error);
+    return jsonError("在庫情報を読み込めませんでした。", 500);
+  }
+}
+
 export async function POST(
   request: Request
 ) {
@@ -878,6 +944,8 @@ export async function POST(
           reviewStatus,
         review_reason:
           reviewReason,
+        client_hash:
+          clientHash,
       })
       .select("id")
       .single();

@@ -58,6 +58,18 @@ type DeletionHistory = {
   restored_report_id: number | null;
 };
 
+type UserDeletionHistory = {
+  id: number;
+  original_report_id: number;
+  store_id: number;
+  product_id: number;
+  quantity: number;
+  stock_status: "in_stock" | "low_stock" | "backorder" | "sold_out" | null;
+  comment: string | null;
+  original_created_at: string;
+  deleted_at: string;
+};
+
 type StoreRequest = {
   id: number;
   prefecture: string;
@@ -145,6 +157,7 @@ type AdminTab =
   | "review"
   | "security"
   | "deletions"
+  | "user-deletions"
   | "store-history"
   | "requests"
   | "billboard"
@@ -203,6 +216,9 @@ export default function AdminPage() {
 
   const [deletions, setDeletions] =
     useState<DeletionHistory[]>([]);
+
+  const [userDeletions, setUserDeletions] =
+    useState<UserDeletionHistory[]>([]);
 
   const [storeChangeHistory, setStoreChangeHistory] =
     useState<StoreChangeHistory[]>([]);
@@ -359,6 +375,30 @@ export default function AdminPage() {
 
       setDeletions(
         (data ?? []) as DeletionHistory[]
+      );
+    }, []);
+
+  // =========================================
+  // ユーザー自己削除履歴
+  // =========================================
+
+  const loadUserDeletionHistory =
+    useCallback(async () => {
+      const { data, error } =
+        await supabase.rpc(
+          "get_inventory_user_deletions_admin"
+        );
+
+      if (error) {
+        console.error(error);
+        setErrorMessage(
+          `ユーザー自己削除履歴を取得できませんでした: ${error.message}`
+        );
+        return;
+      }
+
+      setUserDeletions(
+        (data ?? []) as UserDeletionHistory[]
       );
     }, []);
 
@@ -675,6 +715,7 @@ export default function AdminPage() {
         loadReviewReports(),
         loadSecurityEvents(),
         loadDeletionHistory(),
+        loadUserDeletionHistory(),
         loadStoreChangeHistory(),
         loadStoreRequests(),
         loadBillboardInfoRequests(),
@@ -688,6 +729,7 @@ export default function AdminPage() {
       loadReviewReports,
       loadSecurityEvents,
       loadDeletionHistory,
+      loadUserDeletionHistory,
       loadStoreChangeHistory,
       loadStoreRequests,
       loadBillboardInfoRequests,
@@ -736,6 +778,7 @@ export default function AdminPage() {
             setReviewReports([]);
             setSecurityEvents([]);
             setDeletions([]);
+            setUserDeletions([]);
             setStoreChangeHistory([]);
             setStoreRequests([]);
             setBillboardInfoRequests([]);
@@ -1856,6 +1899,20 @@ export default function AdminPage() {
             </AdminTabButton>
 
             <AdminTabButton
+              active={
+                activeTab ===
+                "user-deletions"
+              }
+              onClick={() =>
+                setActiveTab(
+                  "user-deletions"
+                )
+              }
+            >
+              👤 自己削除履歴
+            </AdminTabButton>
+
+            <AdminTabButton
               active={activeTab === "store-history"}
               onClick={() => setActiveTab("store-history")}
             >
@@ -2014,6 +2071,14 @@ export default function AdminPage() {
               formatDate={
                 formatDate
               }
+            />
+          ) : activeTab ===
+            "user-deletions" ? (
+            <UserDeletionHistoryTab
+              deletions={userDeletions}
+              stores={stores}
+              products={products}
+              formatDate={formatDate}
             />
           ) : activeTab ===
             "store-history" ? (
@@ -3585,6 +3650,103 @@ function ReportsTab({
       return <article key={report.id} className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"><div className="flex flex-wrap items-start justify-between gap-5"><div className="flex min-w-0 flex-1 items-start gap-3"><SelectionCheckbox checked={selected.includes(report.id)} onChange={()=>toggle(report.id)} label={`投稿 #${report.id} を選択`} /><div><div className="text-lg font-bold">{store?getDisplayStoreName(store):"店舗不明"}</div><div className="mt-3">{product?.name??"商品不明"}</div><div className="mt-1 font-bold text-[#b95489]">{formatInventoryValue(report.quantity,report.stock_status)}</div><div className="mt-1 text-sm text-gray-500">{formatDate(report.created_at)}</div>{report.comment&&<div className="mt-3 rounded-xl bg-white p-3">💬 {report.comment}</div>}</div></div><button type="button" disabled={deletingId===report.id} onClick={()=>onDelete(report)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white disabled:opacity-50">削除</button></div></article>;
     })}
   </div>;
+}
+
+function UserDeletionHistoryTab({
+  deletions,
+  stores,
+  products,
+  formatDate,
+}: {
+  deletions: UserDeletionHistory[];
+  stores: Store[];
+  products: Product[];
+  formatDate: (value: string) => string;
+}) {
+  return (
+    <div className="mt-6 space-y-4">
+      <div className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4">
+        <h2 className="text-xl font-bold">
+          👤 ユーザー自己削除履歴
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-gray-600">
+          ユーザーが「自分の投稿を削除」から取り消した在庫投稿です。
+          ブラウザ識別用のハッシュ値は管理画面には表示しません。
+        </p>
+      </div>
+
+      {deletions.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
+          ユーザーによる自己削除履歴はまだありません。
+        </div>
+      ) : (
+        deletions.map((deletion) => {
+          const store = stores.find(
+            (item) => item.id === deletion.store_id
+          );
+
+          const product = products.find(
+            (item) => item.id === deletion.product_id
+          );
+
+          return (
+            <article
+              key={deletion.id}
+              className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="text-lg font-bold">
+                    {store
+                      ? getDisplayStoreName(store)
+                      : `店舗ID: ${deletion.store_id}`}
+                  </div>
+
+                  <div className="mt-2">
+                    {product?.name ??
+                      `商品ID: ${deletion.product_id}`}
+                  </div>
+
+                  <div className="mt-1 font-bold text-[#6d4966]">
+                    {formatInventoryValue(
+                      deletion.quantity,
+                      deletion.stock_status
+                    )}
+                  </div>
+
+                  {deletion.comment && (
+                    <div className="mt-3 rounded-xl bg-white p-3 text-sm leading-6 text-gray-700">
+                      💬 {deletion.comment}
+                    </div>
+                  )}
+
+                  <div className="mt-3 space-y-1 text-sm text-gray-500">
+                    <div>
+                      元の投稿日時：
+                      {formatDate(
+                        deletion.original_created_at
+                      )}
+                    </div>
+                    <div>
+                      自己削除日時：
+                      {formatDate(deletion.deleted_at)}
+                    </div>
+                    <div>
+                      元投稿ID：#{deletion.original_report_id}
+                    </div>
+                  </div>
+                </div>
+
+                <span className="rounded-full bg-[#f0dfec] px-3 py-1.5 text-xs font-bold text-[#6d4966]">
+                  ユーザー自身が削除
+                </span>
+              </div>
+            </article>
+          );
+        })
+      )}
+    </div>
+  );
 }
 
 function DeletionHistoryTab({ deletions, stores, products, restoringId, onRestore, onBulkRestore, onDeleteHistory, formatDate }: {

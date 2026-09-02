@@ -162,6 +162,7 @@ type InventoryReport = {
   stock_status: OnlineStockStatus | null;
   comment: string | null;
   created_at: string;
+  is_own?: boolean;
 };
 
 type SalesSummary = {
@@ -181,6 +182,8 @@ export default function Home() {
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [reports, setReports] = useState<InventoryReport[]>([]);
+  const [deletingOwnReportId, setDeletingOwnReportId] =
+    useState<number | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [dataError, setDataError] = useState("");
@@ -399,22 +402,37 @@ const percent =
     : 0;
 
   const loadInventoryReports = useCallback(async () => {
-   const { data, error } = await supabase
-  .from("inventory_reports")
-  .select(
-    "id, store_id, product_id, quantity, stock_status, comment, created_at"
-  )
-  .eq("review_status", "approved")
-  .order("created_at", { ascending: false })
-  .limit(5000);
+    try {
+      const clientId =
+        typeof window !== "undefined"
+          ? localStorage.getItem("kp_inventory_client_id")
+          : null;
 
-    if (error) {
-      console.error("inventory_reports error:", error);
-      return;
+      const query = clientId
+        ? `?clientId=${encodeURIComponent(clientId)}`
+        : "";
+
+      const response = await fetch(
+        `/api/inventory-report${query}`,
+        { cache: "no-store" }
+      );
+
+      const result = (await response.json()) as {
+        success?: boolean;
+        reports?: InventoryReport[];
+      };
+
+      if (!response.ok || !result.success) {
+        console.error("inventory_reports load error");
+        return;
+      }
+
+      setReports(result.reports ?? []);
+    } catch (error) {
+      console.error("inventory_reports load error:", error);
     }
-
-    setReports((data ?? []) as InventoryReport[]);
   }, []);
+
   const loadSalesData = useCallback(async () => {
   const { data, error } = await supabase.rpc(
     "get_sales_summary"
@@ -834,6 +852,65 @@ setLoading(false);
      setSubmitting(false);
    }
  }
+
+ async function handleDeleteOwnReport(reportId: number) {
+   const confirmed = window.confirm(
+     "この在庫投稿を削除しますか？\n削除すると在庫一覧から取り消されます。"
+   );
+
+   if (!confirmed) return;
+
+   setDeletingOwnReportId(reportId);
+
+   try {
+     const clientId =
+       localStorage.getItem("kp_inventory_client_id");
+
+     if (!clientId) {
+       window.alert(
+         "このブラウザから投稿したことを確認できませんでした。"
+       );
+       return;
+     }
+
+     const response = await fetch(
+       "/api/inventory-report/delete",
+       {
+         method: "POST",
+         headers: {
+           "Content-Type": "application/json",
+         },
+         body: JSON.stringify({
+           reportId,
+           clientId,
+         }),
+       }
+     );
+
+     const result = (await response.json()) as {
+       success?: boolean;
+       message?: string;
+     };
+
+     if (!response.ok || !result.success) {
+       window.alert(
+         result.message ||
+           "投稿を削除できませんでした。"
+       );
+       return;
+     }
+
+     await loadInventoryReports();
+   } catch (error) {
+     console.error(error);
+     window.alert(
+       "削除中にエラーが発生しました。もう一度お試しください。"
+     );
+   } finally {
+     setDeletingOwnReportId(null);
+   }
+ }
+
 
 async function handleStoreRequest() {
   setRequestMessage("");
@@ -1707,6 +1784,8 @@ async function handleBugReport() {
                     products={products}
                     getLatestReport={getLatestReport}
                     formatDate={formatDate}
+                    onDeleteOwnReport={handleDeleteOwnReport}
+                    deletingOwnReportId={deletingOwnReportId}
                   />
                 ))}
               </div>
@@ -2201,6 +2280,18 @@ async function handleBugReport() {
                       {report.comment}
                     </div>
                   )}
+                  {report.is_own && (
+                    <button
+                      type="button"
+                      disabled={deletingOwnReportId === report.id}
+                      onClick={() => void handleDeleteOwnReport(report.id)}
+                      className="mt-2 rounded-full border border-[#d7c7d4] bg-white px-2.5 py-1 text-[9px] font-bold text-[#775f70] disabled:opacity-50 md:mt-3 md:px-3 md:py-1.5 md:text-xs"
+                    >
+                      {deletingOwnReportId === report.id
+                        ? "削除中…"
+                        : "自分の投稿を削除"}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -2567,6 +2658,8 @@ function StoreCard({
   products,
   getLatestReport,
   formatDate,
+  onDeleteOwnReport,
+  deletingOwnReportId,
 }: {
   store: Store;
   products: Product[];
@@ -2575,6 +2668,8 @@ function StoreCard({
     productId: number
   ) => InventoryReport | null;
   formatDate: (dateString: string) => string;
+  onDeleteOwnReport: (reportId: number) => Promise<void>;
+  deletingOwnReportId: number | null;
 }) {
   const [open, setOpen] = useState(false);
   const [billboardInfoOpen, setBillboardInfoOpen] = useState(false);
@@ -2875,6 +2970,18 @@ function StoreCard({
                       💬 {report.comment}
                     </div>
                   </div>
+                )}
+                {report?.is_own && (
+                  <button
+                    type="button"
+                    disabled={deletingOwnReportId === report.id}
+                    onClick={() => void onDeleteOwnReport(report.id)}
+                    className="mt-2 rounded-full border border-[#d7c7d4] bg-white px-2.5 py-1 text-[9px] font-bold text-[#775f70] disabled:opacity-50 md:mt-3 md:px-3 md:py-1.5 md:text-xs"
+                  >
+                    {deletingOwnReportId === report.id
+                      ? "削除中…"
+                      : "自分の投稿を削除"}
+                  </button>
                 )}
               </div>
             );
