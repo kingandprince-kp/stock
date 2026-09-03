@@ -1422,7 +1422,7 @@ async function handleBugReport() {
                 <p className="whitespace-nowrap">
   全国の実店舗・オンラインショップの在庫を
   <br />
-  7形態まとめて確認できます。
+  7種類まとめて確認できます。
 </p>
 
                 <span className="text-base md:text-2xl" aria-hidden="true">
@@ -3098,8 +3098,38 @@ function StoreCard({
                     📍 住所
                   </div>
 
-                  <div className="mt-0.5 text-[11px] leading-5 text-[#655c64] md:mt-1 md:text-base md:leading-6">
-                    {store.address || "情報なし"}
+                  <div className="mt-0.5 text-[11px] leading-5 text-[#655c64] opacity-100 [-webkit-text-fill-color:#655c64] md:mt-1 md:text-base md:leading-6">
+                    {store.address ? (
+                      <>
+                        <div>{store.address}</div>
+
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                              store.address
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg border border-[#d8c4d4] bg-white px-3 py-1.5 text-[11px] font-bold text-[#6f4d65] opacity-100 [-webkit-text-fill-color:#6f4d65] hover:bg-[#f7eef5] md:text-sm"
+                          >
+                            Googleマップ
+                          </a>
+
+                          <a
+                            href={`https://maps.apple.com/?q=${encodeURIComponent(
+                              store.address
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg border border-[#d8c4d4] bg-white px-3 py-1.5 text-[11px] font-bold text-[#6f4d65] opacity-100 [-webkit-text-fill-color:#6f4d65] hover:bg-[#f7eef5] md:text-sm"
+                          >
+                            Appleマップ
+                          </a>
+                        </div>
+                      </>
+                    ) : (
+                      "情報なし"
+                    )}
                   </div>
                 </div>
 
@@ -3243,7 +3273,12 @@ function getChainRank(store: Store) {
 
 function getDisplayStoreName(store: Store) {
   const name = store.name.trim();
-  const chain = (store.chain_name ?? "").trim();
+  const rawChain = (store.chain_name ?? "").trim();
+
+  const chain =
+    ["なし", "無し", "なし。", "なしです"].includes(rawChain)
+      ? ""
+      : rawChain;
 
   if (!chain) {
     return name;
