@@ -2784,6 +2784,91 @@ function ReviewReportsTab({
         )
     );
 
+  function getPendingContext(
+    report: ReviewReport
+  ) {
+    const targetEvent =
+      events.find(
+        (event) =>
+          event.report_id ===
+            report.id &&
+          (
+            event.event_type ===
+              "pending" ||
+            event.event_type ===
+              "submitted"
+          )
+      );
+
+    if (!targetEvent) {
+      return [];
+    }
+
+    const targetTime =
+      new Date(
+        targetEvent.created_at
+      ).getTime();
+
+    const windowStart =
+      targetTime -
+      10 * 60 * 1000;
+
+    return events
+      .filter((event) => {
+        if (
+          event.report_id === null
+        ) {
+          return false;
+        }
+
+        if (
+          event.event_type !==
+            "submitted" &&
+          event.event_type !==
+            "pending"
+        ) {
+          return false;
+        }
+
+        const eventTime =
+          new Date(
+            event.created_at
+          ).getTime();
+
+        const sameClient =
+          Boolean(
+            targetEvent.client_hash
+          ) &&
+          event.client_hash ===
+            targetEvent.client_hash;
+
+        const sameIp =
+          Boolean(
+            targetEvent.ip_hash
+          ) &&
+          event.ip_hash ===
+            targetEvent.ip_hash;
+
+        return (
+          sameClient &&
+          sameIp &&
+          eventTime >=
+            windowStart &&
+          eventTime <=
+            targetTime
+        );
+      })
+      .sort(
+        (a, b) =>
+          new Date(
+            a.created_at
+          ).getTime() -
+          new Date(
+            b.created_at
+          ).getTime()
+      );
+  }
+
   function getCurrentStatus(
     reportId: number | null
   ) {
@@ -3246,6 +3331,175 @@ function ReviewReportsTab({
                       {r.review_reason ||
                         "理由なし"}
                     </div>
+
+                    {(() => {
+                      const contextEvents =
+                        getPendingContext(
+                          r
+                        );
+
+                      const contextStoreCount =
+                        new Set(
+                          contextEvents
+                            .map(
+                              (event) =>
+                                event.store_id
+                            )
+                            .filter(
+                              (
+                                id
+                              ): id is number =>
+                                id !==
+                                null
+                            )
+                        ).size;
+
+                      const publicBeforeCount =
+                        contextEvents.filter(
+                          (event) =>
+                            event.report_id !==
+                              r.id &&
+                            getCurrentStatus(
+                              event.report_id
+                            ) ===
+                              "公開済み"
+                        ).length;
+
+                      if (
+                        contextEvents.length <=
+                        1
+                      ) {
+                        return (
+                          <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-500">
+                            直前10分の同一ブラウザ・同一IP投稿は、この投稿以外に確認できません。
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <details
+                          open
+                          className="mt-3 rounded-xl border border-[#e6c987] bg-[#fffaf0]"
+                        >
+                          <summary className="cursor-pointer px-3 py-3 font-bold text-[#7b5720]">
+                            🔗 承認判断用：直前10分の一連の投稿
+                            （
+                            {
+                              contextEvents.length
+                            }
+                            件・
+                            {
+                              contextStoreCount
+                            }
+                            店舗）
+                          </summary>
+
+                          <div className="border-t border-[#e6c987] p-3">
+                            <div className="mb-3 rounded-lg bg-white p-3 text-xs leading-5 text-gray-600">
+                              このPending投稿と同じブラウザ・同じIPから、
+                              直前10分以内に登録された投稿です。
+                              <b className="ml-1 text-[#8a4b20]">
+                                Pendingになる前に公開されていた投稿も
+                                {publicBeforeCount}
+                                件含みます。
+                              </b>
+                            </div>
+
+                            <div className="space-y-2">
+                              {contextEvents.map(
+                                (event) => {
+                                  const isCurrent =
+                                    event.report_id ===
+                                    r.id;
+
+                                  const currentStatus =
+                                    getCurrentStatus(
+                                      event.report_id
+                                    );
+
+                                  return (
+                                    <div
+                                      key={
+                                        event.id
+                                      }
+                                      className={
+                                        "rounded-lg border p-3 text-sm " +
+                                        (isCurrent
+                                          ? "border-orange-300 bg-orange-50"
+                                          : "border-gray-200 bg-white")
+                                      }
+                                    >
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <b>
+                                          {event.store_id !==
+                                          null
+                                            ? storeName(
+                                                event.store_id
+                                              )
+                                            : "店舗不明"}
+                                        </b>
+
+                                        {isCurrent && (
+                                          <span className="rounded-full bg-orange-200 px-2 py-0.5 text-xs font-bold text-orange-800">
+                                            このPending
+                                          </span>
+                                        )}
+
+                                        {!isCurrent && (
+                                          <span
+                                            className={
+                                              "rounded-full px-2 py-0.5 text-xs font-bold " +
+                                              (currentStatus ===
+                                              "公開済み"
+                                                ? "bg-green-100 text-green-700"
+                                                : currentStatus ===
+                                                  "Pending"
+                                                ? "bg-orange-100 text-orange-700"
+                                                : "bg-gray-100 text-gray-600")
+                                            }
+                                          >
+                                            {currentStatus}
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <div className="mt-1">
+                                        {event.product_id !==
+                                        null
+                                          ? productName(
+                                              event.product_id
+                                            )
+                                          : "商品不明"}
+                                      </div>
+
+                                      <div className="mt-1 font-bold text-[#b95489]">
+                                        {formatInventoryValue(
+                                          event.quantity ??
+                                            0,
+                                          event.stock_status
+                                        )}
+                                      </div>
+
+                                      {event.comment && (
+                                        <div className="mt-1 text-xs text-gray-600">
+                                          💬 {event.comment}
+                                        </div>
+                                      )}
+
+                                      <div className="mt-1 text-xs text-gray-500">
+                                        {formatDate(
+                                          event.created_at
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                              )}
+                            </div>
+                          </div>
+                        </details>
+                      );
+                    })()}
                   </div>
                 </div>
 
