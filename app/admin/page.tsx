@@ -131,6 +131,25 @@ type Store = {
   city: string | null;
 };
 
+type EditableStore = {
+  id: number;
+  prefecture: string;
+  city: string | null;
+  name: string;
+  chain_name: string | null;
+  store_type: "physical" | "online";
+  address: string | null;
+  phone: string | null;
+  business_hours: string | null;
+  official_url: string | null;
+  online_url: string | null;
+  oricon_target: boolean;
+  billboard_status:
+    | "target"
+    | "check_store"
+    | "not_target";
+};
+
 type Product = {
   id: number;
   name: string;
@@ -309,6 +328,15 @@ export default function AdminPage() {
 
   const [storeRequests, setStoreRequests] =
     useState<StoreRequest[]>([]);
+
+  const [approvedStoreEdit, setApprovedStoreEdit] =
+    useState<EditableStore | null>(null);
+
+  const [approvedStoreEditLoading, setApprovedStoreEditLoading] =
+    useState(false);
+
+  const [approvedStoreSaving, setApprovedStoreSaving] =
+    useState(false);
 
   const [billboardInfoRequests, setBillboardInfoRequests] =
     useState<BillboardInfoRequest[]>([]);
@@ -1244,8 +1272,9 @@ export default function AdminPage() {
             requestEdit.name.trim(),
 
           p_chain_name:
-            requestEdit.chainName.trim() ===
-            ""
+            ["", "なし", "無し", "なし。", "なしです"].includes(
+              requestEdit.chainName.trim()
+            )
               ? null
               : requestEdit.chainName.trim(),
 
@@ -1422,6 +1451,112 @@ export default function AdminPage() {
     if (!ids.length) return;
     if (!window.confirm(`選択した${ids.length}件の削除履歴を完全に削除します。\nこの操作は元に戻せません。\n未復元の履歴を削除すると、その履歴からは復元できなくなります。`)) return;
     await runBulkRpc("bulk_delete_inventory_deletion_history_admin", { p_deletion_ids: ids }, `${ids.length}件の削除履歴を完全に削除しました。`);
+  }
+
+  async function handleOpenApprovedStoreEdit(
+    storeId: number
+  ) {
+    setMessage("");
+    setErrorMessage("");
+    setApprovedStoreEditLoading(true);
+
+    const { data, error } =
+      await supabase.rpc(
+        "get_store_admin",
+        { p_store_id: storeId }
+      );
+
+    setApprovedStoreEditLoading(false);
+
+    if (error) {
+      setErrorMessage(
+        `登録店舗を取得できませんでした: ${error.message}`
+      );
+      return;
+    }
+
+    const row =
+      Array.isArray(data) && data.length > 0
+        ? (data[0] as EditableStore)
+        : null;
+
+    if (!row) {
+      setErrorMessage(
+        "登録店舗が見つかりませんでした。"
+      );
+      return;
+    }
+
+    setApprovedStoreEdit({
+      ...row,
+      store_type:
+        row.store_type === "online"
+          ? "online"
+          : "physical",
+      billboard_status:
+        row.billboard_status === "target" ||
+        row.billboard_status === "not_target"
+          ? row.billboard_status
+          : "check_store",
+    });
+  }
+
+  async function handleSaveApprovedStore() {
+    if (!approvedStoreEdit) return;
+
+    if (!approvedStoreEdit.name.trim()) {
+      setErrorMessage("店舗名は必須です。");
+      return;
+    }
+
+    setApprovedStoreSaving(true);
+    setMessage("");
+    setErrorMessage("");
+
+    const chain =
+      approvedStoreEdit.chain_name?.trim() ?? "";
+
+    const { error } =
+      await supabase.rpc(
+        "update_store_admin",
+        {
+          p_store_id: approvedStoreEdit.id,
+          p_prefecture: approvedStoreEdit.prefecture,
+          p_city: approvedStoreEdit.city,
+          p_name: approvedStoreEdit.name,
+          p_chain_name:
+            ["", "なし", "無し", "なし。", "なしです"].includes(chain)
+              ? null
+              : chain,
+          p_store_type: approvedStoreEdit.store_type,
+          p_address: approvedStoreEdit.address,
+          p_phone: approvedStoreEdit.phone,
+          p_business_hours: approvedStoreEdit.business_hours,
+          p_official_url: approvedStoreEdit.official_url,
+          p_online_url: approvedStoreEdit.online_url,
+          p_oricon_target: approvedStoreEdit.oricon_target,
+          p_billboard_status: approvedStoreEdit.billboard_status,
+        }
+      );
+
+    setApprovedStoreSaving(false);
+
+    if (error) {
+      setErrorMessage(
+        `店舗情報を更新できませんでした: ${error.message}`
+      );
+      return;
+    }
+
+    setApprovedStoreEdit(null);
+
+    // 店舗一覧を含む管理画面データを再取得。
+    // loadAdminData 内で店舗変更履歴も再読込されます。
+    await loadAdminData();
+
+    setMessage(
+      "登録店舗を更新しました。変更履歴にも記録されています。"
+    );
   }
 
   async function handleDeleteStoreRequestHistory(ids: number[]) {
@@ -2185,6 +2320,12 @@ export default function AdminPage() {
               }
               processingId={requestProcessingId}
               onDeleteProcessed={handleDeleteStoreRequestHistory}
+              onEditApprovedStore={handleOpenApprovedStoreEdit}
+              approvedStoreEdit={approvedStoreEdit}
+              setApprovedStoreEdit={setApprovedStoreEdit}
+              approvedStoreEditLoading={approvedStoreEditLoading}
+              approvedStoreSaving={approvedStoreSaving}
+              onSaveApprovedStore={handleSaveApprovedStore}
               formatDate={
                 formatDate
               }
@@ -4267,6 +4408,12 @@ function StoreRequestsTab({
   onReject,
   processingId,
   onDeleteProcessed,
+  onEditApprovedStore,
+  approvedStoreEdit,
+  setApprovedStoreEdit,
+  approvedStoreEditLoading,
+  approvedStoreSaving,
+  onSaveApprovedStore,
   formatDate,
 }: {
   requests: StoreRequest[];
@@ -4283,6 +4430,14 @@ function StoreRequestsTab({
   ) => void;
   processingId: number | null;
   onDeleteProcessed: (ids: number[]) => void;
+  onEditApprovedStore: (storeId: number) => void;
+  approvedStoreEdit: EditableStore | null;
+  setApprovedStoreEdit: React.Dispatch<
+    React.SetStateAction<EditableStore | null>
+  >;
+  approvedStoreEditLoading: boolean;
+  approvedStoreSaving: boolean;
+  onSaveApprovedStore: () => void;
   formatDate: (
     value: string
   ) => string;
@@ -4647,6 +4802,99 @@ function StoreRequestsTab({
         </div>
       )}
 
+      {approvedStoreEdit && (
+        <div className="mt-7 rounded-2xl border-2 border-[#b98aaf] bg-white p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-xl font-bold">
+                ✏️ 登録済み店舗を編集
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                店舗ID: {approvedStoreEdit.id}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setApprovedStoreEdit(null)}
+              className="rounded-xl border border-gray-300 px-4 py-2 font-bold"
+            >
+              閉じる
+            </button>
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {[
+              ["店舗名", "name"],
+              ["チェーン名", "chain_name"],
+              ["都道府県", "prefecture"],
+              ["市区町村", "city"],
+              ["住所", "address"],
+              ["電話番号", "phone"],
+              ["営業時間", "business_hours"],
+              ["公式URL", "official_url"],
+              ["オンラインURL", "online_url"],
+            ].map(([label, key]) => (
+              <label
+                key={key}
+                className={
+                  key === "address" ||
+                  key === "official_url" ||
+                  key === "online_url"
+                    ? "md:col-span-2"
+                    : ""
+                }
+              >
+                <div className="mb-1 font-bold">
+                  {label}
+                </div>
+                <input
+                  value={
+                    String(
+                      approvedStoreEdit[
+                        key as keyof EditableStore
+                      ] ?? ""
+                    )
+                  }
+                  onChange={(event) =>
+                    setApprovedStoreEdit(
+                      (current) =>
+                        current
+                          ? {
+                              ...current,
+                              [key]: event.target.value,
+                            }
+                          : current
+                    )
+                  }
+                  placeholder={
+                    key === "chain_name"
+                      ? "チェーン店でなければ空欄"
+                      : undefined
+                  }
+                  className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3 text-[#211d21]"
+                />
+                {key === "chain_name" && (
+                  <div className="mt-1 text-xs text-gray-500">
+                    チェーン店でなければ空欄。「なし」は保存時に空欄扱いです。
+                  </div>
+                )}
+              </label>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            disabled={approvedStoreSaving}
+            onClick={onSaveApprovedStore}
+            className="mt-5 rounded-xl bg-[#211d21] px-6 py-3 font-bold text-white disabled:opacity-50"
+          >
+            {approvedStoreSaving
+              ? "保存中…"
+              : "この内容で店舗情報を更新"}
+          </button>
+        </div>
+      )}
+
       {processedRequests.length > 0 && (
         <details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50">
           <summary className="cursor-pointer select-none px-5 py-4 font-bold text-gray-600">
@@ -4706,6 +4954,24 @@ function StoreRequestsTab({
                         💬 {request.comment}
                       </div>
                     )}
+
+                    {request.status === "approved" &&
+                      request.approved_store_id && (
+                        <button
+                          type="button"
+                          disabled={approvedStoreEditLoading}
+                          onClick={() =>
+                            onEditApprovedStore(
+                              request.approved_store_id as number
+                            )
+                          }
+                          className="mt-4 rounded-xl bg-[#6f4b89] px-4 py-2.5 font-bold text-white disabled:opacity-50"
+                        >
+                          {approvedStoreEditLoading
+                            ? "読み込み中…"
+                            : "登録した店舗を編集"}
+                        </button>
+                      )}
                   </div>
                 </details>
               )
@@ -5230,11 +5496,18 @@ function getDisplayStoreName(
   const name =
     store.name.trim();
 
-  const chain =
+  const rawChain =
     (
       store.chain_name ??
       ""
     ).trim();
+
+  const chain =
+    ["なし", "無し", "なし。", "なしです"].includes(
+      rawChain
+    )
+      ? ""
+      : rawChain;
 
   if (!chain) return name;
 
