@@ -2115,6 +2115,7 @@ export default function AdminPage() {
             "review" ? (
             <ReviewReportsTab
               reports={reviewReports}
+              events={securityEvents}
               stores={stores}
               products={products}
               processingId={reviewProcessingId}
@@ -2473,24 +2474,901 @@ function AccessTab({
   );
 }
 
-function ReviewReportsTab({ reports, stores, products, processingId, onApprove, onReject, onBulkReview, onDeleteHistory, formatDate }: {
-  reports: ReviewReport[]; stores: Store[]; products: Product[]; processingId: number | null;
-  onApprove: (report: ReviewReport) => void; onReject: (report: ReviewReport) => void;
-  onBulkReview: (ids: number[], action: "approve" | "reject") => void; onDeleteHistory: (ids: number[]) => void; formatDate: (value: string) => string;
+function ReviewReportsTab({
+  reports,
+  events,
+  stores,
+  products,
+  processingId,
+  onApprove,
+  onReject,
+  onBulkReview,
+  onDeleteHistory,
+  formatDate,
+}: {
+  reports: ReviewReport[];
+  events: SecurityEvent[];
+  stores: Store[];
+  products: Product[];
+  processingId: number | null;
+  onApprove: (report: ReviewReport) => void;
+  onReject: (report: ReviewReport) => void;
+  onBulkReview: (
+    ids: number[],
+    action: "approve" | "reject"
+  ) => void;
+  onDeleteHistory: (ids: number[]) => void;
+  formatDate: (value: string) => string;
 }) {
-  const [pendingSel,setPendingSel]=useState<number[]>([]); const [historySel,setHistorySel]=useState<number[]>([]);
-  const pending=reports.filter(r=>r.review_status==="pending"); const approved=reports.filter(r=>r.review_status==="approved"&&Boolean(r.reviewed_at)); const rejected=reports.filter(r=>r.review_status==="rejected");
-  const pids=pending.map(r=>r.id); const hids=[...approved,...rejected].map(r=>r.id);
-  useEffect(()=>{setPendingSel(c=>c.filter(id=>pids.includes(id)));setHistorySel(c=>c.filter(id=>hids.includes(id)));},[reports]);
-  const storeName=(id:number)=>{const x=stores.find(s=>s.id===id);return x?getDisplayStoreName(x):"店舗不明"}; const productName=(id:number)=>products.find(p=>p.id===id)?.name??"商品不明";
-  const tp=(id:number)=>setPendingSel(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id]); const th=(id:number)=>setHistorySel(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id]);
-  const hist=(r:ReviewReport,label:"承認"|"却下")=><article key={r.id} className="rounded-xl border border-gray-200 bg-white p-4 text-gray-600"><div className="flex items-start gap-3"><SelectionCheckbox checked={historySel.includes(r.id)} onChange={()=>th(r.id)} label={`履歴 #${r.id} を選択`} /><div><div className="flex flex-wrap items-center gap-2"><b>{storeName(r.store_id)}</b><span className={"rounded-full px-2.5 py-1 text-xs font-bold "+(label==="承認"?"bg-green-100 text-green-700":"bg-red-100 text-red-700")}>{label}済み</span></div><div className="mt-1">{productName(r.product_id)}</div><div className="mt-1">{formatInventoryValue(r.quantity,r.stock_status)}</div><div className="mt-1 text-sm">投稿: {formatDate(r.created_at)}</div>{r.reviewed_at&&<div className="mt-1 text-sm">{label}: {formatDate(r.reviewed_at)}</div>}{r.review_reason&&<div className="mt-2 text-sm">判定理由: {r.review_reason}</div>}</div></div></article>;
-  return <div className="mt-6"><h2 className="text-2xl font-bold">🔎 要確認の在庫投稿</h2><p className="mt-2 text-gray-500">自動判定で保留になった投稿です。承認するまで公開ページには表示されません。</p>
-    {pending.length>0&&<div className="mt-5"><BulkSelectionBar count={pendingSel.length} allSelected={pids.every(id=>pendingSel.includes(id))} onToggleAll={()=>setPendingSel(pids.every(id=>pendingSel.includes(id))?[]:pids)}><button disabled={!pendingSel.length} onClick={()=>onBulkReview(pendingSel,"approve")} className="rounded-xl bg-green-700 px-4 py-2 font-bold text-white disabled:opacity-40">一括承認・公開</button><button disabled={!pendingSel.length} onClick={()=>onBulkReview(pendingSel,"reject")} className="rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-40">一括却下</button></BulkSelectionBar></div>}
-    {!pending.length?<div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">現在、要確認の投稿はありません。</div>:<div className="mt-4 space-y-4">{pending.map(r=><article key={r.id} className="rounded-2xl border border-orange-200 bg-orange-50 p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex items-start gap-3"><SelectionCheckbox checked={pendingSel.includes(r.id)} onChange={()=>tp(r.id)} label={`投稿 #${r.id} を選択`} /><div><div className="text-lg font-bold">{storeName(r.store_id)}</div><div className="mt-2">{productName(r.product_id)}</div><div className="mt-1 font-bold text-[#b95489]">{formatInventoryValue(r.quantity,r.stock_status)}</div><div className="mt-1 text-sm text-gray-500">{formatDate(r.created_at)}</div>{r.comment&&<div className="mt-3 rounded-xl bg-white p-3">💬 {r.comment}</div>}<div className="mt-3 rounded-xl bg-white p-3 text-sm"><b>判定理由: </b>{r.review_reason||"理由なし"}</div></div></div><div className="flex gap-2"><button disabled={processingId===r.id} onClick={()=>onApprove(r)} className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white">承認・公開</button><button disabled={processingId===r.id} onClick={()=>onReject(r)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white">却下</button></div></div></article>)}</div>}
-    <div className="mt-7"><BulkSelectionBar count={historySel.length} allSelected={hids.length>0&&hids.every(id=>historySel.includes(id))} onToggleAll={()=>setHistorySel(hids.length>0&&hids.every(id=>historySel.includes(id))?[]:hids)}><button disabled={!historySel.length} onClick={()=>onDeleteHistory(historySel)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を削除</button></BulkSelectionBar></div>
-    <div className="mt-3 space-y-3"><details className="rounded-2xl border border-green-200 bg-green-50/50"><summary className="cursor-pointer px-5 py-4 font-bold text-green-700">承認済みの履歴 ({approved.length}件)</summary><div className="space-y-3 border-t border-green-200 p-4">{approved.length?approved.map(r=>hist(r,"承認")):<div className="text-sm text-gray-500">承認済みの履歴はありません。</div>}</div></details><details className="rounded-2xl border border-gray-200 bg-gray-50"><summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">却下済みの履歴 ({rejected.length}件)</summary><div className="space-y-3 border-t border-gray-200 p-4">{rejected.length?rejected.map(r=>hist(r,"却下")):<div className="text-sm text-gray-500">却下済みの履歴はありません。</div>}</div></details></div>
-  </div>;
+  const [pendingSel, setPendingSel] =
+    useState<number[]>([]);
+  const [historySel, setHistorySel] =
+    useState<number[]>([]);
+
+  const pending = reports.filter(
+    (r) =>
+      r.review_status === "pending"
+  );
+
+  const approved = reports.filter(
+    (r) =>
+      r.review_status === "approved" &&
+      Boolean(r.reviewed_at)
+  );
+
+  const rejected = reports.filter(
+    (r) =>
+      r.review_status === "rejected"
+  );
+
+  const pids = pending.map((r) => r.id);
+  const hids = [
+    ...approved,
+    ...rejected,
+  ].map((r) => r.id);
+
+  useEffect(() => {
+    setPendingSel((current) =>
+      current.filter((id) =>
+        pids.includes(id)
+      )
+    );
+
+    setHistorySel((current) =>
+      current.filter((id) =>
+        hids.includes(id)
+      )
+    );
+  }, [reports]);
+
+  const storeName = (id: number) => {
+    const store = stores.find(
+      (item) => item.id === id
+    );
+
+    return store
+      ? getDisplayStoreName(store)
+      : "店舗不明";
+  };
+
+  const productName = (
+    id: number
+  ) =>
+    products.find(
+      (item) => item.id === id
+    )?.name ?? "商品不明";
+
+  const togglePending = (
+    id: number
+  ) =>
+    setPendingSel((current) =>
+      current.includes(id)
+        ? current.filter(
+            (item) => item !== id
+          )
+        : [...current, id]
+    );
+
+  const toggleHistory = (
+    id: number
+  ) =>
+    setHistorySel((current) =>
+      current.includes(id)
+        ? current.filter(
+            (item) => item !== id
+          )
+        : [...current, id]
+    );
+
+  function getJstDateKey(
+    value: string | Date
+  ) {
+    const date =
+      value instanceof Date
+        ? value
+        : new Date(value);
+
+    const parts =
+      new Intl.DateTimeFormat(
+        "ja-JP",
+        {
+          timeZone: "Asia/Tokyo",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }
+      ).formatToParts(date);
+
+    const year =
+      parts.find(
+        (part) =>
+          part.type === "year"
+      )?.value ?? "";
+
+    const month =
+      parts.find(
+        (part) =>
+          part.type === "month"
+      )?.value ?? "";
+
+    const day =
+      parts.find(
+        (part) =>
+          part.type === "day"
+      )?.value ?? "";
+
+    return `${year}-${month}-${day}`;
+  }
+
+  /*
+   * submitted / pending は
+   * 「登録に成功した時点」で1投稿につき1件だけ残る。
+   * auto_rollback_pending は後から追加される履歴なので、
+   * 今日の投稿数には二重計上しない。
+   */
+  const todayKey =
+    getJstDateKey(new Date());
+
+  const todaySuccessfulEvents =
+    events.filter(
+      (event) =>
+        (
+          event.event_type ===
+            "submitted" ||
+          event.event_type ===
+            "pending"
+        ) &&
+        getJstDateKey(
+          event.created_at
+        ) === todayKey
+    );
+
+  const todayPostCount =
+    todaySuccessfulEvents.length;
+
+  const todayStoreCount =
+    new Set(
+      todaySuccessfulEvents
+        .map(
+          (event) =>
+            event.store_id
+        )
+        .filter(
+          (
+            id
+          ): id is number =>
+            id !== null
+        )
+    ).size;
+
+  const todayInitialPendingCount =
+    todaySuccessfulEvents.filter(
+      (event) =>
+        event.event_type ===
+        "pending"
+    ).length;
+
+  /*
+   * 強い連続投稿制限で巻き戻された一連をまとめる。
+   * auto_rollback_pending は、同一IPハッシュ +
+   * 同一ブラウザハッシュで1件ずつ記録される。
+   * 2分以内のものを同じ自動保留処理として扱う。
+   */
+  type RollbackSeries = {
+    key: string;
+    events: SecurityEvent[];
+    startedAt: string;
+    endedAt: string;
+  };
+
+  const rollbackSeries =
+    useMemo(() => {
+      const rollbackEvents =
+        events
+          .filter(
+            (event) =>
+              event.event_type ===
+                "auto_rollback_pending" &&
+              event.report_id !== null
+          )
+          .sort(
+            (a, b) =>
+              new Date(
+                a.created_at
+              ).getTime() -
+              new Date(
+                b.created_at
+              ).getTime()
+          );
+
+      const result:
+        RollbackSeries[] = [];
+
+      for (
+        const event of
+        rollbackEvents
+      ) {
+        const identity =
+          `${
+            event.client_hash ??
+            "no-client"
+          }::${
+            event.ip_hash ??
+            "no-ip"
+          }`;
+
+        const last =
+          result[
+            result.length - 1
+          ];
+
+        const eventTime =
+          new Date(
+            event.created_at
+          ).getTime();
+
+        const lastTime =
+          last
+            ? new Date(
+                last.endedAt
+              ).getTime()
+            : 0;
+
+        const sameIdentity =
+          last?.key.startsWith(
+            `${identity}::`
+          ) ?? false;
+
+        const withinTwoMinutes =
+          eventTime - lastTime <=
+          2 * 60 * 1000;
+
+        if (
+          last &&
+          sameIdentity &&
+          withinTwoMinutes
+        ) {
+          last.events.push(
+            event
+          );
+          last.endedAt =
+            event.created_at;
+        } else {
+          result.push({
+            key:
+              `${identity}::${event.created_at}`,
+            events: [event],
+            startedAt:
+              event.created_at,
+            endedAt:
+              event.created_at,
+          });
+        }
+      }
+
+      return result.reverse();
+    }, [events]);
+
+  const visibleRollbackSeries =
+    rollbackSeries.filter(
+      (series) =>
+        series.events.some(
+          (event) =>
+            event.report_id !==
+              null &&
+            reports.some(
+              (report) =>
+                report.id ===
+                event.report_id
+            )
+        )
+    );
+
+  function getCurrentStatus(
+    reportId: number | null
+  ) {
+    if (reportId === null) {
+      return "削除済み";
+    }
+
+    const report =
+      reports.find(
+        (item) =>
+          item.id === reportId
+      );
+
+    if (!report) {
+      return "現在状態不明";
+    }
+
+    if (
+      report.review_status ===
+      "approved"
+    ) {
+      return report.reviewed_at
+        ? "承認済み"
+        : "公開済み";
+    }
+
+    if (
+      report.review_status ===
+      "pending"
+    ) {
+      return "Pending";
+    }
+
+    return "却下済み";
+  }
+
+  function renderSeries(
+    series: RollbackSeries
+  ) {
+    const byStore =
+      new Map<
+        number,
+        SecurityEvent[]
+      >();
+
+    for (
+      const event of
+      series.events
+    ) {
+      if (
+        event.store_id ===
+        null
+      ) {
+        continue;
+      }
+
+      const current =
+        byStore.get(
+          event.store_id
+        ) ?? [];
+
+      current.push(event);
+
+      byStore.set(
+        event.store_id,
+        current
+      );
+    }
+
+    const storeGroups = [
+      ...byStore.entries(),
+    ];
+
+    return (
+      <details
+        key={series.key}
+        className="rounded-2xl border border-orange-200 bg-orange-50/60"
+      >
+        <summary className="cursor-pointer px-5 py-4 font-bold text-[#8a4b20]">
+          ⚠️ 連続投稿グループ
+          （
+          {
+            series.events
+              .length
+          }
+          件・
+          {
+            storeGroups
+              .length
+          }
+          店舗）
+          <span className="ml-2 text-sm font-normal text-gray-600">
+            {formatDate(
+              series.startedAt
+            )}
+          </span>
+        </summary>
+
+        <div className="border-t border-orange-200 p-4">
+          <p className="mb-4 text-sm leading-6 text-gray-600">
+            この一覧には、自動保留になる前に一度公開されていた投稿も含みます。
+            同じブラウザ・同じIPからの自動巻き戻し履歴をまとめています。
+          </p>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {storeGroups.map(
+              ([
+                storeId,
+                storeEvents,
+              ]) => (
+                <div
+                  key={
+                    storeId
+                  }
+                  className="rounded-xl border border-orange-100 bg-white p-4"
+                >
+                  <div className="font-bold text-[#2c252b]">
+                    {
+                      storeName(
+                        storeId
+                      )
+                    }
+                    <span className="ml-2 rounded-full bg-orange-100 px-2 py-1 text-xs text-orange-700">
+                      {
+                        storeEvents
+                          .length
+                      }
+                      件
+                    </span>
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    {storeEvents.map(
+                      (
+                        event
+                      ) => (
+                        <div
+                          key={
+                            event.id
+                          }
+                          className="rounded-lg bg-[#faf7fa] p-3 text-sm"
+                        >
+                          <div className="font-bold">
+                            {event.product_id !==
+                            null
+                              ? productName(
+                                  event.product_id
+                                )
+                              : "商品不明"}
+                          </div>
+
+                          <div className="mt-1 text-[#b95489]">
+                            {formatInventoryValue(
+                              event.quantity ??
+                                0,
+                              event.stock_status
+                            )}
+                          </div>
+
+                          <div className="mt-1 text-xs text-gray-500">
+                            投稿：
+                            {formatDate(
+                              event.created_at
+                            )}
+                          </div>
+
+                          <div className="mt-1 text-xs">
+                            現在：
+                            <b>
+                              {getCurrentStatus(
+                                event.report_id
+                              )}
+                            </b>
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      </details>
+    );
+  }
+
+  const hist = (
+    r: ReviewReport,
+    label: "承認" | "却下"
+  ) => (
+    <article
+      key={r.id}
+      className="rounded-xl border border-gray-200 bg-white p-4 text-gray-600"
+    >
+      <div className="flex items-start gap-3">
+        <SelectionCheckbox
+          checked={historySel.includes(
+            r.id
+          )}
+          onChange={() =>
+            toggleHistory(r.id)
+          }
+          label={`履歴 #${r.id} を選択`}
+        />
+
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <b>
+              {storeName(
+                r.store_id
+              )}
+            </b>
+
+            <span
+              className={
+                "rounded-full px-2.5 py-1 text-xs font-bold " +
+                (label === "承認"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700")
+              }
+            >
+              {label}済み
+            </span>
+          </div>
+
+          <div className="mt-1">
+            {productName(
+              r.product_id
+            )}
+          </div>
+
+          <div className="mt-1">
+            {formatInventoryValue(
+              r.quantity,
+              r.stock_status
+            )}
+          </div>
+
+          <div className="mt-1 text-sm">
+            投稿：
+            {formatDate(
+              r.created_at
+            )}
+          </div>
+
+          {r.reviewed_at && (
+            <div className="mt-1 text-sm">
+              {label}：
+              {formatDate(
+                r.reviewed_at
+              )}
+            </div>
+          )}
+
+          {r.review_reason && (
+            <div className="mt-2 text-sm">
+              判定理由：
+              {r.review_reason}
+            </div>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+
+  return (
+    <div className="mt-6">
+      <h2 className="text-2xl font-bold">
+        🔎 要確認の在庫投稿
+      </h2>
+
+      <p className="mt-2 text-gray-500">
+        自動判定で保留になった投稿です。
+        承認するまで公開ページには表示されません。
+      </p>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border border-[#e8d7e4] bg-white p-4">
+          <div className="text-sm font-bold text-[#8b6881]">
+            📊 今日の在庫投稿
+          </div>
+          <div className="mt-1 text-3xl font-bold text-[#211d21]">
+            {todayPostCount.toLocaleString()}
+            <span className="ml-1 text-base">
+              件
+            </span>
+          </div>
+          <div className="mt-1 text-xs text-gray-500">
+            JST 0:00〜現在・登録成功分
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#e8d7e4] bg-white p-4">
+          <div className="text-sm font-bold text-[#8b6881]">
+            🏬 今日投稿された店舗
+          </div>
+          <div className="mt-1 text-3xl font-bold text-[#211d21]">
+            {todayStoreCount.toLocaleString()}
+            <span className="ml-1 text-base">
+              店舗
+            </span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#e8d7e4] bg-white p-4">
+          <div className="text-sm font-bold text-[#8b6881]">
+            ⚠️ 最初からPending
+          </div>
+          <div className="mt-1 text-3xl font-bold text-[#211d21]">
+            {todayInitialPendingCount.toLocaleString()}
+            <span className="ml-1 text-base">
+              件
+            </span>
+          </div>
+          <div className="mt-1 text-xs text-gray-500">
+            後から自動保留へ変わった分は別
+          </div>
+        </div>
+      </div>
+
+      {visibleRollbackSeries.length >
+        0 && (
+        <div className="mt-6">
+          <h3 className="text-lg font-bold text-[#6f4d65]">
+            🔗 連続投稿のまとまり
+          </h3>
+
+          <p className="mt-1 text-sm text-gray-500">
+            自動保留になった一連の投稿を、
+            店舗ごとの件数までまとめて確認できます。
+          </p>
+
+          <div className="mt-3 space-y-3">
+            {visibleRollbackSeries.map(
+              renderSeries
+            )}
+          </div>
+        </div>
+      )}
+
+      {pending.length > 0 && (
+        <div className="mt-5">
+          <BulkSelectionBar
+            count={
+              pendingSel.length
+            }
+            allSelected={pids.every(
+              (id) =>
+                pendingSel.includes(
+                  id
+                )
+            )}
+            onToggleAll={() =>
+              setPendingSel(
+                pids.every((id) =>
+                  pendingSel.includes(
+                    id
+                  )
+                )
+                  ? []
+                  : pids
+              )
+            }
+          >
+            <button
+              disabled={
+                !pendingSel.length
+              }
+              onClick={() =>
+                onBulkReview(
+                  pendingSel,
+                  "approve"
+                )
+              }
+              className="rounded-xl bg-green-700 px-4 py-2 font-bold text-white disabled:opacity-40"
+            >
+              一括承認・公開
+            </button>
+
+            <button
+              disabled={
+                !pendingSel.length
+              }
+              onClick={() =>
+                onBulkReview(
+                  pendingSel,
+                  "reject"
+                )
+              }
+              className="rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-40"
+            >
+              一括却下
+            </button>
+          </BulkSelectionBar>
+        </div>
+      )}
+
+      {!pending.length ? (
+        <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">
+          現在、要確認の投稿はありません。
+        </div>
+      ) : (
+        <div className="mt-4 space-y-4">
+          {pending.map((r) => (
+            <article
+              key={r.id}
+              className="rounded-2xl border border-orange-200 bg-orange-50 p-5"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <SelectionCheckbox
+                    checked={pendingSel.includes(
+                      r.id
+                    )}
+                    onChange={() =>
+                      togglePending(
+                        r.id
+                      )
+                    }
+                    label={`投稿 #${r.id} を選択`}
+                  />
+
+                  <div>
+                    <div className="text-lg font-bold">
+                      {storeName(
+                        r.store_id
+                      )}
+                    </div>
+
+                    <div className="mt-2">
+                      {productName(
+                        r.product_id
+                      )}
+                    </div>
+
+                    <div className="mt-1 font-bold text-[#b95489]">
+                      {formatInventoryValue(
+                        r.quantity,
+                        r.stock_status
+                      )}
+                    </div>
+
+                    <div className="mt-1 text-sm text-gray-500">
+                      {formatDate(
+                        r.created_at
+                      )}
+                    </div>
+
+                    {r.comment && (
+                      <div className="mt-3 rounded-xl bg-white p-3">
+                        💬 {r.comment}
+                      </div>
+                    )}
+
+                    <div className="mt-3 rounded-xl bg-white p-3 text-sm">
+                      <b>
+                        判定理由：
+                      </b>
+                      {r.review_reason ||
+                        "理由なし"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    disabled={
+                      processingId ===
+                      r.id
+                    }
+                    onClick={() =>
+                      onApprove(r)
+                    }
+                    className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white"
+                  >
+                    承認・公開
+                  </button>
+
+                  <button
+                    disabled={
+                      processingId ===
+                      r.id
+                    }
+                    onClick={() =>
+                      onReject(r)
+                    }
+                    className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white"
+                  >
+                    却下
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-7">
+        <BulkSelectionBar
+          count={
+            historySel.length
+          }
+          allSelected={
+            hids.length > 0 &&
+            hids.every((id) =>
+              historySel.includes(
+                id
+              )
+            )
+          }
+          onToggleAll={() =>
+            setHistorySel(
+              hids.length > 0 &&
+                hids.every((id) =>
+                  historySel.includes(
+                    id
+                  )
+                )
+                ? []
+                : hids
+            )
+          }
+        >
+          <button
+            disabled={
+              !historySel.length
+            }
+            onClick={() =>
+              onDeleteHistory(
+                historySel
+              )
+            }
+            className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40"
+          >
+            選択した履歴を削除
+          </button>
+        </BulkSelectionBar>
+      </div>
+
+      <div className="mt-3 space-y-3">
+        <details className="rounded-2xl border border-green-200 bg-green-50/50">
+          <summary className="cursor-pointer px-5 py-4 font-bold text-green-700">
+            承認済みの履歴
+            （
+            {approved.length}
+            件）
+          </summary>
+
+          <div className="space-y-3 border-t border-green-200 p-4">
+            {approved.length ? (
+              approved.map((r) =>
+                hist(r, "承認")
+              )
+            ) : (
+              <div className="text-sm text-gray-500">
+                承認済みの履歴はありません。
+              </div>
+            )}
+          </div>
+        </details>
+
+        <details className="rounded-2xl border border-gray-200 bg-gray-50">
+          <summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">
+            却下済みの履歴
+            （
+            {rejected.length}
+            件）
+          </summary>
+
+          <div className="space-y-3 border-t border-gray-200 p-4">
+            {rejected.length ? (
+              rejected.map((r) =>
+                hist(r, "却下")
+              )
+            ) : (
+              <div className="text-sm text-gray-500">
+                却下済みの履歴はありません。
+              </div>
+            )}
+          </div>
+        </details>
+      </div>
+    </div>
+  );
 }
 
 function SecurityEventsTab({
