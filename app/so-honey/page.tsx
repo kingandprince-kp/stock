@@ -3470,7 +3470,7 @@ function getOnlineStockStatusClass(
   if (status === "backorder") {
     return "bg-[#e8eefc] text-[#38588f] border border-[#b8c8ef]";
   }
-  return "bg-[#2a252a] text-white border border-[#2a252a]";
+  return "bg-[#fdebed] text-[#9a3040] border border-[#e8a8b0]";
 }
 
 function StoreCard({
