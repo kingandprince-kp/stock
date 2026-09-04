@@ -2537,7 +2537,11 @@ async function handleBugReport() {
                     ? "ショップ名を入力"
                     : "店舗名・チェーン名・市区町村を入力"
                 }
-                className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 md:text-base"
+                className={`w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 ${
+                  reportMode === "physical"
+                    ? "text-[10px] placeholder:text-[9px] sm:text-[11px] sm:placeholder:text-[10px] md:text-sm md:placeholder:text-xs"
+                    : "text-[12px] md:text-base"
+                }`}
               />
             </label>
           </div>
