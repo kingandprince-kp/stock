@@ -278,6 +278,7 @@ const [submitError, setSubmitError] = useState("");
     useState<OnlineProductFirstWeekStatusRow[]>([]);
   const [onlineFirstWeekFilter, setOnlineFirstWeekFilter] =
     useState<OnlineFirstWeekFilter>("actionable");
+  const [stockOnly, setStockOnly] = useState(false);
   const [storeCommentCounts, setStoreCommentCounts] =
     useState<StoreCommentCount[]>([]);
   const [bugReportOpen, setBugReportOpen] = useState(false);
@@ -805,14 +806,52 @@ setLoading(false);
   );
 
   const displayedStores = useMemo(() => {
-    if (searchMode !== "online") return visibleStores;
+    const filteredByFirstWeek =
+      searchMode !== "online"
+        ? visibleStores
+        : visibleStores.filter((store) =>
+            products.some((product) =>
+              matchesOnlineFirstWeekFilter(
+                onlineProductFirstWeekStatusMap.get(
+                  `${store.id}-${product.id}`
+                ) ?? null,
+                onlineFirstWeekFilter
+              )
+            )
+          );
+
+    const filteredByStock = !stockOnly
+      ? filteredByFirstWeek
+      : filteredByFirstWeek.filter((store) => {
+          const online = isOnlineStore(store);
+          const candidateProducts = online
+            ? products.filter((product) =>
+                matchesOnlineFirstWeekFilter(
+                  onlineProductFirstWeekStatusMap.get(
+                    `${store.id}-${product.id}`
+                  ) ?? null,
+                  onlineFirstWeekFilter
+                )
+              )
+            : products.filter((product) => !product.online_only);
+
+          return candidateProducts.some((product) =>
+            isInventoryReportInStock(
+              latestReportMap.get(`${store.id}-${product.id}`) ?? null,
+              online
+            )
+          );
+        });
+
+    if (searchMode !== "online") return filteredByStock;
 
     const scoreStore = (store: Store) => {
       let best = 3;
       for (const product of products) {
-        const status = onlineProductFirstWeekStatusMap.get(
-          `${store.id}-${product.id}`
-        ) ?? null;
+        const status =
+          onlineProductFirstWeekStatusMap.get(
+            `${store.id}-${product.id}`
+          ) ?? null;
         const value = status?.status ?? "check";
         const score = value === "likely" ? 0 : value === "check" ? 1 : 2;
         if (score < best) best = score;
@@ -820,27 +859,18 @@ setLoading(false);
       return best;
     };
 
-    return visibleStores
-      .filter((store) =>
-        products.some((product) =>
-          matchesOnlineFirstWeekFilter(
-            onlineProductFirstWeekStatusMap.get(
-              `${store.id}-${product.id}`
-            ) ?? null,
-            onlineFirstWeekFilter
-          )
-        )
-      )
-      .sort((a, b) => {
-        const scoreDiff = scoreStore(a) - scoreStore(b);
-        return scoreDiff !== 0 ? scoreDiff : compareOnlineStores(a, b);
-      });
+    return [...filteredByStock].sort((a, b) => {
+      const scoreDiff = scoreStore(a) - scoreStore(b);
+      return scoreDiff !== 0 ? scoreDiff : compareOnlineStores(a, b);
+    });
   }, [
     searchMode,
     visibleStores,
     products,
+    latestReportMap,
     onlineProductFirstWeekStatusMap,
     onlineFirstWeekFilter,
+    stockOnly,
     matchesOnlineFirstWeekFilter,
   ]);
 
@@ -2024,6 +2054,23 @@ async function handleBugReport() {
               )}
             </div>
 
+            {!loading && !dataError && (
+              <div className="mt-3 md:mt-5">
+                <button
+                  type="button"
+                  aria-pressed={stockOnly}
+                  onClick={() => setStockOnly((current) => !current)}
+                  className={`rounded-full border px-3 py-1.5 text-[10px] font-bold transition md:px-4 md:py-2 md:text-sm ${
+                    stockOnly
+                      ? "border-[#b05f92] bg-[#b05f92] text-white"
+                      : "border-[#d8cad7] bg-white text-[#6d4966]"
+                  }`}
+                >
+                  ○ 在庫ありのみを表示
+                </button>
+              </div>
+            )}
+
             {searchMode === "online" && !loading && !dataError && (
               <div className="mt-3 rounded-xl border border-[#ead7a7] bg-[#fffaf0] p-2.5 md:mt-5 md:rounded-2xl md:p-4">
                 <div className="text-[11px] font-bold text-[#59471f] md:text-sm">
@@ -2076,6 +2123,7 @@ async function handleBugReport() {
                     deletingOwnReportId={deletingOwnReportId}
                     onlineProductFirstWeekStatusMap={onlineProductFirstWeekStatusMap}
                     onlineFirstWeekFilter={onlineFirstWeekFilter}
+                    stockOnly={stockOnly}
                     commentCount={
                       storeCommentCountMap.get(store.id) ?? 0
                     }
@@ -3072,6 +3120,7 @@ function StoreCard({
   deletingOwnReportId,
   onlineProductFirstWeekStatusMap,
   onlineFirstWeekFilter,
+  stockOnly,
   commentCount,
   onCommentsChanged,
 }: {
@@ -3086,6 +3135,7 @@ function StoreCard({
   deletingOwnReportId: number | null;
   onlineProductFirstWeekStatusMap: Map<string, OnlineProductFirstWeekStatusRow>;
   onlineFirstWeekFilter: OnlineFirstWeekFilter;
+  stockOnly: boolean;
   commentCount: number;
   onCommentsChanged: () => Promise<void>;
 }) {
@@ -3206,6 +3256,15 @@ function StoreCard({
       })
     : allStoreProducts;
 
+  const displayedStoreProducts = stockOnly
+    ? storeProducts.filter((product) =>
+        isInventoryReportInStock(
+          getLatestReport(store.id, product.id),
+          online
+        )
+      )
+    : storeProducts;
+
   const storeReports = storeProducts
     .map((product) =>
       getLatestReport(store.id, product.id)
@@ -3295,12 +3354,12 @@ function StoreCard({
         <button
           type="button"
           onClick={() => setStoreInfoOpen((current) => !current)}
-          className="rounded-xl border border-[#dfbd69] bg-[#fff7df] px-3 py-2 text-left text-[#5d4717] shadow-sm transition hover:bg-[#fff1c8] md:rounded-2xl md:px-4 md:py-2.5"
+          className="rounded-xl border border-[#cdb9ca] bg-white px-3 py-2 text-left text-[#6d4966] shadow-sm transition hover:bg-[#faf4f8] md:rounded-2xl md:px-4 md:py-2.5"
         >
           <span className="block text-[11px] font-bold md:text-sm">
             📨 店舗情報を提供 {storeInfoOpen ? "∧" : "∨"}
           </span>
-          <span className="mt-0.5 block text-[9px] font-bold text-[#8a6825] md:text-xs">
+          <span className="mt-0.5 block text-[9px] font-bold text-[#8b6a83] md:text-xs">
             {online
               ? "Billboard・その他の店舗情報はこちら"
               : "⏰ 初週集計の締め時間をご存じの方はこちら"}
@@ -3331,7 +3390,7 @@ function StoreCard({
         </div>
 
         <div className="mt-2 grid grid-cols-2 gap-1.5 sm:gap-2 lg:mt-4 lg:grid-cols-4 lg:gap-3">
-          {storeProducts.map((product) => {
+          {displayedStoreProducts.map((product) => {
             const report = getLatestReport(
               store.id,
               product.id
@@ -3496,16 +3555,18 @@ function StoreCard({
         )}
       </div>
 
-      <button
-        onClick={() => setOpen((current) => !current)}
-        className="mt-2.5 rounded-full bg-[#f0dfec] px-3 py-1.5 text-[11px] font-bold text-[#6d4966] md:mt-4 md:px-4 md:py-2.5 md:text-base"
-      >
-        {open
-          ? "店舗情報を閉じる ∧"
-          : "店舗情報を見る ∨"}
-      </button>
+      {!online && (
+        <button
+          onClick={() => setOpen((current) => !current)}
+          className="mt-2.5 rounded-full bg-[#f0dfec] px-3 py-1.5 text-[11px] font-bold text-[#6d4966] md:mt-4 md:px-4 md:py-2.5 md:text-base"
+        >
+          {open
+            ? "店舗情報を閉じる ∧"
+            : "店舗情報を見る ∨"}
+        </button>
+      )}
 
-      {open && (
+      {(online || open) && (
         <div className="mt-2 rounded-xl border border-[#e8d9e7] bg-[#fcf9fc] p-3 md:mt-3 md:rounded-2xl md:p-5">
           {online ? (
             <div>
@@ -3898,6 +3959,20 @@ function StoreInfoContributionForm({
       </div>
     </div>
   );
+}
+
+function isInventoryReportInStock(
+  report: InventoryReport | null,
+  online: boolean
+) {
+  if (!report) return false;
+  if (online) {
+    return (
+      report.stock_status === "in_stock" ||
+      report.stock_status === "low_stock"
+    );
+  }
+  return Number(report.quantity) > 0;
 }
 
 function formatStockStatus(status: OnlineStockStatus) {
