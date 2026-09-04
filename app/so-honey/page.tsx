@@ -135,7 +135,7 @@ const ONLINE_STORE_PRIORITY: string[][] = [
 ];
 
 const VERIFIED_ONLINE_PRODUCT_URLS: Record<
-  "universal" | "tower" | "hmv" | "rakuten" | "neowing",
+  "universal" | "tower" | "hmv" | "neowing",
   Record<number, string>
 > = {
   universal: {
@@ -171,17 +171,6 @@ const VERIFIED_ONLINE_PRODUCT_URLS: Record<
     8: "https://www.hmv.co.jp/artist_King-Prince_000000000744568/item_%E3%80%8A4%E5%BD%A2%E6%85%8B%E5%90%8C%E6%99%82%E8%B3%BC%E5%85%A5%E7%89%B9%E5%85%B8%E4%BB%98Blu-ray%E3%82%BB%E3%83%83%E3%83%88%E3%80%8BSo-Honey-EP%E3%80%90%E5%88%9D%E5%9B%9E%E9%99%90%E5%AE%9A%E7%9B%A4A-%E5%88%9D%E5%9B%9E%E9%99%90%E5%AE%9A%E7%9B%A4B-%E5%88%9D%E5%9B%9E%E9%99%90%E5%AE%9ALIVE%E7%9B%A4-%E9%80%9A%E5%B8%B8%E7%9B%A4%EF%BC%9C%E5%88%9D%E5%9B%9E%E3%83%97%E3%83%AC%E3%82%B9%EF%BC%9E%E3%80%91_17062116",
     9: "https://www.hmv.co.jp/product/detail/17062117",
   },
-  rakuten: {
-    1: "https://books.rakuten.co.jp/rb/18695306/",
-    2: "https://books.rakuten.co.jp/rb/18695307/",
-    3: "https://books.rakuten.co.jp/rb/18695308/",
-    4: "https://books.rakuten.co.jp/rb/18695309/",
-    5: "https://books.rakuten.co.jp/rb/18695310/",
-    6: "https://books.rakuten.co.jp/rb/18695311/",
-    7: "https://books.rakuten.co.jp/rb/18695312/",
-    8: "https://books.rakuten.co.jp/rb/18695313/",
-    9: "https://books.rakuten.co.jp/rb/18695314/",
-  },
   neowing: {
     1: "https://www.neowing.co.jp/product/UPCJ-9079",
     2: "https://www.neowing.co.jp/product/UPCJ-9080",
@@ -193,6 +182,48 @@ const VERIFIED_ONLINE_PRODUCT_URLS: Record<
     8: "https://www.neowing.co.jp/product/NEOIKT-2103",
     9: "https://www.neowing.co.jp/product/NEOIKT-2104",
   },
+};
+
+type ProductLinkOption = {
+  label: string;
+  url: string;
+};
+
+const RAKUTEN_PRODUCT_LINKS: Record<number, ProductLinkOption[]> = {
+  1: [
+    { label: "先着特典あり", url: "https://books.rakuten.co.jp/rb/18695315/" },
+    { label: "特典なし", url: "https://books.rakuten.co.jp/rb/18695306/" },
+  ],
+  2: [
+    { label: "先着特典あり", url: "https://books.rakuten.co.jp/rb/18695316/" },
+    { label: "特典なし", url: "https://books.rakuten.co.jp/rb/18695307/" },
+  ],
+  3: [
+    { label: "先着特典あり", url: "https://books.rakuten.co.jp/rb/18695317/" },
+    { label: "特典なし", url: "https://books.rakuten.co.jp/rb/18695308/" },
+  ],
+  4: [
+    { label: "先着特典あり", url: "https://books.rakuten.co.jp/rb/18695318/" },
+    { label: "特典なし", url: "https://books.rakuten.co.jp/rb/18695309/" },
+  ],
+  5: [
+    { label: "先着特典あり", url: "https://books.rakuten.co.jp/rb/18695319/" },
+    { label: "特典なし", url: "https://books.rakuten.co.jp/rb/18695310/" },
+  ],
+  6: [
+    { label: "先着特典あり", url: "https://books.rakuten.co.jp/rb/18695320/" },
+    { label: "特典なし", url: "https://books.rakuten.co.jp/rb/18695311/" },
+  ],
+  7: [
+    { label: "先着特典あり", url: "https://books.rakuten.co.jp/rb/18695321/" },
+    { label: "特典なし", url: "https://books.rakuten.co.jp/rb/18695312/" },
+  ],
+  8: [
+    { label: "同時購入特典+先着特典あり", url: "https://books.rakuten.co.jp/rb/18695313/" },
+  ],
+  9: [
+    { label: "同時購入特典+先着特典あり", url: "https://books.rakuten.co.jp/rb/18695314/" },
+  ],
 };
 
 type Store = {
@@ -3631,11 +3662,11 @@ function StoreCard({
                 className="flex min-w-0 flex-col rounded-lg border border-[#e5d7e4] bg-white px-2.5 py-2 md:rounded-2xl md:px-4 md:py-3"
               >
                 {(() => {
-                  const productUrl = online
-                    ? getVerifiedOnlineProductUrl(store, product)
-                    : null;
+                  const productLinks = online
+                    ? getVerifiedOnlineProductLinks(store, product)
+                    : [];
 
-                  if (!productUrl) {
+                  if (productLinks.length === 0) {
                     return (
                       <div className="text-[11px] font-bold leading-4 text-[#211c21] md:min-h-[3rem] md:text-[17px] md:leading-6">
                         {product.name}
@@ -3643,27 +3674,56 @@ function StoreCard({
                     );
                   }
 
+                  if (productLinks.length === 1) {
+                    const link = productLinks[0];
+
+                    return (
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`${product.name}の商品ページを開く`}
+                        className="group block rounded-md border border-[#dac8e5] bg-[#fbf7fd] px-2 py-1.5 text-[#5e3f73] transition hover:border-[#b996cf] hover:bg-[#f4ebf9] md:min-h-[3rem] md:rounded-lg md:px-2.5 md:py-2"
+                      >
+                        <div className="text-[11px] font-bold leading-4 underline decoration-[#b996cf] decoration-1 underline-offset-2 group-hover:decoration-2 md:text-[17px] md:leading-6">
+                          {product.name}
+                          <span
+                            aria-hidden="true"
+                            className="ml-1 inline-block text-[10px] no-underline md:text-sm"
+                          >
+                            ↗
+                          </span>
+                        </div>
+                        <div className="mt-1 text-[9px] font-bold text-[#8a6c9d] no-underline md:text-[11px]">
+                          {link.label}
+                        </div>
+                      </a>
+                    );
+                  }
+
                   return (
-                    <a
-                      href={productUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`${product.name}の商品ページを開く`}
-                      className="group block rounded-md border border-[#dac8e5] bg-[#fbf7fd] px-2 py-1.5 text-[#5e3f73] transition hover:border-[#b996cf] hover:bg-[#f4ebf9] md:min-h-[3rem] md:rounded-lg md:px-2.5 md:py-2"
-                    >
-                      <div className="text-[11px] font-bold leading-4 underline decoration-[#b996cf] decoration-1 underline-offset-2 group-hover:decoration-2 md:text-[17px] md:leading-6">
+                    <div className="rounded-md border border-[#dac8e5] bg-[#fbf7fd] px-2 py-1.5 md:min-h-[3rem] md:rounded-lg md:px-2.5 md:py-2">
+                      <div className="text-[11px] font-bold leading-4 text-[#5e3f73] md:text-[17px] md:leading-6">
                         {product.name}
-                        <span
-                          aria-hidden="true"
-                          className="ml-1 inline-block text-[10px] no-underline md:text-sm"
-                        >
-                          ↗
-                        </span>
                       </div>
-                      <div className="mt-1 text-[9px] font-bold text-[#8a6c9d] no-underline md:text-[11px]">
-                        商品ページを開く
+                      <div className="mt-1.5 flex flex-wrap gap-1.5 md:mt-2">
+                        {productLinks.map((link) => (
+                          <a
+                            key={link.url}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`${product.name} ${link.label}の商品ページを開く`}
+                            className="inline-flex items-center rounded-full border border-[#c7add8] bg-white px-2 py-1 text-[9px] font-bold text-[#66447b] underline decoration-[#b996cf] underline-offset-2 transition hover:bg-[#f0e5f6] md:px-2.5 md:text-[11px]"
+                          >
+                            {link.label}
+                            <span aria-hidden="true" className="ml-1 no-underline">
+                              ↗
+                            </span>
+                          </a>
+                        ))}
                       </div>
-                    </a>
+                    </div>
                   );
                 })()}
 
@@ -4322,19 +4382,25 @@ function comparePhysicalStores(
   );
 }
 
-function getVerifiedOnlineProductUrl(
+function getVerifiedOnlineProductLinks(
   store: Store,
   product: Product
-) {
+): ProductLinkOption[] {
   const text = normalizeStoreText(
     `${store.chain_name ?? ""}${store.name}`
   );
+
+  if (
+    text.includes(normalizeStoreText("楽天ブックス")) ||
+    text.includes("rakuten")
+  ) {
+    return RAKUTEN_PRODUCT_LINKS[product.id] ?? [];
+  }
 
   let storeKey:
     | "universal"
     | "tower"
     | "hmv"
-    | "rakuten"
     | "neowing"
     | null = null;
 
@@ -4355,20 +4421,20 @@ function getVerifiedOnlineProductUrl(
   ) {
     storeKey = "hmv";
   } else if (
-    text.includes(normalizeStoreText("楽天ブックス")) ||
-    text.includes("rakuten")
-  ) {
-    storeKey = "rakuten";
-  } else if (
     text.includes(normalizeStoreText("ネオウィング")) ||
     text.includes("neowing")
   ) {
     storeKey = "neowing";
   }
 
-  if (!storeKey) return null;
+  if (!storeKey) return [];
 
-  return VERIFIED_ONLINE_PRODUCT_URLS[storeKey][product.id] ?? null;
+  const url =
+    VERIFIED_ONLINE_PRODUCT_URLS[storeKey][product.id] ?? null;
+
+  return url
+    ? [{ label: "商品ページを開く", url }]
+    : [];
 }
 
 function compareOnlineStores(a: Store, b: Store) {
