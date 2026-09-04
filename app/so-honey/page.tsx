@@ -1940,8 +1940,8 @@ async function handleBugReport() {
           </p>
 
           <div className="mt-3 rounded-xl border border-[#ead7a7] bg-[#fff9e8] p-3 text-[11px] leading-5 text-[#5f512f] md:mt-4 md:rounded-2xl md:p-4 md:text-sm md:leading-6">
-            <div className="font-bold text-[#4f4021]">📞 複数店舗を確認・まとめて投稿される方へ</div>
-            <p className="mt-1.5">システム設計上、短時間に複数店舗の投稿が続いた場合、確認のためすぐに反映されないことがあります。電話で複数店舗へ確認してくださった場合などは、せっかくの情報をできるだけ正しく確認できるよう、<strong>コメント欄に「電話確認」「複数店舗を確認」など確認方法を一言添えていただけると助かります。</strong></p>
+            <div className="font-bold text-[#4f4021]">📞 複数店舗をまとめて確認・投稿される方へ</div>
+            <p className="mt-1.5">システム設計上、短時間に複数店舗の投稿が続いた場合、確認のためすぐに反映されないことがあります。電話で複数店舗へ確認してくださった場合などは、せっかくの情報をできるだけ正しく確認できるよう、<strong>コメント欄に「電話確認」「複数店舗をまとめて確認」など、どのように確認した情報か一言添えていただけると助かります。</strong></p>
             <p className="mt-1.5 text-[#766744]">※安全な情報共有のための仕組みです。ご協力ありがとうございます。</p>
           </div>
 
@@ -3202,7 +3202,7 @@ function StoreCard({
                 className="mt-2 w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[11px] outline-none focus:border-[#bb79a7] focus:ring-2 focus:ring-[#eedbea] md:rounded-xl md:p-3 md:text-sm"
               />
               <div className="mt-1 text-[9px] leading-4 text-[#81757f] md:text-xs md:leading-5">
-                個人情報・誹謗中傷・URLの投稿はお控えください。リアルタイム情報は時間とともに変わるため、参考情報としてご利用ください。
+                個人情報・URLの投稿はお控えください。リアルタイム情報は時間とともに変わるため、参考情報としてご利用ください。
               </div>
 
               {commentError && (
