@@ -163,6 +163,8 @@ type StoreCommentAdmin = {
   body: string;
   created_at: string;
   is_deleted: boolean;
+  deleted_at: string | null;
+  deleted_source: "self" | "admin" | null;
 };
 
 type Store = {
@@ -3063,7 +3065,7 @@ function StoreCommentsAdminTab({
         <div>
           <h2 className="text-2xl font-bold">💬 店舗コメント管理</h2>
           <p className="mt-1 text-sm text-gray-600">
-            実店舗・オンラインショップに投稿されたコメントを確認できます。
+            実店舗・オンラインショップに投稿されたコメントを確認できます。本人削除・管理者非表示の履歴も表示します。
           </p>
         </div>
         <input
@@ -3090,23 +3092,37 @@ function StoreCommentsAdminTab({
                     #{comment.id} / {formatDate(comment.created_at)}
                   </div>
                 </div>
-                {comment.is_deleted ? (
-                  <button
-                    type="button"
-                    onClick={() => void onRestore(comment.id)}
-                    className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold"
-                  >
-                    復元
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => void onDelete(comment.id)}
-                    className="rounded-xl bg-red-600 px-3 py-2 text-sm font-bold text-white"
-                  >
-                    非表示
-                  </button>
-                )}
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {comment.deleted_at && (
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-bold ${
+                        comment.deleted_source === "self"
+                          ? "bg-[#f2e7f0] text-[#6d4966]"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {comment.deleted_source === "self" ? "本人削除" : "管理者非表示"}
+                      {comment.is_deleted ? "" : "履歴"}: {formatDate(comment.deleted_at)}
+                    </span>
+                  )}
+                  {comment.is_deleted ? (
+                    <button
+                      type="button"
+                      onClick={() => void onRestore(comment.id)}
+                      className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold"
+                    >
+                      復元
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void onDelete(comment.id)}
+                      className="rounded-xl bg-red-600 px-3 py-2 text-sm font-bold text-white"
+                    >
+                      非表示
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="mt-3 whitespace-pre-wrap break-words rounded-xl bg-[#faf7fa] p-3 text-sm leading-6">
                 {comment.body}

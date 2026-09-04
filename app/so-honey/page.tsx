@@ -209,6 +209,7 @@ type StoreComment = {
   store_id: number;
   body: string;
   created_at: string;
+  is_own: boolean;
 };
 
 type StoreCommentCount = {
@@ -3146,6 +3147,7 @@ function StoreCard({
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentBody, setCommentBody] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [deletingOwnCommentId, setDeletingOwnCommentId] = useState<number | null>(null);
   const [commentMessage, setCommentMessage] = useState("");
   const [commentError, setCommentError] = useState("");
 
@@ -3153,9 +3155,15 @@ function StoreCard({
     setCommentsLoading(true);
     setCommentError("");
 
+    let clientId = localStorage.getItem("kp_inventory_client_id");
+    if (!clientId) {
+      clientId = crypto.randomUUID();
+      localStorage.setItem("kp_inventory_client_id", clientId);
+    }
+
     const { data, error } = await supabase.rpc(
       "get_store_comments",
-      { p_store_id: store.id, p_limit: 20 }
+      { p_store_id: store.id, p_limit: 20, p_client_id: clientId }
     );
 
     if (error) {
@@ -3237,6 +3245,41 @@ function StoreCard({
     }
   }
 
+  async function handleDeleteOwnStoreComment(commentId: number) {
+    setCommentMessage("");
+    setCommentError("");
+
+    if (!window.confirm("自分の店舗コメントを削除しますか?")) return;
+
+    let clientId = localStorage.getItem("kp_inventory_client_id");
+    if (!clientId) {
+      setCommentError("この端末から投稿したことを確認できないため削除できません。");
+      return;
+    }
+
+    setDeletingOwnCommentId(commentId);
+
+    try {
+      const { error } = await supabase.rpc("delete_own_store_comment", {
+        p_comment_id: commentId,
+        p_client_id: clientId,
+      });
+
+      if (error) {
+        setCommentError(error.message);
+        return;
+      }
+
+      setCommentMessage("自分のコメントを削除しました。");
+      await Promise.all([loadComments(), onCommentsChanged()]);
+    } catch (error) {
+      console.error(error);
+      setCommentError("コメント削除中にエラーが発生しました。もう一度お試しください。");
+    } finally {
+      setDeletingOwnCommentId(null);
+    }
+  }
+
   const online = isOnlineStore(store);
 
   const allStoreProducts = online
@@ -3308,16 +3351,26 @@ function StoreCard({
             )}
           </div>
 
-          {!online && (
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <span className="rounded-full border border-[#d7c7a0] bg-[#fff8e5] px-2.5 py-1 text-[10px] font-bold text-[#6a5727] md:px-3 md:py-1.5 md:text-sm">
-                ⏰ 初週締め時間: {getFirstWeekCutoffDisplay(store)}
-                {store.first_week_verified_at && (
-                  <span className="ml-1 font-normal">({formatDate(store.first_week_verified_at)}確認)</span>
-                )}
-              </span>
-            </div>
-          )}
+          {!online && (() => {
+            const cutoff = getFirstWeekCutoffDisplay(store);
+            const cutoffConfirmed = cutoff !== "要確認";
+            return (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span
+                  className={`rounded-full border px-2.5 py-1 text-[10px] font-bold md:px-3 md:py-1.5 md:text-sm ${
+                    cutoffConfirmed
+                      ? "border-[#9dc9a6] bg-[#eef9f0] text-[#30673b]"
+                      : "border-[#d7c7a0] bg-[#fff8e5] text-[#6a5727]"
+                  }`}
+                >
+                  {cutoffConfirmed ? "🟢" : "⏰"} 初週締め時間: {cutoff}
+                  {store.first_week_verified_at && (
+                    <span className="ml-1 font-normal">({formatDate(store.first_week_verified_at)}確認)</span>
+                  )}
+                </span>
+              </div>
+            );
+          })()}
         </div>
 
         {/* スマホ: 下 / PC: 右 */}
@@ -3507,8 +3560,22 @@ function StoreCard({
                     <div className="whitespace-pre-wrap break-words text-[11px] leading-5 text-[#403940] md:text-sm md:leading-6">
                       {comment.body}
                     </div>
-                    <div className="mt-1 text-[9px] text-[#948a92] md:text-xs">
-                      {formatDate(comment.created_at)}
+                    <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-[9px] text-[#948a92] md:text-xs">
+                        {formatDate(comment.created_at)}
+                      </div>
+                      {comment.is_own && (
+                        <button
+                          type="button"
+                          disabled={deletingOwnCommentId === comment.id}
+                          onClick={() => void handleDeleteOwnStoreComment(comment.id)}
+                          className="rounded-full border border-[#d7c7d4] bg-white px-2.5 py-1 text-[9px] font-bold text-[#775f70] opacity-100 [-webkit-text-fill-color:#775f70] disabled:opacity-50 md:px-3 md:py-1.5 md:text-xs"
+                        >
+                          {deletingOwnCommentId === comment.id
+                            ? "削除中…"
+                            : "自分のコメントを削除"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
