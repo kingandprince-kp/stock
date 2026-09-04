@@ -280,6 +280,7 @@ const [submitError, setSubmitError] = useState("");
   const [onlineFirstWeekFilter, setOnlineFirstWeekFilter] =
     useState<OnlineFirstWeekFilter>("actionable");
   const [stockOnly, setStockOnly] = useState(false);
+  const [xShareOpen, setXShareOpen] = useState(false);
   const [storeCommentCounts, setStoreCommentCounts] =
     useState<StoreCommentCount[]>([]);
   const [bugReportOpen, setBugReportOpen] = useState(false);
@@ -1594,6 +1595,24 @@ async function handleBugReport() {
   }
 }
 
+  function openXShare(includePageLink: boolean) {
+    if (typeof window === "undefined") return;
+
+    const hashtag = "#KP在庫ここにあるよ";
+    const pageUrl = "https://kingandprince-stock.vercel.app/so-honey";
+    const text = includePageLink
+      ? `${hashtag}\n${pageUrl}`
+      : hashtag;
+
+    window.open(
+      `https://x.com/intent/post?text=${encodeURIComponent(text)}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+
+    setXShareOpen(false);
+  }
+
   return (
     <main
       id="top"
@@ -1744,6 +1763,32 @@ async function handleBugReport() {
               title="累計"
               value={sales}
             />
+          </div>
+        </section>
+
+        {/* ===== Xで在庫情報を共有 ===== */}
+        <section
+          className={`rounded-2xl border border-[#e2d3e4] px-3 py-3 shadow-sm md:px-5 md:py-4 ${
+            isAndroid ? "bg-white" : "bg-white/90"
+          }`}
+        >
+          <div className="flex flex-col items-center justify-between gap-2.5 sm:flex-row">
+            <div className="text-center sm:text-left">
+              <div className="text-[12px] font-bold text-[#3f3340] md:text-base">
+                見つけた在庫をみんなに共有
+              </div>
+              <div className="mt-0.5 text-[10px] text-[#806f7d] md:text-sm">
+                #KP在庫ここにあるよ をつけてXへ投稿できます
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setXShareOpen(true)}
+              className="w-full rounded-xl border border-[#b986b5] bg-[#f6e8f3] px-4 py-2.5 text-[12px] font-bold text-[#694260] shadow-sm transition hover:bg-[#eedbec] sm:w-auto md:px-5 md:py-3 md:text-base"
+            >
+              𝕏 在庫情報を共有する
+            </button>
           </div>
         </section>
 
@@ -3086,6 +3131,77 @@ async function handleBugReport() {
           </div>
         </footer>
       </div>
+
+      {/* X共有モーダル */}
+      {xShareOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="x-share-title"
+          onClick={() => setXShareOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl border border-[#e4d6e4] bg-white p-5 shadow-2xl md:p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2
+                  id="x-share-title"
+                  className="text-lg font-bold text-[#2f2830] md:text-xl"
+                >
+                  𝕏 在庫情報を共有
+                </h2>
+                <p className="mt-1 text-[12px] leading-5 text-[#766a74] md:text-sm">
+                  投稿する内容を選んでください
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setXShareOpen(false)}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#f4edf3] text-lg font-bold text-[#6d5a69] transition hover:bg-[#eadde8]"
+                aria-label="閉じる"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <button
+                type="button"
+                onClick={() => openXShare(false)}
+                className="w-full rounded-2xl border border-[#d7bdd4] bg-[#fbf7fa] px-4 py-3.5 text-left transition hover:bg-[#f4e9f2]"
+              >
+                <div className="text-sm font-bold text-[#5f3d59] md:text-base">
+                  ハッシュタグだけで投稿
+                </div>
+                <div className="mt-1 text-[12px] text-[#8a7484] md:text-sm">
+                  #KP在庫ここにあるよ
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openXShare(true)}
+                className="w-full rounded-2xl border border-[#ccb6dd] bg-[#f7f1fb] px-4 py-3.5 text-left transition hover:bg-[#eee3f5]"
+              >
+                <div className="text-sm font-bold text-[#594169] md:text-base">
+                  このページのリンクもつけて投稿
+                </div>
+                <div className="mt-1 text-[12px] leading-5 text-[#806f88] md:text-sm">
+                  #KP在庫ここにあるよ + 在庫チェッカーのURL
+                </div>
+              </button>
+            </div>
+
+            <p className="mt-4 text-center text-[10px] leading-4 text-[#9a8d98] md:text-xs">
+              Xの投稿画面が開きます。投稿前に内容を自由に編集できます。
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* トップへ戻る */}
       <a
