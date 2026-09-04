@@ -134,10 +134,26 @@ type StoreInfoRequestAdmin = {
   proposed_first_week_status: "likely" | "check" | "unlikely" | null;
   detail: string;
   evidence: string | null;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "withdrawn";
   requested_at: string;
   reviewed_at: string | null;
   reviewed_by: string | null;
+  shipping_type: "relative" | "date" | "other" | null;
+  shipping_min_days: number | null;
+  shipping_max_days: number | null;
+  shipping_date: string | null;
+  confirmation_source: "product_page" | "cart_order" | "email" | "other" | null;
+  confirmation_source_detail: string | null;
+  updated_at: string;
+};
+
+type StoreInfoRequestChangeHistory = {
+  id: number;
+  request_id: number;
+  old_data: Record<string, unknown>;
+  new_data: Record<string, unknown>;
+  changed_by: string | null;
+  changed_at: string;
 };
 
 type StoreCommentAdmin = {
@@ -356,6 +372,8 @@ export default function AdminPage() {
 
   const [storeInfoRequests, setStoreInfoRequests] =
     useState<StoreInfoRequestAdmin[]>([]);
+  const [storeInfoRequestHistory, setStoreInfoRequestHistory] =
+    useState<StoreInfoRequestChangeHistory[]>([]);
 
   const [storeComments, setStoreComments] =
     useState<StoreCommentAdmin[]>([]);
@@ -595,6 +613,23 @@ export default function AdminPage() {
       setStoreInfoRequests((data ?? []) as StoreInfoRequestAdmin[]);
     }, []);
 
+  const loadStoreInfoRequestHistory =
+    useCallback(async () => {
+      const { data, error } = await supabase.rpc(
+        "get_store_info_request_change_history_admin"
+      );
+      if (error) {
+        console.error(error);
+        setErrorMessage(
+          `店舗情報変更履歴を取得できませんでした: ${error.message}`
+        );
+        return;
+      }
+      setStoreInfoRequestHistory(
+        (data ?? []) as StoreInfoRequestChangeHistory[]
+      );
+    }, []);
+
   const loadStoreComments =
     useCallback(async () => {
       const { data, error } = await supabase.rpc(
@@ -659,7 +694,7 @@ export default function AdminPage() {
     }, []);
 
   // =========================================
-  // 不具合報告
+  // 不具合・要望
   // =========================================
 
   const loadBugReports =
@@ -689,7 +724,7 @@ export default function AdminPage() {
       if (error) {
         console.error(error);
         setErrorMessage(
-          `不具合報告を取得できませんでした: ${error.message}`
+          `不具合・要望を取得できませんでした: ${error.message}`
         );
         return;
       }
@@ -698,7 +733,7 @@ export default function AdminPage() {
     }, []);
 
   // =========================================
-  // 不具合報告を確認済みにする
+  // 不具合・要望を確認済みにする
   // =========================================
 
   async function handleCheckBugReport(
@@ -733,7 +768,7 @@ export default function AdminPage() {
     await loadBugReports();
 
     setMessage(
-      `不具合報告 #${report.id} を確認済みにしました。`
+      `不具合・要望 #${report.id} を確認済みにしました。`
     );
     setBugCheckingId(null);
   }
@@ -937,6 +972,7 @@ export default function AdminPage() {
         loadUserDeletionHistory(),
         loadStoreChangeHistory(),
         loadStoreInfoRequests(),
+        loadStoreInfoRequestHistory(),
         loadStoreComments(),
         loadStoreRequests(),
         loadBillboardInfoRequests(),
@@ -953,6 +989,7 @@ export default function AdminPage() {
       loadUserDeletionHistory,
       loadStoreChangeHistory,
       loadStoreInfoRequests,
+      loadStoreInfoRequestHistory,
       loadStoreComments,
       loadStoreRequests,
       loadBillboardInfoRequests,
@@ -1004,6 +1041,7 @@ export default function AdminPage() {
             setUserDeletions([]);
             setStoreChangeHistory([]);
             setStoreInfoRequests([]);
+            setStoreInfoRequestHistory([]);
             setStoreComments([]);
             setStoreRequests([]);
             setBillboardInfoRequests([]);
@@ -1646,14 +1684,14 @@ export default function AdminPage() {
 
   async function handleBulkCheckBugReports(ids: number[]) {
     if (!ids.length) return;
-    if (!window.confirm(`選択した${ids.length}件の不具合報告を確認済みにしますか？`)) return;
-    await runBulkRpc("bulk_mark_bug_reports_checked_admin", { p_report_ids: ids }, `${ids.length}件の不具合報告を確認済みにしました。`);
+    if (!window.confirm(`選択した${ids.length}件の不具合・要望を確認済みにしますか？`)) return;
+    await runBulkRpc("bulk_mark_bug_reports_checked_admin", { p_report_ids: ids }, `${ids.length}件の不具合・要望を確認済みにしました。`);
   }
 
   async function handleDeleteBugReports(ids: number[]) {
     if (!ids.length) return;
-    if (!window.confirm(`選択した${ids.length}件の不具合報告を完全に削除します。\nこの操作は元に戻せません。`)) return;
-    await runBulkRpc("bulk_delete_bug_reports_admin", { p_report_ids: ids }, `${ids.length}件の不具合報告を削除しました。`);
+    if (!window.confirm(`選択した${ids.length}件の不具合・要望を完全に削除します。\nこの操作は元に戻せません。`)) return;
+    await runBulkRpc("bulk_delete_bug_reports_admin", { p_report_ids: ids }, `${ids.length}件の不具合・要望を削除しました。`);
   }
 
   // =========================================
@@ -1690,6 +1728,69 @@ export default function AdminPage() {
     }
     await loadStoreInfoRequests();
     setMessage("店舗情報を却下しました。");
+  }
+
+  async function handleUpdateStoreInfoRequest(
+    request: StoreInfoRequestAdmin,
+    values: {
+      productId: number | null;
+      detail: string;
+      evidence: string;
+      shippingType: string | null;
+      shippingMinDays: number | null;
+      shippingMaxDays: number | null;
+      shippingDate: string | null;
+      confirmationSource: string | null;
+      confirmationSourceDetail: string | null;
+    }
+  ) {
+    setMessage("");
+    setErrorMessage("");
+    const { error } = await supabase.rpc(
+      "update_store_info_request_admin_v2",
+      {
+        p_request_id: request.id,
+        p_product_id: values.productId,
+        p_detail: values.detail,
+        p_evidence: values.evidence || null,
+        p_shipping_type: values.shippingType,
+        p_shipping_min_days: values.shippingMinDays,
+        p_shipping_max_days: values.shippingMaxDays,
+        p_shipping_date: values.shippingDate,
+        p_confirmation_source: values.confirmationSource,
+        p_confirmation_source_detail: values.confirmationSourceDetail,
+      }
+    );
+    if (error) {
+      setErrorMessage(`店舗情報を更新できませんでした: ${error.message}`);
+      return;
+    }
+    await Promise.all([
+      loadStoreInfoRequests(),
+      loadStoreInfoRequestHistory(),
+      loadAdminData(),
+    ]);
+    setMessage("店舗情報を更新しました。");
+  }
+
+  async function handleWithdrawStoreInfoRequest(requestId: number) {
+    if (!window.confirm("この承認済み情報を公開から取り下げますか? 履歴は残ります。")) return;
+    setMessage("");
+    setErrorMessage("");
+    const { error } = await supabase.rpc(
+      "withdraw_store_info_request_admin",
+      { p_request_id: requestId }
+    );
+    if (error) {
+      setErrorMessage(`公開を取り下げられませんでした: ${error.message}`);
+      return;
+    }
+    await Promise.all([
+      loadStoreInfoRequests(),
+      loadStoreInfoRequestHistory(),
+      loadAdminData(),
+    ]);
+    setMessage("承認済み情報を公開から取り下げました。");
   }
 
   async function handleDeleteStoreInfoHistory(ids: number[]) {
@@ -2341,7 +2442,7 @@ export default function AdminPage() {
                 setActiveTab("bugs")
               }
             >
-              ⚠️ 不具合報告
+              ⚠️ 不具合・要望
               {uncheckedBugReportCount > 0 && (
                 <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
                   {uncheckedBugReportCount}
@@ -2507,8 +2608,12 @@ export default function AdminPage() {
             <div>
               <StoreInfoRequestsAdminTab
                 requests={storeInfoRequests}
+                history={storeInfoRequestHistory}
+                products={products}
                 onApprove={handleApproveStoreInfoRequest}
                 onReject={handleRejectStoreInfoRequest}
+                onUpdate={handleUpdateStoreInfoRequest}
+                onWithdraw={handleWithdrawStoreInfoRequest}
                 onDeleteProcessed={handleDeleteStoreInfoHistory}
                 formatDate={formatDate}
               />
@@ -2575,18 +2680,48 @@ export default function AdminPage() {
 
 function StoreInfoRequestsAdminTab({
   requests,
+  history,
+  products,
   onApprove,
   onReject,
+  onUpdate,
+  onWithdraw,
   onDeleteProcessed,
   formatDate,
 }: {
   requests: StoreInfoRequestAdmin[];
+  history: StoreInfoRequestChangeHistory[];
+  products: Product[];
   onApprove: (id: number) => Promise<void>;
   onReject: (id: number) => Promise<void>;
+  onUpdate: (
+    request: StoreInfoRequestAdmin,
+    values: {
+      productId: number | null;
+      detail: string;
+      evidence: string;
+      shippingType: string | null;
+      shippingMinDays: number | null;
+      shippingMaxDays: number | null;
+      shippingDate: string | null;
+      confirmationSource: string | null;
+      confirmationSourceDetail: string | null;
+    }
+  ) => Promise<void>;
+  onWithdraw: (id: number) => Promise<void>;
   onDeleteProcessed: (ids: number[]) => Promise<void>;
   formatDate: (value: string) => string;
 }) {
   const [selected, setSelected] = useState<number[]>([]);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editProductId, setEditProductId] = useState("");
+  const [editDetail, setEditDetail] = useState("");
+  const [editEvidence, setEditEvidence] = useState("");
+  const [editShippingPreset, setEditShippingPreset] = useState("same_or_next");
+  const [editShippingDate, setEditShippingDate] = useState("");
+  const [editConfirmationSource, setEditConfirmationSource] = useState("product_page");
+  const [editConfirmationSourceDetail, setEditConfirmationSourceDetail] = useState("");
+
   const pending = requests.filter((request) => request.status === "pending");
   const processed = requests.filter((request) => request.status !== "pending");
   const processedIds = processed.map((request) => request.id);
@@ -2606,8 +2741,118 @@ function StoreInfoRequestsAdminTab({
     return null;
   }
 
+  function requestStatusLabel(status: StoreInfoRequestAdmin["status"]) {
+    if (status === "approved") return "承認済み";
+    if (status === "rejected") return "却下済み";
+    if (status === "withdrawn") return "公開取り下げ";
+    return "未処理";
+  }
+
+  function shippingPresetFromRequest(request: StoreInfoRequestAdmin) {
+    if (request.shipping_type === "date") return "date";
+    if (request.shipping_type === "other") return "other";
+    if (request.shipping_min_days === 0 && request.shipping_max_days === 0) return "same_day";
+    if (request.shipping_min_days === 0 && request.shipping_max_days === 1) return "same_or_next";
+    if (request.shipping_min_days === 1 && request.shipping_max_days === 2) return "one_two";
+    if (request.shipping_min_days === 2 && request.shipping_max_days === 3) return "two_three";
+    if (request.shipping_min_days === 3 && request.shipping_max_days === 4) return "three_four";
+    if (request.shipping_min_days === 2 && request.shipping_max_days === 7) return "backorder_2_7";
+    return "other";
+  }
+
+  function startEdit(request: StoreInfoRequestAdmin) {
+    setEditingId(request.id);
+    setEditProductId(request.product_id ? String(request.product_id) : "");
+    setEditDetail(request.detail ?? "");
+    setEditEvidence(request.evidence ?? "");
+    setEditShippingPreset(shippingPresetFromRequest(request));
+    setEditShippingDate(request.shipping_date ?? "");
+    setEditConfirmationSource(request.confirmation_source ?? "product_page");
+    setEditConfirmationSourceDetail(request.confirmation_source_detail ?? "");
+  }
+
+  function getShippingEditPayload() {
+    if (editShippingPreset === "date") {
+      return { type: "date", min: null, max: null, date: editShippingDate || null };
+    }
+    if (editShippingPreset === "other") {
+      return { type: "other", min: null, max: null, date: null };
+    }
+    const ranges: Record<string, [number, number]> = {
+      same_day: [0, 0],
+      same_or_next: [0, 1],
+      one_two: [1, 2],
+      two_three: [2, 3],
+      three_four: [3, 4],
+      backorder_2_7: [2, 7],
+    };
+    const [min, max] = ranges[editShippingPreset] ?? [0, 1];
+    return { type: "relative", min, max, date: null };
+  }
+
+  async function saveEdit(request: StoreInfoRequestAdmin) {
+    const shipping = getShippingEditPayload();
+    await onUpdate(request, {
+      productId:
+        request.request_type === "online_product_first_week"
+          ? Number(editProductId) || null
+          : null,
+      detail: editDetail,
+      evidence: editEvidence,
+      shippingType:
+        request.request_type === "online_product_first_week"
+          ? shipping.type
+          : null,
+      shippingMinDays:
+        request.request_type === "online_product_first_week"
+          ? shipping.min
+          : null,
+      shippingMaxDays:
+        request.request_type === "online_product_first_week"
+          ? shipping.max
+          : null,
+      shippingDate:
+        request.request_type === "online_product_first_week"
+          ? shipping.date
+          : null,
+      confirmationSource:
+        request.request_type === "online_product_first_week"
+          ? editConfirmationSource
+          : null,
+      confirmationSourceDetail:
+        request.request_type === "online_product_first_week"
+          ? editConfirmationSourceDetail || null
+          : null,
+    });
+    setEditingId(null);
+  }
+
+  function historyFor(requestId: number) {
+    return history.filter((item) => item.request_id === requestId);
+  }
+
+  function changedFields(item: StoreInfoRequestChangeHistory) {
+    const labels: Array<[string, string]> = [
+      ["status", "状態"],
+      ["product_id", "商品"],
+      ["proposed_first_week_status", "初週判定"],
+      ["detail", "内容"],
+      ["evidence", "確認方法・ソース"],
+      ["shipping_type", "発送形式"],
+      ["shipping_min_days", "最短日数"],
+      ["shipping_max_days", "最長日数"],
+      ["shipping_date", "発送予定日"],
+      ["confirmation_source", "確認場所"],
+      ["confirmation_source_detail", "確認場所補足"],
+    ];
+    return labels.filter(([key]) => item.old_data[key] !== item.new_data[key]);
+  }
+
   function card(request: StoreInfoRequestAdmin, processedRow = false) {
     const firstWeekLabel = statusLabel(request.proposed_first_week_status);
+    const requestHistory = historyFor(request.id);
+    const isEditing = editingId === request.id;
+
     return (
       <div key={request.id} className="rounded-2xl border border-gray-200 bg-white p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -2622,12 +2867,6 @@ function StoreInfoRequestsAdminTab({
           </span>
         </div>
 
-        {request.proposed_billboard_status && (
-          <div className="mt-3 rounded-xl bg-[#f3edf8] p-3 text-sm">
-            <span className="font-bold">Billboard: </span>
-            {request.proposed_billboard_status === "target" ? "対象" : "対象外"}
-          </div>
-        )}
         {request.product_name && (
           <div className="mt-3 rounded-xl bg-gray-50 p-3 text-sm">
             <span className="font-bold">商品: </span>{request.product_name}
@@ -2647,39 +2886,117 @@ function StoreInfoRequestsAdminTab({
           </div>
         )}
 
-        {!processedRow ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => void onApprove(request.id)}
-              className="rounded-xl bg-green-700 px-4 py-2 text-sm font-bold text-white"
-            >
-              {request.request_type === "other" ? "確認・処理済みにする" : "承認・反映"}
-            </button>
-            <button
-              type="button"
-              onClick={() => void onReject(request.id)}
-              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white"
-            >
-              却下
-            </button>
+        {isEditing && (
+          <div className="mt-3 space-y-3 rounded-2xl border border-[#d8cad7] bg-[#fbf7fa] p-4">
+            <div className="font-bold text-[#5b486b]">編集</div>
+            {request.request_type === "online_product_first_week" && (
+              <>
+                <label className="block">
+                  <div className="mb-1 text-sm font-bold">商品</div>
+                  <select value={editProductId} onChange={(e) => setEditProductId(e.target.value)} className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900">
+                    {products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
+                  </select>
+                </label>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="block">
+                    <div className="mb-1 text-sm font-bold">発送予定の表示</div>
+                    <select value={editShippingPreset} onChange={(e) => setEditShippingPreset(e.target.value)} className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900">
+                      <option value="same_day">当日</option>
+                      <option value="same_or_next">当日〜翌日</option>
+                      <option value="one_two">1〜2日後</option>
+                      <option value="two_three">2〜3日後</option>
+                      <option value="three_four">3〜4日後</option>
+                      <option value="backorder_2_7">お取り寄せ2〜7日</option>
+                      <option value="date">日付指定</option>
+                      <option value="other">その他の表示</option>
+                    </select>
+                  </label>
+                  <label className="block">
+                    <div className="mb-1 text-sm font-bold">確認場所</div>
+                    <select value={editConfirmationSource} onChange={(e) => setEditConfirmationSource(e.target.value)} className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900">
+                      <option value="product_page">商品ページ</option>
+                      <option value="cart_order">カート・注文画面</option>
+                      <option value="email">メール</option>
+                      <option value="other">その他</option>
+                    </select>
+                  </label>
+                </div>
+                {editShippingPreset === "date" && (
+                  <input type="date" value={editShippingDate} onChange={(e) => setEditShippingDate(e.target.value)} className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900" />
+                )}
+                {editConfirmationSource === "other" && (
+                  <input type="text" value={editConfirmationSourceDetail} onChange={(e) => setEditConfirmationSourceDetail(e.target.value)} placeholder="確認場所" className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900" />
+                )}
+                {editShippingPreset === "other" && (
+                  <textarea value={editDetail} onChange={(e) => setEditDetail(e.target.value)} rows={2} className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900" />
+                )}
+              </>
+            )}
+            {request.request_type !== "online_product_first_week" && (
+              <textarea value={editDetail} onChange={(e) => setEditDetail(e.target.value)} rows={3} className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900" />
+            )}
+            <textarea value={editEvidence} onChange={(e) => setEditEvidence(e.target.value)} rows={2} placeholder="確認方法・ソース" className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900" />
+            <div className="flex gap-2">
+              <button type="button" onClick={() => void saveEdit(request)} className="rounded-xl bg-[#6d4966] px-4 py-2 text-sm font-bold text-white">保存</button>
+              <button type="button" onClick={() => setEditingId(null)} className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-bold">キャンセル</button>
+            </div>
           </div>
-        ) : (
+        )}
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {request.status !== "rejected" && (
+            <button type="button" onClick={() => startEdit(request)} className="rounded-xl border border-[#bba7b8] bg-white px-4 py-2 text-sm font-bold text-[#5b486b]">編集</button>
+          )}
+          {request.status === "pending" && (
+            <>
+              <button type="button" onClick={() => void onApprove(request.id)} className="rounded-xl bg-green-700 px-4 py-2 text-sm font-bold text-white">{request.request_type === "other" ? "確認・処理済みにする" : "承認・反映"}</button>
+              <button type="button" onClick={() => void onReject(request.id)} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white">却下</button>
+            </>
+          )}
+          {request.status === "approved" && request.request_type !== "other" && (
+            <button type="button" onClick={() => void onWithdraw(request.id)} className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white">公開を取り下げる</button>
+          )}
+          {request.status === "withdrawn" && (
+            <button type="button" onClick={() => void onApprove(request.id)} className="rounded-xl bg-green-700 px-4 py-2 text-sm font-bold text-white">再承認・反映</button>
+          )}
+        </div>
+
+        {processedRow && (
           <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
             <input
               type="checkbox"
               checked={selected.includes(request.id)}
-              onChange={() =>
-                setSelected((current) =>
-                  current.includes(request.id)
-                    ? current.filter((id) => id !== request.id)
-                    : [...current, request.id]
-                )
-              }
+              onChange={() => setSelected((current) => current.includes(request.id) ? current.filter((id) => id !== request.id) : [...current, request.id])}
             />
-            <span>{request.status === "approved" ? "承認済み" : "却下済み"}</span>
+            <span>{requestStatusLabel(request.status)}</span>
             {request.reviewed_at && <span>{formatDate(request.reviewed_at)}</span>}
           </div>
+        )}
+
+        {requestHistory.length > 0 && (
+          <details className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+            <summary className="cursor-pointer text-sm font-bold">変更履歴({requestHistory.length})</summary>
+            <div className="mt-2 space-y-2">
+              {requestHistory.map((item) => {
+                const changes = changedFields(item);
+                return (
+                  <div key={item.id} className="rounded-lg bg-white p-2 text-xs leading-5">
+                    <div className="font-bold">{formatDate(item.changed_at)}</div>
+                    {changes.length === 0 ? (
+                      <div className="text-gray-500">管理情報を更新</div>
+                    ) : (
+                      changes.map(([key, label]) => (
+                        <div key={key} className="mt-1 break-words">
+                          <span className="font-bold">{label}: </span>
+                          {String(item.old_data[key] ?? "-")} → {String(item.new_data[key] ?? "-")}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </details>
         )}
       </div>
     );
@@ -2690,45 +3007,31 @@ function StoreInfoRequestsAdminTab({
       <div>
         <h2 className="text-2xl font-bold">📨 店舗情報提供</h2>
         <p className="mt-1 text-sm text-gray-600">
-          Billboard集計情報、初週締め時間、オンラインの商品別発送・初週情報、その他店舗情報を確認します。
+          初週情報は承認前・承認後とも編集できます。承認後の情報は公開を取り下げても履歴が残ります。
         </p>
       </div>
 
-      {pending.length === 0 ? (
-        <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">
-          未処理の店舗情報提供はありません。
-        </div>
-      ) : (
-        <div className="mt-5 space-y-4">{pending.map((request) => card(request))}</div>
-      )}
+      <div className="mt-5">
+        <h3 className="text-lg font-bold">未処理({pending.length})</h3>
+        {pending.length === 0 ? (
+          <div className="mt-3 rounded-xl bg-gray-50 p-4 text-sm text-gray-500">未処理の店舗情報提供はありません。</div>
+        ) : (
+          <div className="mt-3 space-y-3">{pending.map((request) => card(request))}</div>
+        )}
+      </div>
 
-      <details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50">
-        <summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">
-          処理済みの履歴 ({processed.length}件)
-        </summary>
-        <div className="border-t border-gray-200 p-4">
+      <div className="mt-7 border-t border-gray-200 pt-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-lg font-bold">処理済み({processed.length})</h3>
           {processed.length > 0 && (
-            <BulkSelectionBar
-              count={selected.length}
-              allSelected={allSelected}
-              onToggleAll={() => setSelected(allSelected ? [] : processedIds)}
-            >
-              <button
-                disabled={!selected.length}
-                onClick={() => void onDeleteProcessed(selected)}
-                className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40"
-              >
-                選択した履歴を完全削除
-              </button>
-            </BulkSelectionBar>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setSelected(allSelected ? [] : processedIds)} className="rounded-xl border border-gray-300 px-3 py-2 text-sm font-bold">{allSelected ? "全解除" : "全選択"}</button>
+              <button type="button" disabled={!selected.length} onClick={() => void onDeleteProcessed(selected)} className="rounded-xl bg-red-700 px-3 py-2 text-sm font-bold text-white disabled:opacity-40">選択履歴を削除</button>
+            </div>
           )}
-          <div className="mt-3 space-y-3">
-            {processed.length ? processed.map((request) => card(request, true)) : (
-              <div className="py-3 text-center text-sm text-gray-500">処理済みの履歴はありません。</div>
-            )}
-          </div>
         </div>
-      </details>
+        <div className="mt-3 space-y-3">{processed.map((request) => card(request, true))}</div>
+      </div>
     </div>
   );
 }
@@ -4601,9 +4904,9 @@ function BugReportsTab({ reports, checkingId, onCheck, onBulkCheck, onDeleteSele
   const [imageUrls,setImageUrls]=useState<Record<string,string>>({}); const [selected,setSelected]=useState<number[]>([]); const unchecked=useMemo(()=>reports.filter(r=>!r.checked_at),[reports]); const checked=useMemo(()=>reports.filter(r=>Boolean(r.checked_at)),[reports]); const ids=reports.map(r=>r.id); const all=ids.length>0&&ids.every(id=>selected.includes(id)); const selectedUnchecked=selected.filter(id=>unchecked.some(r=>r.id===id));
   useEffect(()=>setSelected(c=>c.filter(id=>ids.includes(id))),[reports]); const toggle=(id:number)=>setSelected(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id]);
   useEffect(()=>{let cancelled=false;async function load(){const paths=Array.from(new Set(reports.flatMap(r=>Array.isArray(r.image_urls)&&r.image_urls.length?r.image_urls:r.image_url?[r.image_url]:[])));const next:Record<string,string>={};await Promise.all(paths.map(async path=>{const {data,error}=await supabase.storage.from("bug-report-images").createSignedUrl(path,3600);if(!error&&data?.signedUrl)next[path]=data.signedUrl}));if(!cancelled)setImageUrls(next)}load();return()=>{cancelled=true}},[reports]);
-  if(!reports.length)return <div className="mt-8 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">不具合報告はありません。</div>;
-  const wrapped=(r:BugReport,done:boolean)=><div key={r.id} className="flex items-start gap-3"><div className="pt-4"><SelectionCheckbox checked={selected.includes(r.id)} onChange={()=>toggle(r.id)} label={`不具合報告 #${r.id} を選択`} /></div><div className="min-w-0 flex-1"><BugReportCard report={r} imageUrls={imageUrls} checked={done} checking={checkingId===r.id} onCheck={()=>onCheck(r)} formatDate={formatDate}/></div></div>;
-  return <div className="mt-6"><h2 className="text-2xl font-bold">⚠️ 不具合報告</h2><p className="mt-2 text-gray-500">未確認の報告だけを上に表示します。複数選択で一括確認・削除もできます。</p><div className="mt-5"><BulkSelectionBar count={selected.length} allSelected={all} onToggleAll={()=>setSelected(all?[]:ids)}><button disabled={!selectedUnchecked.length} onClick={()=>onBulkCheck(selectedUnchecked)} className="rounded-xl bg-green-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した未確認を一括確認済み</button><button disabled={!selected.length} onClick={()=>onDeleteSelected(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した報告を完全削除</button></BulkSelectionBar></div>{!unchecked.length?<div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">未確認の不具合報告はありません。</div>:<div className="mt-4 space-y-4">{unchecked.map(r=>wrapped(r,false))}</div>}{checked.length>0&&<details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50"><summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">✓ 確認済みの報告 ({checked.length}件)</summary><div className="space-y-3 border-t border-gray-200 p-4">{checked.map(r=>wrapped(r,true))}</div></details>}</div>;
+  if(!reports.length)return <div className="mt-8 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">不具合・要望はありません。</div>;
+  const wrapped=(r:BugReport,done:boolean)=><div key={r.id} className="flex items-start gap-3"><div className="pt-4"><SelectionCheckbox checked={selected.includes(r.id)} onChange={()=>toggle(r.id)} label={`不具合・要望 #${r.id} を選択`} /></div><div className="min-w-0 flex-1"><BugReportCard report={r} imageUrls={imageUrls} checked={done} checking={checkingId===r.id} onCheck={()=>onCheck(r)} formatDate={formatDate}/></div></div>;
+  return <div className="mt-6"><h2 className="text-2xl font-bold">⚠️ 不具合・要望</h2><p className="mt-2 text-gray-500">未確認の報告だけを上に表示します。複数選択で一括確認・削除もできます。</p><div className="mt-5"><BulkSelectionBar count={selected.length} allSelected={all} onToggleAll={()=>setSelected(all?[]:ids)}><button disabled={!selectedUnchecked.length} onClick={()=>onBulkCheck(selectedUnchecked)} className="rounded-xl bg-green-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した未確認を一括確認済み</button><button disabled={!selected.length} onClick={()=>onDeleteSelected(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した報告を完全削除</button></BulkSelectionBar></div>{!unchecked.length?<div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">未確認の不具合・要望はありません。</div>:<div className="mt-4 space-y-4">{unchecked.map(r=>wrapped(r,false))}</div>}{checked.length>0&&<details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50"><summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">✓ 確認済みの報告 ({checked.length}件)</summary><div className="space-y-3 border-t border-gray-200 p-4">{checked.map(r=>wrapped(r,true))}</div></details>}</div>;
 }
 
 function BugReportCard({
@@ -4696,7 +4999,7 @@ function BugReportCard({
 
         <div className="mt-4 rounded-xl bg-white p-4">
           <div className="text-sm font-bold text-gray-500">
-            不具合内容
+            内容
           </div>
           <div className="mt-2 whitespace-pre-wrap text-base leading-7 text-[#211d21]">
             {report.issue_description}
@@ -4763,7 +5066,7 @@ function BugReportCard({
                   >
                     <img
                       src={url}
-                      alt={`不具合報告 ${report.id} 添付画像 ${index + 1}`}
+                      alt={`不具合・要望 ${report.id} 添付画像 ${index + 1}`}
                       className="h-56 w-full object-contain"
                     />
                   </a>
