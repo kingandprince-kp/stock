@@ -121,6 +121,19 @@ const CHAIN_PRIORITY = [
   "ACADEMIA",
 ];
 
+const ONLINE_STORE_PRIORITY: string[][] = [
+  ["universal", "ユニバーサル"],
+  ["タワーレコード", "towerrecords", "towerrecord", "タワレコ"],
+  ["hmv"],
+  ["楽天", "rakuten"],
+  ["amazon"],
+  ["ジョーシン", "joshin"],
+  ["セブンネット", "7net"],
+  ["ネオウィング", "neowing"],
+  ["ビックカメラ", "biccamera"],
+  ["ヤマダ", "yamada", "ウェブコム", "webcom"],
+];
+
 type Store = {
   id: number;
   prefecture: string;
@@ -3913,7 +3926,13 @@ function StoreInfoContributionForm({
   const online = isOnlineStore(store);
   const [requestType, setRequestType] = useState<
     "billboard" | "first_week_cutoff" | "other"
-  >("billboard");
+  >(
+    store.billboard_status === "target"
+      ? online
+        ? "other"
+        : "first_week_cutoff"
+      : "billboard"
+  );
   const [billboardStatus, setBillboardStatus] =
     useState<BillboardInfoStatus>("target");
   const [productId, setProductId] = useState(
@@ -3930,8 +3949,19 @@ function StoreInfoContributionForm({
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (online && requestType === "first_week_cutoff") setRequestType("billboard");
-  }, [online, requestType]);
+    if (store.billboard_status === "target" && requestType === "billboard") {
+      setRequestType(online ? "other" : "first_week_cutoff");
+      return;
+    }
+
+    if (online && requestType === "first_week_cutoff") {
+      setRequestType(
+        store.billboard_status === "target"
+          ? "other"
+          : "billboard"
+      );
+    }
+  }, [online, requestType, store.billboard_status]);
 
   function getShippingPayload() {
     if (shippingPreset === "date") {
@@ -4057,7 +4087,10 @@ function StoreInfoContributionForm({
     <div className="mt-3 rounded-xl border border-[#dfc16f] bg-[#fffaf0] p-3 md:mt-4 md:rounded-2xl md:p-4">
       <div className="text-[11px] font-bold text-[#5d4717] md:text-sm">📨 店舗情報を提供</div>
       <p className="mt-1 text-[10px] leading-5 text-[#77643c] md:text-sm md:leading-6">
-        Billboard集計情報やその他の店舗情報を送信できます。オンラインの発送・取り寄せ目安は「在庫情報を投稿」から一緒に送信できます。
+        {store.billboard_status === "target"
+          ? "この店舗はBillboard対象として確認済みです。初週集計の締め時間やその他の店舗情報を送信できます。"
+          : "Billboard集計情報やその他の店舗情報を送信できます。"}
+        オンラインの発送・取り寄せ目安は「在庫情報を投稿」から一緒に送信できます。
       </p>
 
       <label className="mt-3 block">
@@ -4067,7 +4100,9 @@ function StoreInfoContributionForm({
           onChange={(event) => setRequestType(event.target.value as typeof requestType)}
           className="w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] text-[#2f292e] opacity-100 [-webkit-text-fill-color:#2f292e] md:rounded-xl md:p-3 md:text-sm"
         >
-          <option value="billboard">Billboard集計情報</option>
+          {store.billboard_status !== "target" && (
+            <option value="billboard">Billboard集計情報</option>
+          )}
           {!online && <option value="first_week_cutoff">初週集計の締め時間</option>}
           <option value="other">その他店舗情報</option>
         </select>
@@ -4209,28 +4244,25 @@ function comparePhysicalStores(
 }
 
 function compareOnlineStores(a: Store, b: Store) {
-  const nameA = normalizeStoreText(
-    `${a.chain_name ?? ""}${a.name}`
-  );
+  const getOnlineRank = (store: Store) => {
+    const text = normalizeStoreText(
+      `${store.chain_name ?? ""}${store.name}`
+    );
 
-  const nameB = normalizeStoreText(
-    `${b.chain_name ?? ""}${b.name}`
-  );
+    const index = ONLINE_STORE_PRIORITY.findIndex(
+      (aliases) =>
+        aliases.some((alias) =>
+          text.includes(normalizeStoreText(alias))
+        )
+    );
 
-  const universalA =
-    nameA.includes("universal") ? 0 : 1;
+    return index === -1
+      ? ONLINE_STORE_PRIORITY.length
+      : index;
+  };
 
-  const universalB =
-    nameB.includes("universal") ? 0 : 1;
-
-  // UNIVERSALをオンラインの最上位にする
-  if (universalA !== universalB) {
-    return universalA - universalB;
-  }
-
-  // UNIVERSAL以外は今までの順番をそのまま維持
-  const rankA = getChainRank(a);
-  const rankB = getChainRank(b);
+  const rankA = getOnlineRank(a);
+  const rankB = getOnlineRank(b);
 
   if (rankA !== rankB) {
     return rankA - rankB;
