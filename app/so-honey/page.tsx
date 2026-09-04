@@ -3932,33 +3932,35 @@ function StoreCard({
 
   return (
     <article className="rounded-2xl border border-[#e8d9e7] bg-white p-3.5 shadow-sm md:rounded-3xl md:p-6">
-            {/* 店舗基本情報 ＋ 集計対象 */}
-      <div className="md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-4">
-        {/* 左: 店舗名・所在地・営業時間 */}
-        <div className="min-w-0">
-          <h3 className="text-base font-bold leading-5 text-[#1d191d] md:text-2xl md:leading-snug">
-            {getDisplayStoreName(store)}
-          </h3>
+            {/* 店舗基本情報 */}
+      <div>
+        <h3 className="text-base font-bold leading-5 text-[#1d191d] md:text-2xl md:leading-snug">
+          {getDisplayStoreName(store)}
+        </h3>
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#403940] md:text-sm">
-            <span className="whitespace-nowrap">
-              {online
-                ? "🛒 オンラインショップ"
-                : `📍 ${store.prefecture}${store.city ? ` ${store.city}` : ""}`}
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#403940] md:text-sm">
+          <span className="whitespace-nowrap">
+            {online
+              ? "🛒 オンラインショップ"
+              : `📍 ${store.prefecture}${store.city ? ` ${store.city}` : ""}`}
+          </span>
+
+          {!online && store.business_hours && (
+            <span className="whitespace-nowrap font-bold text-[#3e373e]">
+              🕒 営業時間: {formatBusinessHours(store.business_hours)}
             </span>
+          )}
+        </div>
+      </div>
 
-            {!online && store.business_hours && (
-              <span className="whitespace-nowrap font-bold text-[#3e373e]">
-                🕒 営業時間: {formatBusinessHours(store.business_hours)}
-              </span>
-            )}
-          </div>
-
+      {/* 集計情報 + 店舗情報提供 */}
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2.5 md:mt-3 md:gap-4">
+        <div className="min-w-0">
           {!online && (() => {
             const cutoff = getFirstWeekCutoffDisplay(store);
             const cutoffConfirmed = cutoff !== "要確認";
             return (
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <span
                   className={`rounded-full border px-2.5 py-1 text-[10px] font-bold md:px-3 md:py-1.5 md:text-sm ${
                     cutoffConfirmed
@@ -3974,48 +3976,43 @@ function StoreCard({
               </div>
             );
           })()}
-        </div>
 
-        {/* スマホ: 下 / PC: 右 */}
-        <div className="mt-1.5 flex flex-wrap items-center gap-1 md:mt-0 md:justify-end md:gap-2">
-          {store.oricon_target === true && (
-            <span className="whitespace-nowrap rounded-md border border-[#bd4f88] bg-[#d9609b] px-2 py-0.5 text-[9px] font-bold text-white md:rounded-xl md:px-4 md:py-2 md:text-base">
-              オリコン対象
-            </span>
-          )}
+          <div className={`${!online ? "mt-1.5" : ""} flex flex-wrap items-center gap-1 md:gap-2`}>
+            {store.oricon_target === true && (
+              <span className="whitespace-nowrap rounded-md border border-[#bd4f88] bg-[#d9609b] px-2 py-0.5 text-[9px] font-bold text-white md:rounded-xl md:px-4 md:py-2 md:text-base">
+                オリコン対象
+              </span>
+            )}
 
-          {store.billboard_status === "target" && (
-            <span className="whitespace-nowrap rounded-md border border-[#7250a5] bg-[#835ab3] px-2 py-0.5 text-[9px] font-bold text-white md:rounded-xl md:px-4 md:py-2 md:text-base">
-              Billboard 対象
-            </span>
-          )}
+            {store.billboard_status === "target" && (
+              <span className="whitespace-nowrap rounded-md border border-[#7250a5] bg-[#835ab3] px-2 py-0.5 text-[9px] font-bold text-white md:rounded-xl md:px-4 md:py-2 md:text-base">
+                Billboard 対象
+              </span>
+            )}
 
-          {store.billboard_status === "check_store" && (
-            <>
+            {store.billboard_status === "check_store" && (
               <span className="whitespace-nowrap rounded-md border border-[#9e85b8] bg-[#eee7f4] px-2 py-0.5 text-[9px] font-bold text-[#5b486b] md:rounded-xl md:px-4 md:py-2 md:text-base">
                 Billboard 要確認
               </span>
-            </>
-          )}
+            )}
 
-          {store.billboard_status === "not_target" && (
-            <span className="whitespace-nowrap rounded-md border border-[#a9a2a8] bg-[#ece9ec] px-2 py-0.5 text-[9px] font-bold text-[#595159] md:rounded-xl md:px-4 md:py-2 md:text-base">
-              Billboard 対象外
-            </span>
-          )}
+            {store.billboard_status === "not_target" && (
+              <span className="whitespace-nowrap rounded-md border border-[#a9a2a8] bg-[#ece9ec] px-2 py-0.5 text-[9px] font-bold text-[#595159] md:rounded-xl md:px-4 md:py-2 md:text-base">
+                Billboard 対象外
+              </span>
+            )}
+          </div>
         </div>
-      </div>
 
-      <div className="mt-2.5">
         <button
           type="button"
           onClick={() => setStoreInfoOpen((current) => !current)}
-          className="rounded-xl border border-[#cdb9ca] bg-white px-3 py-2 text-left text-[#6d4966] shadow-sm transition hover:bg-[#faf4f8] md:rounded-2xl md:px-4 md:py-2.5"
+          className="w-[150px] shrink-0 rounded-xl border border-[#cdb9ca] bg-white px-2.5 py-2 text-left text-[#6d4966] shadow-sm transition hover:bg-[#faf4f8] sm:w-[175px] md:w-[230px] md:rounded-2xl md:px-4 md:py-2.5"
         >
-          <span className="block text-[11px] font-bold md:text-sm">
+          <span className="block text-[10px] font-bold leading-4 sm:text-[11px] md:text-sm">
             📨 店舗情報を提供 {storeInfoOpen ? "∧" : "∨"}
           </span>
-          <span className="mt-0.5 block text-[9px] font-bold text-[#8b6a83] md:text-xs">
+          <span className="mt-0.5 block text-[8px] font-bold leading-3.5 text-[#8b6a83] sm:text-[9px] md:text-xs md:leading-5">
             {online
               ? "Billboard・その他の店舗情報はこちら"
               : "⏰ 初週集計の締め時間をご存じの方はこちら"}
