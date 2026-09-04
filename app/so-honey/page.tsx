@@ -2950,11 +2950,17 @@ async function handleBugReport() {
 
                     <div className="shrink-0 text-right">
                       <div className="whitespace-nowrap text-[12px] font-bold leading-4 text-[#241f24] opacity-100 [-webkit-text-fill-color:#241f24] md:text-base md:leading-normal">
-                        {report.stock_status
-                          ? formatStockStatus(report.stock_status)
-                          : report.quantity === 0
-                            ? "在庫なし"
-                            : `${report.quantity}枚`}
+                        {report.stock_status ? (
+                          <span
+                            className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold md:text-sm ${getOnlineStockStatusClass(report.stock_status)}`}
+                          >
+                            {formatStockStatus(report.stock_status)}
+                          </span>
+                        ) : report.quantity === 0 ? (
+                          "在庫なし"
+                        ) : (
+                          `${report.quantity}枚`
+                        )}
                       </div>
 
                       <div className="mt-0.5 text-[9px] leading-3 text-[#766a75] opacity-100 [-webkit-text-fill-color:#766a75] md:mt-0 md:text-sm md:leading-normal">
@@ -3453,6 +3459,21 @@ function getFirstWeekCutoffDisplay(store: Store) {
   return store.first_week_cutoff_note ?? "要確認";
 }
 
+function getOnlineStockStatusClass(
+  status: OnlineStockStatus
+) {
+  if (status === "in_stock") {
+    return "bg-[#e6f5e9] text-[#21663a] border border-[#a8d7b3]";
+  }
+  if (status === "low_stock") {
+    return "bg-[#fff2d9] text-[#8a5a13] border border-[#e8c77d]";
+  }
+  if (status === "backorder") {
+    return "bg-[#e8eefc] text-[#38588f] border border-[#b8c8ef]";
+  }
+  return "bg-[#2a252a] text-white border border-[#2a252a]";
+}
+
 function StoreCard({
   store,
   products,
@@ -3895,7 +3916,7 @@ function StoreCard({
                             </div>
                           ) : currentReport.stock_status ? (
                             <>
-                              <span className="mt-1 inline-block rounded-full bg-[#f0dfec] px-2 py-0.5 text-[10px] font-bold text-[#6d4966] md:text-sm">
+                              <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold md:text-sm ${getOnlineStockStatusClass(currentReport.stock_status)}`}>
                                 {formatStockStatus(currentReport.stock_status)}
                               </span>
                               <div className="mt-0.5 text-[9px] text-[#968d95] md:text-xs">
@@ -3914,7 +3935,7 @@ function StoreCard({
                   </div>
                 ) : online && report.stock_status ? (
                   <div className="mt-1.5 md:mt-4">
-                    <span className="inline-block rounded-full bg-[#f0dfec] px-2 py-0.5 text-[10px] font-bold text-[#6d4966] md:px-3 md:py-1.5 md:text-base">
+                    <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold md:px-3 md:py-1.5 md:text-base ${getOnlineStockStatusClass(report.stock_status)}`}>
                       {formatStockStatus(report.stock_status)}
                     </span>
                   </div>
@@ -4755,9 +4776,15 @@ function getChainRank(store: Store) {
     : index;
 }
 
+function normalizeDisplayParentheses(value: string) {
+  return value.replace(/（/g, "(").replace(/）/g, ")");
+}
+
 function getDisplayStoreName(store: Store) {
-  const name = store.name.trim();
-  const rawChain = (store.chain_name ?? "").trim();
+  const name = normalizeDisplayParentheses(store.name.trim());
+  const rawChain = normalizeDisplayParentheses(
+    (store.chain_name ?? "").trim()
+  );
 
   const chain =
     ["なし", "無し", "なし。", "なしです"].includes(rawChain)
