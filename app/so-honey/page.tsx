@@ -134,6 +134,67 @@ const ONLINE_STORE_PRIORITY: string[][] = [
   ["ヤマダ", "yamada", "ウェブコム", "webcom"],
 ];
 
+const VERIFIED_ONLINE_PRODUCT_URLS: Record<
+  "universal" | "tower" | "hmv" | "rakuten" | "neowing",
+  Record<number, string>
+> = {
+  universal: {
+    1: "https://store.universal-music.co.jp/products/upcj9079",
+    2: "https://store.universal-music.co.jp/products/upcj9080",
+    3: "https://store.universal-music.co.jp/products/upcj9081",
+    4: "https://store.universal-music.co.jp/products/upcj9082",
+    5: "https://store.universal-music.co.jp/products/upcj9083",
+    6: "https://store.universal-music.co.jp/products/upcj9084",
+    7: "https://store.universal-music.co.jp/products/upcj9085",
+    8: "https://store.universal-music.co.jp/products/d2cj12885",
+    9: "https://store.universal-music.co.jp/products/d2cj12886/",
+  },
+  tower: {
+    1: "https://tower.jp/item/8064415",
+    2: "https://tower.jp/item/8064418",
+    3: "https://tower.jp/item/8064419",
+    4: "https://tower.jp/item/8064420",
+    5: "https://tower.jp/item/8064421",
+    6: "https://tower.jp/item/8064422",
+    7: "https://tower.jp/item/8064424",
+    8: "https://tower.jp/item/8065755",
+    9: "https://tower.jp/item/8065756",
+  },
+  hmv: {
+    1: "https://www.hmv.co.jp/artist_King-Prince_000000000744568/item_So-Honey-EP%E3%80%90%E5%88%9D%E5%9B%9E%E9%99%90%E5%AE%9A%E7%9B%A4A%E3%80%91-CD-Blu-ray_17062106",
+    2: "https://www.hmv.co.jp/artist_King-Prince_000000000744568/item_So-Honey-EP%E3%80%90%E5%88%9D%E5%9B%9E%E9%99%90%E5%AE%9A%E7%9B%A4A%E3%80%91-CD-DVD_17062107",
+    3: "https://www.hmv.co.jp/artist_King-Prince_000000000744568/item_So-Honey-EP%E3%80%90%E5%88%9D%E5%9B%9E%E9%99%90%E5%AE%9A%E7%9B%A4B%E3%80%91-CD-Blu-ray_17062108",
+    4: "https://www.hmv.co.jp/artist_King-Prince_000000000744568/item_So-Honey-EP%E3%80%90%E5%88%9D%E5%9B%9E%E9%99%90%E5%AE%9A%E7%9B%A4B%E3%80%91-CD-DVD_17062109",
+    5: "https://www.hmv.co.jp/artist_King-Prince_000000000744568/item_So-Honey-EP%E3%80%90%E5%88%9D%E5%9B%9E%E9%99%90%E5%AE%9ALIVE%E7%9B%A4%E3%80%91-CD-Blu-ray_17062110",
+    6: "https://www.hmv.co.jp/artist_King-Prince_000000000744568/item_So-Honey-EP%E3%80%90%E5%88%9D%E5%9B%9E%E9%99%90%E5%AE%9ALIVE%E7%9B%A4%E3%80%91-CD-DVD_17062111",
+    7: "https://www.hmv.co.jp/artist_King-Prince_000000000744568/item_So-Honey-EP%E3%80%90%E9%80%9A%E5%B8%B8%E7%9B%A4%EF%BC%9C%E5%88%9D%E5%9B%9E%E3%83%97%E3%83%AC%E3%82%B9%EF%BC%9E%E3%80%91_17062112",
+    8: "https://www.hmv.co.jp/artist_King-Prince_000000000744568/item_%E3%80%8A4%E5%BD%A2%E6%85%8B%E5%90%8C%E6%99%82%E8%B3%BC%E5%85%A5%E7%89%B9%E5%85%B8%E4%BB%98Blu-ray%E3%82%BB%E3%83%83%E3%83%88%E3%80%8BSo-Honey-EP%E3%80%90%E5%88%9D%E5%9B%9E%E9%99%90%E5%AE%9A%E7%9B%A4A-%E5%88%9D%E5%9B%9E%E9%99%90%E5%AE%9A%E7%9B%A4B-%E5%88%9D%E5%9B%9E%E9%99%90%E5%AE%9ALIVE%E7%9B%A4-%E9%80%9A%E5%B8%B8%E7%9B%A4%EF%BC%9C%E5%88%9D%E5%9B%9E%E3%83%97%E3%83%AC%E3%82%B9%EF%BC%9E%E3%80%91_17062116",
+    9: "https://www.hmv.co.jp/product/detail/17062117",
+  },
+  rakuten: {
+    1: "https://books.rakuten.co.jp/rb/18695306/",
+    2: "https://books.rakuten.co.jp/rb/18695307/",
+    3: "https://books.rakuten.co.jp/rb/18695308/",
+    4: "https://books.rakuten.co.jp/rb/18695309/",
+    5: "https://books.rakuten.co.jp/rb/18695310/",
+    6: "https://books.rakuten.co.jp/rb/18695311/",
+    7: "https://books.rakuten.co.jp/rb/18695312/",
+    8: "https://books.rakuten.co.jp/rb/18695313/",
+    9: "https://books.rakuten.co.jp/rb/18695314/",
+  },
+  neowing: {
+    1: "https://www.neowing.co.jp/product/UPCJ-9079",
+    2: "https://www.neowing.co.jp/product/UPCJ-9080",
+    3: "https://www.neowing.co.jp/product/UPCJ-9081",
+    4: "https://www.neowing.co.jp/product/UPCJ-9082",
+    5: "https://www.neowing.co.jp/product/UPCJ-9083",
+    6: "https://www.neowing.co.jp/product/UPCJ-9084",
+    7: "https://www.neowing.co.jp/product/UPCJ-9085",
+    8: "https://www.neowing.co.jp/product/NEOIKT-2103",
+    9: "https://www.neowing.co.jp/product/NEOIKT-2104",
+  },
+};
+
 type Store = {
   id: number;
   prefecture: string;
@@ -3569,9 +3630,42 @@ function StoreCard({
                 key={product.id}
                 className="flex min-w-0 flex-col rounded-lg border border-[#e5d7e4] bg-white px-2.5 py-2 md:rounded-2xl md:px-4 md:py-3"
               >
-                <div className="text-[11px] font-bold leading-4 text-[#211c21] md:min-h-[3rem] md:text-[17px] md:leading-6">
-                  {product.name}
-                </div>
+                {(() => {
+                  const productUrl = online
+                    ? getVerifiedOnlineProductUrl(store, product)
+                    : null;
+
+                  if (!productUrl) {
+                    return (
+                      <div className="text-[11px] font-bold leading-4 text-[#211c21] md:min-h-[3rem] md:text-[17px] md:leading-6">
+                        {product.name}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <a
+                      href={productUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`${product.name}の商品ページを開く`}
+                      className="group block rounded-md border border-[#dac8e5] bg-[#fbf7fd] px-2 py-1.5 text-[#5e3f73] transition hover:border-[#b996cf] hover:bg-[#f4ebf9] md:min-h-[3rem] md:rounded-lg md:px-2.5 md:py-2"
+                    >
+                      <div className="text-[11px] font-bold leading-4 underline decoration-[#b996cf] decoration-1 underline-offset-2 group-hover:decoration-2 md:text-[17px] md:leading-6">
+                        {product.name}
+                        <span
+                          aria-hidden="true"
+                          className="ml-1 inline-block text-[10px] no-underline md:text-sm"
+                        >
+                          ↗
+                        </span>
+                      </div>
+                      <div className="mt-1 text-[9px] font-bold text-[#8a6c9d] no-underline md:text-[11px]">
+                        商品ページを開く
+                      </div>
+                    </a>
+                  );
+                })()}
 
                 {!report ? (
                   <div className="mt-1.5 text-[11px] font-bold text-[#625861] md:mt-2 md:text-base">
@@ -4226,6 +4320,55 @@ function comparePhysicalStores(
     getDisplayStoreName(b),
     "ja"
   );
+}
+
+function getVerifiedOnlineProductUrl(
+  store: Store,
+  product: Product
+) {
+  const text = normalizeStoreText(
+    `${store.chain_name ?? ""}${store.name}`
+  );
+
+  let storeKey:
+    | "universal"
+    | "tower"
+    | "hmv"
+    | "rakuten"
+    | "neowing"
+    | null = null;
+
+  if (
+    text.includes("universal") ||
+    text.includes(normalizeStoreText("ユニバーサル"))
+  ) {
+    storeKey = "universal";
+  } else if (
+    text.includes(normalizeStoreText("タワーレコード")) ||
+    text.includes("towerrecords") ||
+    text.includes("towerrecord") ||
+    text.includes(normalizeStoreText("タワレコ"))
+  ) {
+    storeKey = "tower";
+  } else if (
+    text.includes("hmv")
+  ) {
+    storeKey = "hmv";
+  } else if (
+    text.includes(normalizeStoreText("楽天ブックス")) ||
+    text.includes("rakuten")
+  ) {
+    storeKey = "rakuten";
+  } else if (
+    text.includes(normalizeStoreText("ネオウィング")) ||
+    text.includes("neowing")
+  ) {
+    storeKey = "neowing";
+  }
+
+  if (!storeKey) return null;
+
+  return VERIFIED_ONLINE_PRODUCT_URLS[storeKey][product.id] ?? null;
 }
 
 function compareOnlineStores(a: Store, b: Store) {
