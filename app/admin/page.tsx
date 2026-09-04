@@ -14,7 +14,6 @@ type InventoryReport = {
   product_id: number;
   quantity: number;
   stock_status: "in_stock" | "low_stock" | "backorder" | "sold_out" | null;
-  purchase_variant: "special" | "no_special" | null;
   comment: string | null;
   created_at: string;
 };
@@ -145,8 +144,6 @@ type StoreInfoRequestAdmin = {
   shipping_date: string | null;
   confirmation_source: "product_page" | "cart_order" | "email" | "other" | null;
   confirmation_source_detail: string | null;
-  inventory_report_id: number | null;
-  linked_inventory_exists: boolean;
   updated_at: string;
 };
 
@@ -166,8 +163,6 @@ type StoreCommentAdmin = {
   body: string;
   created_at: string;
   is_deleted: boolean;
-  deleted_at: string | null;
-  deleted_source: "self" | "admin" | null;
 };
 
 type Store = {
@@ -177,17 +172,6 @@ type Store = {
   prefecture: string;
   city: string | null;
   store_type: string | null;
-};
-
-type ManagedStore = Store & {
-  oricon_target: boolean;
-  billboard_status: "target" | "check_store" | "not_target";
-  is_active: boolean;
-  address: string | null;
-  phone: string | null;
-  business_hours: string | null;
-  official_url: string | null;
-  online_url: string | null;
 };
 
 type EditableStore = {
@@ -247,7 +231,6 @@ type AdminTab =
   | "user-deletions"
   | "store-history"
   | "store-comments"
-  | "stores"
   | "requests"
   | "store-info"
   | "bugs"
@@ -422,12 +405,6 @@ export default function AdminPage() {
   const [stores, setStores] =
     useState<Store[]>([]);
 
-  const [managedStores, setManagedStores] =
-    useState<ManagedStore[]>([]);
-
-  const [storeManagementProcessingId, setStoreManagementProcessingId] =
-    useState<number | null>(null);
-
   const [products, setProducts] =
     useState<Product[]>([]);
 
@@ -457,9 +434,6 @@ export default function AdminPage() {
 
   const [activeTab, setActiveTab] =
     useState<AdminTab>("reports");
-
-  const [storeInfoSubTab, setStoreInfoSubTab] =
-    useState<"store-info" | "billboard">("store-info");
 
   const [loading, setLoading] =
     useState(true);
@@ -719,23 +693,6 @@ export default function AdminPage() {
       );
     }, []);
 
-  const loadManagedStores =
-    useCallback(async () => {
-      const { data, error } = await supabase.rpc(
-        "get_stores_admin"
-      );
-
-      if (error) {
-        console.error(error);
-        setErrorMessage(
-          `店舗管理データを取得できませんでした: ${error.message}`
-        );
-        return;
-      }
-
-      setManagedStores((data ?? []) as ManagedStore[]);
-    }, []);
-
   // =========================================
   // 不具合・要望
   // =========================================
@@ -944,7 +901,6 @@ export default function AdminPage() {
             product_id,
             quantity,
             stock_status,
-            purchase_variant,
             comment,
             created_at
           `)
@@ -1020,7 +976,6 @@ export default function AdminPage() {
         loadStoreComments(),
         loadStoreRequests(),
         loadBillboardInfoRequests(),
-        loadManagedStores(),
         loadBugReports(),
         loadAccessData(),
         loadSalesData(),
@@ -1038,7 +993,6 @@ export default function AdminPage() {
       loadStoreComments,
       loadStoreRequests,
       loadBillboardInfoRequests,
-      loadManagedStores,
       loadBugReports,
       loadAccessData,
       loadSalesData,
@@ -1760,18 +1714,10 @@ export default function AdminPage() {
     setMessage("店舗情報を承認しました。");
   }
 
-  async function handleRejectStoreInfoRequest(
-    requestId: number,
-    deleteLinkedInventory = false,
-    inventoryReportId: number | null = null
-  ) {
-    const confirmText = deleteLinkedInventory
-      ? "この発送・初週情報を却下し、同時に投稿された在庫情報も削除しますか?\n在庫投稿は削除履歴から復元できます。"
-      : "この店舗情報を却下しますか?";
-    if (!window.confirm(confirmText)) return;
+  async function handleRejectStoreInfoRequest(requestId: number) {
+    if (!window.confirm("この店舗情報を却下しますか?")) return;
     setMessage("");
     setErrorMessage("");
-
     const { error } = await supabase.rpc(
       "reject_store_info_request_admin",
       { p_request_id: requestId }
@@ -1780,49 +1726,8 @@ export default function AdminPage() {
       setErrorMessage(`店舗情報を却下できませんでした: ${error.message}`);
       return;
     }
-
-    if (deleteLinkedInventory && inventoryReportId !== null) {
-      const { error: deleteError } = await supabase.rpc(
-        "delete_inventory_report_admin",
-        { p_report_id: inventoryReportId }
-      );
-      if (deleteError) {
-        await Promise.all([loadStoreInfoRequests(), loadAdminData()]);
-        setErrorMessage(
-          `発送・初週情報は却下しましたが、関連する在庫投稿を削除できませんでした: ${deleteError.message}`
-        );
-        return;
-      }
-    }
-
-    await Promise.all([loadStoreInfoRequests(), loadAdminData(), loadDeletionHistory()]);
-    setMessage(
-      deleteLinkedInventory
-        ? "発送・初週情報を却下し、関連する在庫投稿も削除しました。"
-        : "店舗情報を却下しました。"
-    );
-  }
-
-  async function handleDeleteLinkedInventoryReport(
-    requestId: number,
-    inventoryReportId: number
-  ) {
-    if (!window.confirm(
-      `店舗情報 #${requestId} と同時に投稿された在庫情報 #${inventoryReportId} を削除しますか?\n在庫投稿は削除履歴から復元できます。`
-    )) return;
-
-    setMessage("");
-    setErrorMessage("");
-    const { error } = await supabase.rpc(
-      "delete_inventory_report_admin",
-      { p_report_id: inventoryReportId }
-    );
-    if (error) {
-      setErrorMessage(`関連する在庫投稿を削除できませんでした: ${error.message}`);
-      return;
-    }
-    await Promise.all([loadStoreInfoRequests(), loadAdminData(), loadDeletionHistory()]);
-    setMessage(`関連する在庫投稿 #${inventoryReportId} を削除しました。`);
+    await loadStoreInfoRequests();
+    setMessage("店舗情報を却下しました。");
   }
 
   async function handleUpdateStoreInfoRequest(
@@ -1928,77 +1833,6 @@ export default function AdminPage() {
     }
     await loadStoreComments();
     setMessage("店舗コメントを復元しました。");
-  }
-
-  // =========================================
-  // 店舗管理
-  // =========================================
-
-  async function handleSetStoreActive(store: ManagedStore, isActive: boolean) {
-    const displayName = getDisplayStoreName(store);
-    const actionLabel = isActive ? "再表示" : "非表示";
-    const confirmed = window.confirm(
-      isActive
-        ? `${displayName} を店舗一覧へ再表示しますか?`
-        : `${displayName} を店舗一覧から非表示にしますか?\n\n在庫投稿や履歴は削除されません。`
-    );
-    if (!confirmed) return;
-
-    setStoreManagementProcessingId(store.id);
-    setMessage("");
-    setErrorMessage("");
-
-    const { error } = await supabase.rpc("set_store_active_admin", {
-      p_store_id: store.id,
-      p_is_active: isActive,
-    });
-
-    if (error) {
-      setErrorMessage(`店舗を${actionLabel}にできませんでした: ${error.message}`);
-      setStoreManagementProcessingId(null);
-      return;
-    }
-
-    await Promise.all([loadManagedStores(), loadStoreChangeHistory()]);
-    setMessage(`${displayName} を${actionLabel}にしました。`);
-    setStoreManagementProcessingId(null);
-  }
-
-  async function handleSetStoreBillboardStatus(
-    store: ManagedStore,
-    status: ManagedStore["billboard_status"]
-  ) {
-    const displayName = getDisplayStoreName(store);
-    const label =
-      status === "target"
-        ? "集計対象"
-        : status === "check_store"
-          ? "要確認"
-          : "対象外";
-
-    setStoreManagementProcessingId(store.id);
-    setMessage("");
-    setErrorMessage("");
-
-    const { error } = await supabase.rpc(
-      "set_store_billboard_status_admin",
-      {
-        p_store_id: store.id,
-        p_billboard_status: status,
-      }
-    );
-
-    if (error) {
-      setErrorMessage(
-        `Billboard設定を変更できませんでした: ${error.message}`
-      );
-      setStoreManagementProcessingId(null);
-      return;
-    }
-
-    await Promise.all([loadManagedStores(), loadStoreChangeHistory()]);
-    setMessage(`${displayName} のBillboard設定を「${label}」に変更しました。`);
-    setStoreManagementProcessingId(null);
   }
 
   // =========================================
@@ -2445,12 +2279,63 @@ export default function AdminPage() {
 
   return (
     <main
-      className="min-h-screen bg-[#f8f1f7] p-4 md:p-8"
+      className="admin-compact min-h-screen bg-[#f8f1f7] p-3 md:p-5"
       style={{
         fontFamily:
           '"Meiryo", "メイリオ", sans-serif',
       }}
     >
+      <style jsx global>{`
+        .admin-compact {
+          font-size: 14px;
+          line-height: 1.45;
+        }
+        .admin-compact h1,
+        .admin-compact .text-3xl {
+          font-size: 1.35rem !important;
+          line-height: 1.25 !important;
+        }
+        .admin-compact h2,
+        .admin-compact .text-2xl {
+          font-size: 1.15rem !important;
+          line-height: 1.3 !important;
+        }
+        .admin-compact h3,
+        .admin-compact .text-xl {
+          font-size: 1rem !important;
+          line-height: 1.35 !important;
+        }
+        .admin-compact .text-lg {
+          font-size: 0.95rem !important;
+          line-height: 1.4 !important;
+        }
+        @media (max-width: 767px) {
+          .admin-compact {
+            font-size: 12px;
+            line-height: 1.4;
+          }
+          .admin-compact h1,
+          .admin-compact .text-3xl {
+            font-size: 1.1rem !important;
+          }
+          .admin-compact h2,
+          .admin-compact .text-2xl {
+            font-size: 1rem !important;
+          }
+          .admin-compact h3,
+          .admin-compact .text-xl,
+          .admin-compact .text-lg {
+            font-size: 0.9rem !important;
+          }
+          .admin-compact button,
+          .admin-compact input,
+          .admin-compact select,
+          .admin-compact textarea {
+            font-size: 12px;
+            line-height: 1.3;
+          }
+        }
+      `}</style>
       <div className="mx-auto max-w-7xl">
         <section className="rounded-3xl bg-white p-5 shadow-sm md:p-8">
 
@@ -2479,7 +2364,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* 13タブ */}
+          {/* 12タブ */}
           <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-3 lg:grid-cols-12">
             <AdminTabButton
               active={
@@ -2560,13 +2445,6 @@ export default function AdminPage() {
               onClick={() => setActiveTab("store-comments")}
             >
               💬 店舗コメント
-            </AdminTabButton>
-
-            <AdminTabButton
-              active={activeTab === "stores"}
-              onClick={() => setActiveTab("stores")}
-            >
-              🏬 店舗管理
             </AdminTabButton>
 
             <AdminTabButton
@@ -2746,14 +2624,6 @@ export default function AdminPage() {
               formatDate={formatDate}
             />
           ) : activeTab ===
-            "stores" ? (
-            <StoreManagementTab
-              stores={managedStores}
-              processingId={storeManagementProcessingId}
-              onSetActive={handleSetStoreActive}
-              onSetBillboardStatus={handleSetStoreBillboardStatus}
-            />
-          ) : activeTab ===
             "requests" ? (
             <StoreRequestsTab
               requests={
@@ -2787,64 +2657,18 @@ export default function AdminPage() {
           ) : activeTab ===
             "store-info" ? (
             <div>
-              <div className="mt-6 flex flex-wrap gap-2 rounded-2xl border border-[#e5d7e6] bg-[#f8f3f7] p-2">
-                <button
-                  type="button"
-                  onClick={() => setStoreInfoSubTab("store-info")}
-                  className={`rounded-xl px-4 py-2.5 font-bold ${
-                    storeInfoSubTab === "store-info"
-                      ? "bg-[#6f4b89] text-white"
-                      : "bg-white text-[#6d4966]"
-                  }`}
-                >
-                  📨 店舗情報提供
-                  {pendingStoreInfoCount > 0 && (
-                    <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
-                      storeInfoSubTab === "store-info"
-                        ? "bg-white/20 text-white"
-                        : "bg-red-500 text-white"
-                    }`}>
-                      {pendingStoreInfoCount}
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStoreInfoSubTab("billboard")}
-                  className={`rounded-xl px-4 py-2.5 font-bold ${
-                    storeInfoSubTab === "billboard"
-                      ? "bg-[#6f4b89] text-white"
-                      : "bg-white text-[#6d4966]"
-                  }`}
-                >
-                  📊 Billboard情報提供
-                  {pendingBillboardInfoCount > 0 && (
-                    <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
-                      storeInfoSubTab === "billboard"
-                        ? "bg-white/20 text-white"
-                        : "bg-red-500 text-white"
-                    }`}>
-                      {pendingBillboardInfoCount}
-                    </span>
-                  )}
-                </button>
-              </div>
-
-              {storeInfoSubTab === "store-info" ? (
-                <StoreInfoRequestsAdminTab
-                  requests={storeInfoRequests}
-                  history={storeInfoRequestHistory}
-                  products={products}
-                  onApprove={handleApproveStoreInfoRequest}
-                  onReject={handleRejectStoreInfoRequest}
-                  onDeleteLinkedInventory={handleDeleteLinkedInventoryReport}
-                  onUpdate={handleUpdateStoreInfoRequest}
-                  onWithdraw={handleWithdrawStoreInfoRequest}
-                  onDeleteProcessed={handleDeleteStoreInfoHistory}
-                  formatDate={formatDate}
-                />
-              ) : (
+              <StoreInfoRequestsAdminTab
+                requests={storeInfoRequests}
+                history={storeInfoRequestHistory}
+                products={products}
+                onApprove={handleApproveStoreInfoRequest}
+                onReject={handleRejectStoreInfoRequest}
+                onUpdate={handleUpdateStoreInfoRequest}
+                onWithdraw={handleWithdrawStoreInfoRequest}
+                onDeleteProcessed={handleDeleteStoreInfoHistory}
+                formatDate={formatDate}
+              />
+              <div className="mt-10 border-t border-gray-200 pt-8">
                 <BillboardInfoRequestsTab
                   requests={billboardInfoRequests}
                   stores={stores}
@@ -2854,7 +2678,7 @@ export default function AdminPage() {
                   onDeleteProcessed={handleDeleteBillboardHistory}
                   formatDate={formatDate}
                 />
-              )}
+              </div>
             </div>
           ) : activeTab ===
             "bugs" ? (
@@ -2911,7 +2735,6 @@ function StoreInfoRequestsAdminTab({
   products,
   onApprove,
   onReject,
-  onDeleteLinkedInventory,
   onUpdate,
   onWithdraw,
   onDeleteProcessed,
@@ -2921,8 +2744,7 @@ function StoreInfoRequestsAdminTab({
   history: StoreInfoRequestChangeHistory[];
   products: Product[];
   onApprove: (id: number) => Promise<void>;
-  onReject: (id: number, deleteLinkedInventory?: boolean, inventoryReportId?: number | null) => Promise<void>;
-  onDeleteLinkedInventory: (requestId: number, inventoryReportId: number) => Promise<void>;
+  onReject: (id: number) => Promise<void>;
   onUpdate: (
     request: StoreInfoRequestAdmin,
     values: {
@@ -3073,7 +2895,6 @@ function StoreInfoRequestsAdminTab({
       ["shipping_date", "発送予定日"],
       ["confirmation_source", "確認場所"],
       ["confirmation_source_detail", "確認場所補足"],
-      ["inventory_report_id", "関連在庫投稿"],
     ];
     return labels.filter(([key]) => item.old_data[key] !== item.new_data[key]);
   }
@@ -3113,14 +2934,6 @@ function StoreInfoRequestsAdminTab({
         {request.evidence && (
           <div className="mt-2 whitespace-pre-wrap break-words rounded-xl bg-[#f8f1f7] p-3 text-sm leading-6">
             <span className="font-bold">確認方法・ソース: </span>{request.evidence}
-          </div>
-        )}
-
-        {request.inventory_report_id !== null && (
-          <div className={`mt-2 rounded-xl p-3 text-sm ${request.linked_inventory_exists ? "bg-blue-50 text-blue-900" : "bg-gray-100 text-gray-500"}`}>
-            <span className="font-bold">同時投稿の在庫情報: </span>
-            #{request.inventory_report_id}
-            {request.linked_inventory_exists ? " (公開データに存在)" : " (削除済み・現在は非表示)"}
           </div>
         )}
 
@@ -3189,13 +3002,7 @@ function StoreInfoRequestsAdminTab({
             <>
               <button type="button" onClick={() => void onApprove(request.id)} className="rounded-xl bg-green-700 px-4 py-2 text-sm font-bold text-white">{request.request_type === "other" ? "確認・処理済みにする" : "承認・反映"}</button>
               <button type="button" onClick={() => void onReject(request.id)} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white">却下</button>
-              {request.request_type === "online_product_first_week" && request.inventory_report_id !== null && request.linked_inventory_exists && (
-                <button type="button" onClick={() => void onReject(request.id, true, request.inventory_report_id)} className="rounded-xl bg-red-800 px-4 py-2 text-sm font-bold text-white">却下 + 在庫も削除</button>
-              )}
             </>
-          )}
-          {request.inventory_report_id !== null && request.linked_inventory_exists && request.status !== "pending" && (
-            <button type="button" onClick={() => void onDeleteLinkedInventory(request.id, request.inventory_report_id as number)} className="rounded-xl bg-red-800 px-4 py-2 text-sm font-bold text-white">関連在庫投稿を削除</button>
           )}
           {request.status === "approved" && request.request_type !== "other" && (
             <button type="button" onClick={() => void onWithdraw(request.id)} className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white">公開を取り下げる</button>
@@ -3307,7 +3114,7 @@ function StoreCommentsAdminTab({
         <div>
           <h2 className="text-2xl font-bold">💬 店舗コメント管理</h2>
           <p className="mt-1 text-sm text-gray-600">
-            実店舗・オンラインショップに投稿されたコメントを確認できます。本人削除・管理者非表示の履歴も表示します。
+            実店舗・オンラインショップに投稿されたコメントを確認できます。
           </p>
         </div>
         <input
@@ -3334,37 +3141,23 @@ function StoreCommentsAdminTab({
                     #{comment.id} / {formatDate(comment.created_at)}
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  {comment.deleted_at && (
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-bold ${
-                        comment.deleted_source === "self"
-                          ? "bg-[#f2e7f0] text-[#6d4966]"
-                          : "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {comment.deleted_source === "self" ? "本人削除" : "管理者非表示"}
-                      {comment.is_deleted ? "" : "履歴"}: {formatDate(comment.deleted_at)}
-                    </span>
-                  )}
-                  {comment.is_deleted ? (
-                    <button
-                      type="button"
-                      onClick={() => void onRestore(comment.id)}
-                      className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold"
-                    >
-                      復元
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => void onDelete(comment.id)}
-                      className="rounded-xl bg-red-600 px-3 py-2 text-sm font-bold text-white"
-                    >
-                      非表示
-                    </button>
-                  )}
-                </div>
+                {comment.is_deleted ? (
+                  <button
+                    type="button"
+                    onClick={() => void onRestore(comment.id)}
+                    className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold"
+                  >
+                    復元
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void onDelete(comment.id)}
+                    className="rounded-xl bg-red-600 px-3 py-2 text-sm font-bold text-white"
+                  >
+                    非表示
+                  </button>
+                )}
               </div>
               <div className="mt-3 whitespace-pre-wrap break-words rounded-xl bg-[#faf7fa] p-3 text-sm leading-6">
                 {comment.body}
@@ -5386,157 +5179,6 @@ function BillboardInfoRequestsTab({ requests, stores, processingId, onApprove, o
   return <div className="mt-6"><h2 className="text-2xl font-bold">📊 Billboard情報提供</h2><p className="mt-2 text-gray-500">以前のBillboard情報提供機能から送信された履歴です。未処理のものがある場合はこちらで確認してください。</p>{!pending.length?<div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">未処理のBillboard情報提供はありません。</div>:<div className="mt-5 space-y-4">{pending.map(r=>card(r))}</div>}<details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50"><summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">処理済みの履歴 ({processed.length}件)</summary><div className="border-t border-gray-200 p-4">{processed.length>0&&<BulkSelectionBar count={selected.length} allSelected={all} onToggleAll={()=>setSelected(all?[]:ids)}><button disabled={!selected.length} onClick={()=>onDeleteProcessed(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を完全削除</button></BulkSelectionBar>}<div className="mt-3 space-y-3">{processed.length?processed.map(r=>card(r,true)):<div className="py-3 text-center text-sm text-gray-500">処理済みの履歴はありません。</div>}</div></div></details></div>;
 }
 
-function StoreManagementTab({
-  stores,
-  processingId,
-  onSetActive,
-  onSetBillboardStatus,
-}: {
-  stores: ManagedStore[];
-  processingId: number | null;
-  onSetActive: (store: ManagedStore, isActive: boolean) => void;
-  onSetBillboardStatus: (
-    store: ManagedStore,
-    status: ManagedStore["billboard_status"]
-  ) => void;
-}) {
-  const [search, setSearch] = useState("");
-  const [visibility, setVisibility] = useState<"all" | "active" | "inactive">("all");
-
-  const filtered = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    return stores.filter((store) => {
-      if (visibility === "active" && !store.is_active) return false;
-      if (visibility === "inactive" && store.is_active) return false;
-      if (!keyword) return true;
-      return [
-        store.name,
-        store.chain_name ?? "",
-        store.prefecture,
-        store.city ?? "",
-        store.address ?? "",
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(keyword);
-    });
-  }, [stores, search, visibility]);
-
-  return (
-    <div className="mt-6">
-      <div className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-5">
-        <h2 className="text-2xl font-bold">🏬 店舗管理</h2>
-        <p className="mt-2 text-sm leading-6 text-gray-600">
-          登録済み店舗の公開・非表示とBillboard設定を変更できます。非表示にしても在庫投稿や履歴は削除されません。
-        </p>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-[1fr_220px]">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="店舗名・チェーン名・地域で検索"
-            className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3 text-[#211d21] [-webkit-text-fill-color:#211d21]"
-          />
-          <select
-            value={visibility}
-            onChange={(event) =>
-              setVisibility(event.target.value as "all" | "active" | "inactive")
-            }
-            className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3 text-[#211d21] [-webkit-text-fill-color:#211d21]"
-          >
-            <option value="all">すべて</option>
-            <option value="active">公開中のみ</option>
-            <option value="inactive">非表示のみ</option>
-          </select>
-        </div>
-
-        <div className="mt-3 text-sm text-gray-500">
-          {filtered.length}件表示 / 全{stores.length}件
-        </div>
-      </div>
-
-      <div className="mt-4 space-y-3">
-        {filtered.map((store) => {
-          const busy = processingId === store.id;
-          return (
-            <article
-              key={store.id}
-              className={`rounded-2xl border p-4 ${
-                store.is_active
-                  ? "border-[#eaddea] bg-white"
-                  : "border-gray-300 bg-gray-100"
-              }`}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="text-lg font-bold">{getDisplayStoreName(store)}</div>
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-bold ${
-                        store.is_active
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-300 text-gray-700"
-                      }`}
-                    >
-                      {store.is_active ? "公開中" : "非表示"}
-                    </span>
-                    <span className="rounded-full bg-[#f1e8f2] px-3 py-1 text-xs font-bold text-[#6d4966]">
-                      {store.store_type === "online" ? "オンライン" : "実店舗"}
-                    </span>
-                  </div>
-
-                  <div className="mt-2 text-sm text-gray-600">
-                    📍 {store.prefecture}{store.city ? ` ${store.city}` : ""}
-                  </div>
-                  <div className="mt-1 text-xs text-gray-500">店舗ID: {store.id}</div>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => onSetActive(store, !store.is_active)}
-                  className={`rounded-xl px-4 py-2.5 font-bold text-white disabled:opacity-50 ${
-                    store.is_active ? "bg-gray-700" : "bg-green-700"
-                  }`}
-                >
-                  {store.is_active ? "店舗一覧から非表示" : "店舗一覧へ再表示"}
-                </button>
-              </div>
-
-              <div className="mt-4 max-w-sm">
-                <label className="block">
-                  <div className="mb-2 text-sm font-bold">Billboard</div>
-                  <select
-                    value={store.billboard_status}
-                    disabled={busy}
-                    onChange={(event) =>
-                      onSetBillboardStatus(
-                        store,
-                        event.target.value as ManagedStore["billboard_status"]
-                      )
-                    }
-                    className="w-full rounded-xl border border-[#d9c9d8] bg-white p-3 text-[#211d21] [-webkit-text-fill-color:#211d21] disabled:opacity-50"
-                  >
-                    <option value="target">集計対象</option>
-                    <option value="check_store">要確認</option>
-                    <option value="not_target">対象外</option>
-                  </select>
-                </label>
-              </div>
-            </article>
-          );
-        })}
-
-        {filtered.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
-            条件に一致する店舗はありません。
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function StoreRequestsTab({
   requests,
   edit,
@@ -6232,12 +5874,6 @@ function AdminTabButton({
   );
 }
 
-function formatPurchaseVariant(value: "special" | "no_special" | null) {
-  if (value === "special") return "先着特典あり";
-  if (value === "no_special") return "特典なし";
-  return null;
-}
-
 function ReportsTab({
   reports, stores, products, deletingId, onDelete, onBulkDelete, formatDate,
 }: {
@@ -6256,7 +5892,7 @@ function ReportsTab({
     </BulkSelectionBar>
     {reports.map((report) => {
       const store=stores.find((x)=>x.id===report.store_id); const product=products.find((x)=>x.id===report.product_id);
-      return <article key={report.id} className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"><div className="flex flex-wrap items-start justify-between gap-5"><div className="flex min-w-0 flex-1 items-start gap-3"><SelectionCheckbox checked={selected.includes(report.id)} onChange={()=>toggle(report.id)} label={`投稿 #${report.id} を選択`} /><div><div className="text-lg font-bold">{store?getDisplayStoreName(store):"店舗不明"}</div><div className="mt-3">{product?.name??"商品不明"}</div>{report.purchase_variant&&<div className="mt-1 inline-block rounded-full bg-[#efe1f1] px-2.5 py-1 text-xs font-bold text-[#6d4966]">{formatPurchaseVariant(report.purchase_variant)}</div>}<div className="mt-1 font-bold text-[#b95489]">{formatInventoryValue(report.quantity,report.stock_status)}</div><div className="mt-1 text-sm text-gray-500">{formatDate(report.created_at)}</div>{report.comment&&<div className="mt-3 rounded-xl bg-white p-3">💬 {report.comment}</div>}</div></div><button type="button" disabled={deletingId===report.id} onClick={()=>onDelete(report)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white disabled:opacity-50">削除</button></div></article>;
+      return <article key={report.id} className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"><div className="flex flex-wrap items-start justify-between gap-5"><div className="flex min-w-0 flex-1 items-start gap-3"><SelectionCheckbox checked={selected.includes(report.id)} onChange={()=>toggle(report.id)} label={`投稿 #${report.id} を選択`} /><div><div className="text-lg font-bold">{store?getDisplayStoreName(store):"店舗不明"}</div><div className="mt-3">{product?.name??"商品不明"}</div><div className="mt-1 font-bold text-[#b95489]">{formatInventoryValue(report.quantity,report.stock_status)}</div><div className="mt-1 text-sm text-gray-500">{formatDate(report.created_at)}</div>{report.comment&&<div className="mt-3 rounded-xl bg-white p-3">💬 {report.comment}</div>}</div></div><button type="button" disabled={deletingId===report.id} onClick={()=>onDelete(report)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white disabled:opacity-50">削除</button></div></article>;
     })}
   </div>;
 }
