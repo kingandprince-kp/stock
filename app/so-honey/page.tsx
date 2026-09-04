@@ -443,7 +443,7 @@ const [submitError, setSubmitError] = useState("");
   const [onlineProductFirstWeekStatuses, setOnlineProductFirstWeekStatuses] =
     useState<OnlineProductFirstWeekStatusRow[]>([]);
   const [onlineFirstWeekFilter, setOnlineFirstWeekFilter] =
-    useState<OnlineFirstWeekFilter>("actionable");
+    useState<OnlineFirstWeekFilter>("all");
   const [stockOnly, setStockOnly] = useState(false);
   const [xShareOpen, setXShareOpen] = useState(false);
   const [storeCommentCounts, setStoreCommentCounts] =
@@ -2297,18 +2297,17 @@ async function handleBugReport() {
             {searchMode === "online" && !loading && !dataError && (
               <div className="mt-3 rounded-xl border border-[#ead7a7] bg-[#fffaf0] p-2.5 md:mt-5 md:rounded-2xl md:p-4">
                 <div className="text-[11px] font-bold text-[#59471f] md:text-sm">
-                  ⏰ 初週集計で絞り込み
+                  ⏰ 初週集計に間に合う見込みで絞り込み
                 </div>
                 <p className="mt-1 text-[10px] leading-5 text-[#746443] md:text-sm md:leading-6">
-                  初期表示では「間に合わない見込み」を除外しています。必要な情報だけに絞ると表示も軽くなります。
+                  発送予定などの情報をもとに、初週集計に間に合う見込みで絞り込めます。初期表示はすべて表示しています。
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5 md:gap-2">
                   {([
-                    ["actionable", "購入候補"],
-                    ["likely", "🟢 間に合う見込み"],
+                    ["all", "すべて"],
+                    ["likely", "🔵 間に合う見込み"],
                     ["check", "🟡 要確認"],
                     ["unlikely", "🔴 間に合わない見込み"],
-                    ["all", "すべて"],
                   ] as const).map(([value, label]) => (
                     <button
                       key={value}
@@ -3729,11 +3728,11 @@ function StoreCard({
                 <span
                   className={`rounded-full border px-2.5 py-1 text-[10px] font-bold md:px-3 md:py-1.5 md:text-sm ${
                     cutoffConfirmed
-                      ? "border-[#9dc9a6] bg-[#eef9f0] text-[#30673b]"
+                      ? "border-[#9dbce5] bg-[#eef5ff] text-[#315f96]"
                       : "border-[#d7c7a0] bg-[#fff8e5] text-[#6a5727]"
                   }`}
                 >
-                  {cutoffConfirmed ? "🟢" : "⏰"} 初週締め時間: {cutoff}
+                  {cutoffConfirmed ? "🔵" : "⏰"} 初週締め時間: {cutoff}
                   {store.first_week_verified_at && (
                     <span className="ml-1 font-normal">({formatDate(store.first_week_verified_at)}確認)</span>
                   )}
@@ -4240,12 +4239,12 @@ function OnlineProductFirstWeekBadge({
     <div
       className={`mt-2 rounded-lg border px-2 py-1.5 text-[9px] leading-4 md:rounded-xl md:px-3 md:py-2 md:text-xs ${
         likely
-          ? "border-[#9dc9a6] bg-[#eef9f0] text-[#30673b]"
+          ? "border-[#9dbce5] bg-[#eef5ff] text-[#315f96]"
           : "border-[#e2a9ae] bg-[#fff0f1] text-[#8a3740]"
       }`}
     >
       <div className="font-bold">
-        {likely ? "🟢 初週集計: 間に合う見込み" : "🔴 初週集計: 間に合わない見込み"}
+        {likely ? "🔵 初週集計: 間に合う見込み" : "🔴 初週集計: 間に合わない見込み"}
       </div>
       {status.shipping_note && (
         <div className="mt-0.5 font-normal">{status.shipping_note}</div>
