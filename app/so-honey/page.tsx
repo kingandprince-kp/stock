@@ -2367,7 +2367,7 @@ async function handleBugReport() {
                   ⏰ 初週集計に間に合う見込みで絞り込み
                 </div>
                 <p className="mt-1 text-[10px] leading-5 text-[#746443] md:text-sm md:leading-6">
-                  発送予定などの情報をもとに、初週集計に間に合う見込みで絞り込めます。初期表示はすべて表示しています。
+                  発送予定などの情報をもとに、初週集計に間に合う見込みで絞り込めます。初期表示はすべて表示しています。※あくまで見込みで保証するものではありません。実際の商品ページをご確認ください。
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5 md:gap-2">
                   {([
