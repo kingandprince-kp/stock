@@ -123,12 +123,29 @@ type StoreChangeHistory = {
   changed_at: string;
 };
 
+type OnlineFirstWeekStatusAdmin = {
+  store_id: number;
+  status: "likely" | "check" | "unlikely";
+  note: string | null;
+  checked_at: string;
+};
+
+type StoreCommentAdmin = {
+  id: number;
+  store_id: number;
+  store_name: string;
+  body: string;
+  created_at: string;
+  is_deleted: boolean;
+};
+
 type Store = {
   id: number;
   name: string;
   chain_name: string | null;
   prefecture: string;
   city: string | null;
+  store_type: string | null;
 };
 
 type EditableStore = {
@@ -187,6 +204,8 @@ type AdminTab =
   | "deletions"
   | "user-deletions"
   | "store-history"
+  | "first-week"
+  | "store-comments"
   | "requests"
   | "billboard"
   | "bugs"
@@ -325,6 +344,12 @@ export default function AdminPage() {
 
   const [storeChangeHistory, setStoreChangeHistory] =
     useState<StoreChangeHistory[]>([]);
+
+  const [onlineFirstWeekStatuses, setOnlineFirstWeekStatuses] =
+    useState<OnlineFirstWeekStatusAdmin[]>([]);
+
+  const [storeComments, setStoreComments] =
+    useState<StoreCommentAdmin[]>([]);
 
   const [storeRequests, setStoreRequests] =
     useState<StoreRequest[]>([]);
@@ -541,6 +566,40 @@ export default function AdminPage() {
       setStoreChangeHistory(
         (data ?? []) as StoreChangeHistory[]
       );
+    }, []);
+
+  // =========================================
+  // オンライン初週判定・店舗コメント
+  // =========================================
+
+  const loadOnlineFirstWeekStatuses =
+    useCallback(async () => {
+      const { data, error } = await supabase.rpc(
+        "get_online_first_week_statuses_admin"
+      );
+      if (error) {
+        setErrorMessage(
+          `オンライン初週判定を取得できませんでした: ${error.message}`
+        );
+        return;
+      }
+      setOnlineFirstWeekStatuses(
+        (data ?? []) as OnlineFirstWeekStatusAdmin[]
+      );
+    }, []);
+
+  const loadStoreComments =
+    useCallback(async () => {
+      const { data, error } = await supabase.rpc(
+        "get_store_comments_admin"
+      );
+      if (error) {
+        setErrorMessage(
+          `店舗コメントを取得できませんでした: ${error.message}`
+        );
+        return;
+      }
+      setStoreComments((data ?? []) as StoreCommentAdmin[]);
     }, []);
 
   // =========================================
@@ -816,7 +875,8 @@ export default function AdminPage() {
             name,
             chain_name,
             prefecture,
-            city
+            city,
+            store_type
           `),
 
         supabase
@@ -869,6 +929,8 @@ export default function AdminPage() {
         loadDeletionHistory(),
         loadUserDeletionHistory(),
         loadStoreChangeHistory(),
+        loadOnlineFirstWeekStatuses(),
+        loadStoreComments(),
         loadStoreRequests(),
         loadBillboardInfoRequests(),
         loadBugReports(),
@@ -883,6 +945,8 @@ export default function AdminPage() {
       loadDeletionHistory,
       loadUserDeletionHistory,
       loadStoreChangeHistory,
+      loadOnlineFirstWeekStatuses,
+      loadStoreComments,
       loadStoreRequests,
       loadBillboardInfoRequests,
       loadBugReports,
@@ -932,6 +996,8 @@ export default function AdminPage() {
             setDeletions([]);
             setUserDeletions([]);
             setStoreChangeHistory([]);
+            setOnlineFirstWeekStatuses([]);
+            setStoreComments([]);
             setStoreRequests([]);
             setBillboardInfoRequests([]);
             setBugReports([]);
@@ -1584,6 +1650,66 @@ export default function AdminPage() {
   }
 
   // =========================================
+  // オンライン初週判定・店舗コメント管理
+  // =========================================
+
+  async function handleUpdateOnlineFirstWeekStatus(
+    storeId: number,
+    status: "likely" | "check" | "unlikely",
+    note: string
+  ) {
+    setMessage("");
+    setErrorMessage("");
+    const { error } = await supabase.rpc(
+      "set_online_first_week_status_admin",
+      {
+        p_store_id: storeId,
+        p_status: status,
+        p_note: note.trim() === "" ? null : note.trim(),
+      }
+    );
+    if (error) {
+      setErrorMessage(
+        `初週判定を更新できませんでした: ${error.message}`
+      );
+      return;
+    }
+    await loadOnlineFirstWeekStatuses();
+    setMessage("オンライン初週判定を更新しました。");
+  }
+
+  async function handleDeleteStoreComment(commentId: number) {
+    if (!window.confirm("この店舗コメントを非表示にしますか?")) return;
+    const { error } = await supabase.rpc(
+      "set_store_comment_deleted_admin",
+      { p_comment_id: commentId, p_deleted: true }
+    );
+    if (error) {
+      setErrorMessage(
+        `コメントを非表示にできませんでした: ${error.message}`
+      );
+      return;
+    }
+    await loadStoreComments();
+    setMessage("店舗コメントを非表示にしました。");
+  }
+
+  async function handleRestoreStoreComment(commentId: number) {
+    const { error } = await supabase.rpc(
+      "set_store_comment_deleted_admin",
+      { p_comment_id: commentId, p_deleted: false }
+    );
+    if (error) {
+      setErrorMessage(
+        `コメントを復元できませんでした: ${error.message}`
+      );
+      return;
+    }
+    await loadStoreComments();
+    setMessage("店舗コメントを復元しました。");
+  }
+
+  // =========================================
   // Billboard情報提供 承認・却下
   // =========================================
 
@@ -2056,8 +2182,8 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* 10タブ */}
-          <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-3 lg:grid-cols-10">
+          {/* 13タブ */}
+          <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-3 lg:grid-cols-13">
             <AdminTabButton
               active={
                 activeTab === "reports"
@@ -2129,6 +2255,20 @@ export default function AdminPage() {
               onClick={() => setActiveTab("store-history")}
             >
               🏪 店舗履歴
+            </AdminTabButton>
+
+            <AdminTabButton
+              active={activeTab === "first-week"}
+              onClick={() => setActiveTab("first-week")}
+            >
+              ⏰ 初週判定
+            </AdminTabButton>
+
+            <AdminTabButton
+              active={activeTab === "store-comments"}
+              onClick={() => setActiveTab("store-comments")}
+            >
+              💬 店舗コメント
             </AdminTabButton>
 
             <AdminTabButton
@@ -2300,6 +2440,22 @@ export default function AdminPage() {
               formatDate={formatDate}
             />
           ) : activeTab ===
+            "first-week" ? (
+            <OnlineFirstWeekAdminTab
+              stores={stores}
+              statuses={onlineFirstWeekStatuses}
+              onSave={handleUpdateOnlineFirstWeekStatus}
+              formatDate={formatDate}
+            />
+          ) : activeTab ===
+            "store-comments" ? (
+            <StoreCommentsAdminTab
+              comments={storeComments}
+              onDelete={handleDeleteStoreComment}
+              onRestore={handleRestoreStoreComment}
+              formatDate={formatDate}
+            />
+          ) : activeTab ===
             "requests" ? (
             <StoreRequestsTab
               requests={
@@ -2387,6 +2543,217 @@ export default function AdminPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function OnlineFirstWeekAdminTab({
+  stores,
+  statuses,
+  onSave,
+  formatDate,
+}: {
+  stores: Store[];
+  statuses: OnlineFirstWeekStatusAdmin[];
+  onSave: (
+    storeId: number,
+    status: "likely" | "check" | "unlikely",
+    note: string
+  ) => Promise<void>;
+  formatDate: (value: string) => string;
+}) {
+  const onlineStores = useMemo(
+    () =>
+      stores
+        .filter(
+          (store) =>
+            store.store_type === "online" ||
+            store.prefecture === "オンライン"
+        )
+        .sort((a, b) =>
+          getDisplayStoreName(a).localeCompare(getDisplayStoreName(b), "ja")
+        ),
+    [stores]
+  );
+  const statusMap = useMemo(() => {
+    const map = new Map<number, OnlineFirstWeekStatusAdmin>();
+    statuses.forEach((item) => map.set(item.store_id, item));
+    return map;
+  }, [statuses]);
+  const [search, setSearch] = useState("");
+  const [drafts, setDrafts] = useState<
+    Record<number, { status: "likely" | "check" | "unlikely"; note: string }>
+  >({});
+
+  const visible = onlineStores.filter((store) => {
+    const q = search.trim().toLowerCase();
+    return !q || getDisplayStoreName(store).toLowerCase().includes(q);
+  });
+
+  function getDraft(storeId: number) {
+    const existing = drafts[storeId];
+    if (existing) return existing;
+    const current = statusMap.get(storeId);
+    return {
+      status: current?.status ?? "check",
+      note: current?.note ?? "",
+    };
+  }
+
+  return (
+    <div className="mt-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-bold">⏰ オンライン初週判定</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            「間に合う／間に合わない」は確認時点の目安です。更新すると確認日時も現在時刻に更新されます。
+          </p>
+        </div>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="オンラインショップを検索"
+          className="rounded-xl border border-gray-300 px-3 py-2 text-sm"
+        />
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {visible.map((store) => {
+          const current = statusMap.get(store.id);
+          const draft = getDraft(store.id);
+          return (
+            <div key={store.id} className="rounded-2xl border border-gray-200 p-4">
+              <div className="font-bold">{getDisplayStoreName(store)}</div>
+              {current && (
+                <div className="mt-1 text-xs text-gray-500">
+                  最終確認: {formatDate(current.checked_at)}
+                </div>
+              )}
+              <div className="mt-3 grid gap-2 md:grid-cols-[220px_1fr_auto]">
+                <select
+                  value={draft.status}
+                  onChange={(e) =>
+                    setDrafts((prev) => ({
+                      ...prev,
+                      [store.id]: {
+                        ...draft,
+                        status: e.target.value as "likely" | "check" | "unlikely",
+                      },
+                    }))
+                  }
+                  className="rounded-xl border border-gray-300 p-2.5"
+                >
+                  <option value="likely">間に合う見込み</option>
+                  <option value="check">発送予定を要確認</option>
+                  <option value="unlikely">間に合わない見込み</option>
+                </select>
+                <input
+                  value={draft.note}
+                  onChange={(e) =>
+                    setDrafts((prev) => ({
+                      ...prev,
+                      [store.id]: { ...draft, note: e.target.value },
+                    }))
+                  }
+                  maxLength={500}
+                  placeholder="確認メモ(例: 9/6までに発送予定と商品ページで確認)"
+                  className="rounded-xl border border-gray-300 p-2.5"
+                />
+                <button
+                  type="button"
+                  onClick={() => void onSave(store.id, draft.status, draft.note)}
+                  className="rounded-xl bg-[#211d21] px-4 py-2.5 font-bold text-white"
+                >
+                  更新
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StoreCommentsAdminTab({
+  comments,
+  onDelete,
+  onRestore,
+  formatDate,
+}: {
+  comments: StoreCommentAdmin[];
+  onDelete: (id: number) => Promise<void>;
+  onRestore: (id: number) => Promise<void>;
+  formatDate: (value: string) => string;
+}) {
+  const [search, setSearch] = useState("");
+  const visible = comments.filter((comment) => {
+    const q = search.trim().toLowerCase();
+    return (
+      !q ||
+      comment.store_name.toLowerCase().includes(q) ||
+      comment.body.toLowerCase().includes(q)
+    );
+  });
+
+  return (
+    <div className="mt-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-bold">💬 店舗コメント管理</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            実店舗・オンラインショップに投稿されたコメントを確認できます。
+          </p>
+        </div>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="店舗名・コメント検索"
+          className="rounded-xl border border-gray-300 px-3 py-2 text-sm"
+        />
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {visible.length === 0 ? (
+          <div className="rounded-xl bg-gray-50 p-4 text-gray-500">コメントはありません。</div>
+        ) : (
+          visible.map((comment) => (
+            <div
+              key={comment.id}
+              className={`rounded-2xl border p-4 ${comment.is_deleted ? "border-gray-200 bg-gray-50 opacity-70" : "border-[#eaddea] bg-white"}`}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="font-bold">{comment.store_name}</div>
+                  <div className="mt-1 text-xs text-gray-500">
+                    #{comment.id} / {formatDate(comment.created_at)}
+                  </div>
+                </div>
+                {comment.is_deleted ? (
+                  <button
+                    type="button"
+                    onClick={() => void onRestore(comment.id)}
+                    className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold"
+                  >
+                    復元
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void onDelete(comment.id)}
+                    className="rounded-xl bg-red-600 px-3 py-2 text-sm font-bold text-white"
+                  >
+                    非表示
+                  </button>
+                )}
+              </div>
+              <div className="mt-3 whitespace-pre-wrap break-words rounded-xl bg-[#faf7fa] p-3 text-sm leading-6">
+                {comment.body}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -3090,7 +3457,7 @@ function ReviewReportsTab({
       >
         <summary className="cursor-pointer px-5 py-4 font-bold text-[#8a4b20]">
           ⚠️ 連続投稿グループ
-          （
+          (
           {
             series.events
               .length
@@ -3100,7 +3467,7 @@ function ReviewReportsTab({
             storeGroups
               .length
           }
-          店舗）
+          店舗)
           <span className="ml-2 text-sm font-normal text-gray-600">
             {formatDate(
               series.startedAt
@@ -3170,14 +3537,14 @@ function ReviewReportsTab({
                           </div>
 
                           <div className="mt-1 text-xs text-gray-500">
-                            投稿：
+                            投稿: 
                             {formatDate(
                               event.created_at
                             )}
                           </div>
 
                           <div className="mt-1 text-xs">
-                            現在：
+                            現在: 
                             <b>
                               {getCurrentStatus(
                                 event.report_id
@@ -3250,7 +3617,7 @@ function ReviewReportsTab({
           </div>
 
           <div className="mt-1 text-sm">
-            投稿：
+            投稿: 
             {formatDate(
               r.created_at
             )}
@@ -3258,7 +3625,7 @@ function ReviewReportsTab({
 
           {r.reviewed_at && (
             <div className="mt-1 text-sm">
-              {label}：
+              {label}: 
               {formatDate(
                 r.reviewed_at
               )}
@@ -3267,7 +3634,7 @@ function ReviewReportsTab({
 
           {r.review_reason && (
             <div className="mt-2 text-sm">
-              判定理由：
+              判定理由: 
               {r.review_reason}
             </div>
           )}
@@ -3467,7 +3834,7 @@ function ReviewReportsTab({
 
                     <div className="mt-3 rounded-xl bg-white p-3 text-sm">
                       <b>
-                        判定理由：
+                        判定理由: 
                       </b>
                       {r.review_reason ||
                         "理由なし"}
@@ -3523,8 +3890,8 @@ function ReviewReportsTab({
                           className="mt-3 rounded-xl border border-[#e6c987] bg-[#fffaf0]"
                         >
                           <summary className="cursor-pointer px-3 py-3 font-bold text-[#7b5720]">
-                            🔗 承認判断用：直前10分の一連の投稿
-                            （
+                            🔗 承認判断用: 直前10分の一連の投稿
+                            (
                             {
                               contextEvents.length
                             }
@@ -3532,7 +3899,7 @@ function ReviewReportsTab({
                             {
                               contextStoreCount
                             }
-                            店舗）
+                            店舗)
                           </summary>
 
                           <div className="border-t border-[#e6c987] p-3">
@@ -3723,9 +4090,9 @@ function ReviewReportsTab({
         <details className="rounded-2xl border border-green-200 bg-green-50/50">
           <summary className="cursor-pointer px-5 py-4 font-bold text-green-700">
             承認済みの履歴
-            （
+            (
             {approved.length}
-            件）
+            件)
           </summary>
 
           <div className="space-y-3 border-t border-green-200 p-4">
@@ -3744,9 +4111,9 @@ function ReviewReportsTab({
         <details className="rounded-2xl border border-gray-200 bg-gray-50">
           <summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">
             却下済みの履歴
-            （
+            (
             {rejected.length}
-            件）
+            件)
           </summary>
 
           <div className="space-y-3 border-t border-gray-200 p-4">
@@ -5187,17 +5554,17 @@ function UserDeletionHistoryTab({
 
                   <div className="mt-3 space-y-1 text-sm text-gray-500">
                     <div>
-                      元の投稿日時：
+                      元の投稿日時: 
                       {formatDate(
                         deletion.original_created_at
                       )}
                     </div>
                     <div>
-                      自己削除日時：
+                      自己削除日時: 
                       {formatDate(deletion.deleted_at)}
                     </div>
                     <div>
-                      元投稿ID：#{deletion.original_report_id}
+                      元投稿ID: #{deletion.original_report_id}
                     </div>
                   </div>
                 </div>
@@ -5304,7 +5671,7 @@ function SalesTab({
       {salesData && (
         <div className="mt-3 rounded-xl bg-white p-3 text-sm text-gray-600">
           <div>
-            現在公開中：
+            現在公開中: 
             <b className="ml-1">
               {formatShortDateKey(
                 salesData.sales_date
@@ -5313,7 +5680,7 @@ function SalesTab({
           </div>
 
           <div className="mt-1">
-            週：
+            週: 
             {formatShortDateKey(
               salesData.week_start
             )}
@@ -5324,7 +5691,7 @@ function SalesTab({
           </div>
 
           <div className="mt-1 text-xs text-gray-500">
-            最終更新：
+            最終更新: 
             {formatDate(
               salesData.updated_at
             )}
@@ -5374,7 +5741,7 @@ function SalesTab({
 
           <div className="rounded-xl border border-[#e3d6e2] bg-[#f5eef4] p-4">
             <div className="font-bold">
-              📅 対象週（月〜日）
+              📅 対象週(月〜日)
             </div>
 
             <div className="mt-2 text-xl font-bold text-[#6d4966]">

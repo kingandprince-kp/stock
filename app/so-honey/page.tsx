@@ -1563,6 +1563,13 @@ async function handleBugReport() {
                 確認できた店舗を掲載しています。
               </p>
 
+              <div className="mt-3 rounded-lg border border-[#ead7a7] bg-[#fff9e8] p-3 text-[11px] leading-5 text-[#5f512f] md:mt-4 md:rounded-xl md:p-4 md:text-sm md:leading-6">
+                <div className="font-bold text-[#4f4021]">⏰ 初週集計の購入目安</div>
+                <p className="mt-1.5">実店舗は、基本的に日曜日17時までの購入を目安としています。タワーレコード・HMVは、日曜日の閉店時間まで対象となる場合があります。</p>
+                <p className="mt-1.5">オンラインショップは、注文日時だけでなく発送時期などによって集計タイミングが変わるため、<strong>購入前に必ず各ショップの商品ページで発送予定をご確認ください。</strong></p>
+                <p className="mt-1.5 text-[#766744]">※表示は目安です。店舗・ショップや購入方法、在庫・発送状況によって変わる場合があります。</p>
+              </div>
+
               <a
                 href="https://biz.oricon.co.jp/coope.asp"
                 target="_blank"
@@ -1843,6 +1850,12 @@ async function handleBugReport() {
           <p className="mt-1 text-[12px] text-[#766a75] md:mt-2 md:text-base">
             実店舗・オンラインショップで確認した在庫を投稿できます。
           </p>
+
+          <div className="mt-3 rounded-xl border border-[#ead7a7] bg-[#fff9e8] p-3 text-[11px] leading-5 text-[#5f512f] md:mt-4 md:rounded-2xl md:p-4 md:text-sm md:leading-6">
+            <div className="font-bold text-[#4f4021]">📞 複数店舗を確認・まとめて投稿される方へ</div>
+            <p className="mt-1.5">システム設計上、短時間に複数店舗の投稿が続いた場合、確認のためすぐに反映されないことがあります。電話で複数店舗へ確認してくださった場合などは、せっかくの情報をできるだけ正しく確認できるよう、<strong>コメント欄に「電話確認」「複数店舗を確認」など確認方法を一言添えていただけると助かります。</strong></p>
+            <p className="mt-1.5 text-[#766744]">※安全な情報共有のための仕組みです。ご協力ありがとうございます。</p>
+          </div>
 
           <div className="mt-3 grid grid-cols-2 gap-1.5 rounded-xl bg-[#f6edf5] p-1.5 md:mt-5 md:gap-2 md:rounded-2xl md:p-2">
             <button
@@ -2849,6 +2862,14 @@ function StoreCard({
               </span>
             )}
           </div>
+
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {online ? (
+              <span className="rounded-full border border-[#d7c7a0] bg-[#fff8e5] px-2.5 py-1 text-[10px] font-bold text-[#6a5727] md:px-3 md:py-1.5 md:text-sm">⏰ 初週集計: 発送予定を要確認</span>
+            ) : (
+              <span className="rounded-full border border-[#d7c7a0] bg-[#fff8e5] px-2.5 py-1 text-[10px] font-bold text-[#6a5727] md:px-3 md:py-1.5 md:text-sm">⏰ 初週集計目安: {isLateClosingOriconChain(store) ? "日曜 閉店まで" : "日曜 17時まで"}</span>
+            )}
+          </div>
         </div>
 
         {/* スマホ：下 / PC：右 */}
@@ -3082,6 +3103,10 @@ function StoreCard({
                     <ExternalArrow />
                   </a>
                 )}
+              </div>
+
+              <div className="mt-3 rounded-xl border border-[#ead7a7] bg-[#fff9e8] px-3 py-2 text-[10px] leading-5 text-[#6f5724] md:px-4 md:py-3 md:text-sm md:leading-6">
+                <span className="font-bold">初週集計について: </span>オンラインは在庫や発送予定が随時変わります。表示内容にかかわらず、購入前に商品ページで発送予定日を必ずご確認ください。
               </div>
 
               {store.id === 308 && (
@@ -3381,6 +3406,12 @@ function isOnlineStore(store: Store) {
     store.prefecture === "オンライン"
   );
 }
+function isLateClosingOriconChain(store: Store) {
+  const chain = (store.chain_name ?? "").toLowerCase();
+  const name = store.name.toLowerCase();
+  return chain.includes("タワーレコード") || name.includes("タワーレコード") || chain.includes("hmv") || name.includes("hmv");
+}
+
 function formatBusinessHours(value: string | null) {
   if (!value) return "";
 
