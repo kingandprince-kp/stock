@@ -2079,7 +2079,7 @@ async function handleBugReport() {
 
               <div className="mt-3 rounded-lg border border-[#ead7a7] bg-[#fff9e8] p-3 text-[11px] leading-5 text-[#5f512f] md:mt-4 md:rounded-xl md:p-4 md:text-sm md:leading-6">
                 <div className="font-bold text-[#4f4021]">⏰ 初週集計の購入目安</div>
-                <p className="mt-1.5">初週集計の締め時間は店舗や購入方法によって異なる可能性があります。店舗ごとに確認できた情報のみ表示し、未確認の場合は「要確認」としています。</p>
+                <p className="mt-1.5">初週集計の締め時間は店舗や購入方法によって異なる場合があります。店舗ごとに確認できた情報のみ表示し、未確認の場合は「要確認」としていますが、保証するものではありませんので、実際の店舗へご確認ください。</p>
                 <p className="mt-1.5">オンラインショップは、注文日時だけでなく発送時期などによって集計タイミングが変わるため、<strong>購入前に必ず各ショップの商品ページで発送予定をご確認ください。</strong></p>
                 <p className="mt-1.5 text-[#766744]">※表示は目安です。店舗・ショップや購入方法、在庫・発送状況によって変わる場合があります。</p>
               </div>
