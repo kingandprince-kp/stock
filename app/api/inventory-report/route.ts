@@ -128,6 +128,7 @@ export async function GET(request: Request) {
       product_id: row.product_id,
       quantity: row.quantity,
       stock_status: row.stock_status,
+      purchase_variant: row.purchase_variant,
       comment: row.comment,
       created_at: row.created_at,
       is_own:
