@@ -2514,27 +2514,7 @@ async function handleBugReport() {
               </label>
             )}
 
-            {reportMode === "physical" && (
-              <label className="space-y-1.5 md:space-y-2">
-                <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
-                  💿 商品
-                </span>
 
-                <select
-                  value={reportProductId}
-                  onChange={(e) =>
-                    setReportProductId(e.target.value)
-                  }
-                  className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] md:rounded-2xl md:p-3.5 md:text-base"
-                >
-                  {reportProducts.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
           </div>
 
           <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
@@ -2602,6 +2582,28 @@ async function handleBugReport() {
                 {getDisplayStoreName(selectedReportStore)}
               </div>
             </div>
+          )}
+
+          {reportMode === "physical" && (
+            <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
+              <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
+                💿 商品
+              </span>
+
+              <select
+                value={reportProductId}
+                onChange={(e) =>
+                  setReportProductId(e.target.value)
+                }
+                className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] md:rounded-2xl md:p-3.5 md:text-base"
+              >
+                {reportProducts.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
 
           {reportMode === "online" && (
