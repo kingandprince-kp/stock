@@ -2609,7 +2609,7 @@ async function handleBugReport() {
                   ["in_stock", "○ 在庫あり"],
                   ["low_stock", "△ 残りわずか"],
                   ["backorder", "入荷待ち"],
-                  ["sold_out", "× 売り切れ"],
+                  ["sold_out", "× 在庫なし"],
                 ].map(([value, label]) => (
                   <button
                     key={value}
@@ -2951,7 +2951,7 @@ async function handleBugReport() {
                       <div className="whitespace-nowrap text-[12px] font-bold leading-4 text-[#241f24] opacity-100 [-webkit-text-fill-color:#241f24] md:text-base md:leading-normal">
                         {report.stock_status ? (
                           <span
-                            className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold md:text-sm ${getOnlineStockStatusClass(report.stock_status)}`}
+                            className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold md:text-sm ${getOnlineStockHistoryStatusClass(report.stock_status)}`}
                           >
                             {formatStockStatus(report.stock_status)}
                           </span>
@@ -3470,8 +3470,20 @@ function getOnlineStockStatusClass(
   if (status === "backorder") {
     return "bg-[#e8eefc] text-[#38588f] border border-[#b8c8ef]";
   }
-  return "bg-[#fdebed] text-[#9a3040] border border-[#e8a8b0]";
+  return "bg-[#2a252a] text-white border border-[#2a252a]";
 }
+
+
+function getOnlineStockHistoryStatusClass(
+  status: OnlineStockStatus
+) {
+  if (status === "sold_out") {
+    return "bg-white text-[#2a252a] border border-[#9b9499]";
+  }
+
+  return getOnlineStockStatusClass(status);
+}
+
 
 function StoreCard({
   store,
@@ -4539,7 +4551,7 @@ function formatStockStatus(status: OnlineStockStatus) {
     in_stock: "○ 在庫あり",
     low_stock: "△ 残りわずか",
     backorder: "入荷待ち",
-    sold_out: "× 売り切れ",
+    sold_out: "× 在庫なし",
   };
   return labels[status];
 }
