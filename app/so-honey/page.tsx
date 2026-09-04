@@ -411,9 +411,13 @@ const [reportStockStatus, setReportStockStatus] =
 const [reportPurchaseVariant, setReportPurchaseVariant] =
   useState<PurchaseVariant>("special");
 const [reportShippingEnabled, setReportShippingEnabled] = useState(false);
-const [reportShippingPreset, setReportShippingPreset] = useState("same_or_next");
+const [reportShippingMode, setReportShippingMode] =
+  useState<"range" | "date" | "other">("range");
+const [reportShippingMinDays, setReportShippingMinDays] = useState("0");
+const [reportShippingMaxDays, setReportShippingMaxDays] = useState("1");
 const [reportShippingDate, setReportShippingDate] = useState("");
 const [reportShippingOther, setReportShippingOther] = useState("");
+const [reportShippingCondition, setReportShippingCondition] = useState("");
 const [reportShippingSource, setReportShippingSource] = useState("product_page");
 const [reportShippingSourceDetail, setReportShippingSourceDetail] = useState("");
 const [reportComment, setReportComment] = useState("");
@@ -1143,14 +1147,38 @@ setLoading(false);
    }
 
    if (online && reportShippingEnabled) {
-     if (reportShippingPreset === "date" && !reportShippingDate) {
+     if (reportShippingMode === "range") {
+       const minDays = Number(reportShippingMinDays);
+       const maxDays = Number(reportShippingMaxDays);
+
+       if (
+         !Number.isInteger(minDays) ||
+         !Number.isInteger(maxDays) ||
+         minDays < 0 ||
+         maxDays < 0 ||
+         minDays > 4 ||
+         maxDays > 4
+       ) {
+         setSubmitError("発送目安の日数を選び直してください。");
+         return;
+       }
+
+       if (maxDays < minDays) {
+         setSubmitError("発送目安の「まで」は「から」以上の日数を選んでください。");
+         return;
+       }
+     }
+
+     if (reportShippingMode === "date" && !reportShippingDate) {
        setSubmitError("発送予定日を入力してください。");
        return;
      }
-     if (reportShippingPreset === "other" && !reportShippingOther.trim()) {
+
+     if (reportShippingMode === "other" && !reportShippingOther.trim()) {
        setSubmitError("表示されている発送案内を入力してください。");
        return;
      }
+
      if (reportShippingSource === "other" && !reportShippingSourceDetail.trim()) {
        setSubmitError("確認場所を入力してください。");
        return;
@@ -1237,15 +1265,29 @@ setLoading(false);
      }
 
      if (online && reportShippingEnabled) {
-       const ranges: Record<string, [number, number]> = { same_day: [0, 0], same_or_next: [0, 1], one_two: [1, 2], two_three: [2, 3], three_four: [3, 4], backorder_2_7: [2, 7] };
-       const range = ranges[reportShippingPreset] ?? null;
-       const shippingType = reportShippingPreset === "date" ? "date" : reportShippingPreset === "other" ? "other" : "relative";
-       const detail = reportShippingPreset === "other" ? reportShippingOther.trim() : reportShippingPreset === "backorder_2_7" ? "お取り寄せ2〜7日" : "";
+       const range =
+         reportShippingMode === "range"
+           ? [
+               Number(reportShippingMinDays),
+               Number(reportShippingMaxDays),
+             ]
+           : null;
+       const shippingType =
+         reportShippingMode === "date"
+           ? "date"
+           : reportShippingMode === "other"
+             ? "other"
+             : "relative";
+       const detail =
+         reportShippingMode === "other"
+           ? reportShippingOther.trim()
+           : reportShippingCondition.trim();
+
        const { error: shippingError } = await supabase.rpc("submit_store_info_request_v2", {
          p_store_id: Number(reportStoreId), p_request_type: "online_product_first_week", p_product_id: Number(reportProductId),
          p_detail: detail, p_evidence: null, p_client_id: clientId, p_shipping_type: shippingType,
          p_shipping_min_days: range ? range[0] : null, p_shipping_max_days: range ? range[1] : null,
-         p_shipping_date: reportShippingPreset === "date" ? reportShippingDate : null,
+         p_shipping_date: reportShippingMode === "date" ? reportShippingDate : null,
          p_confirmation_source: reportShippingSource, p_confirmation_source_detail: reportShippingSourceDetail.trim() || null,
        });
        if (shippingError) {
@@ -1262,9 +1304,12 @@ setLoading(false);
      setReportStockStatus("in_stock");
      setReportPurchaseVariant("special");
      setReportShippingEnabled(false);
-     setReportShippingPreset("same_or_next");
+     setReportShippingMode("range");
+     setReportShippingMinDays("0");
+     setReportShippingMaxDays("1");
      setReportShippingDate("");
      setReportShippingOther("");
+     setReportShippingCondition("");
      setReportShippingSource("product_page");
      setReportShippingSourceDetail("");
      setReportComment("");
@@ -2283,13 +2328,35 @@ async function handleBugReport() {
                   type="button"
                   aria-pressed={stockOnly}
                   onClick={() => setStockOnly((current) => !current)}
-                  className={`rounded-full border px-3 py-1.5 text-[10px] font-bold transition md:px-4 md:py-2 md:text-sm ${
+                  className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-3 text-left transition md:max-w-md md:rounded-2xl md:px-4 md:py-3.5 ${
                     stockOnly
-                      ? "border-[#b05f92] bg-[#b05f92] text-white"
-                      : "border-[#d8cad7] bg-white text-[#6d4966]"
+                      ? "border-[#7bb88d] bg-[#eaf7ee] text-[#245f35] shadow-sm"
+                      : "border-[#d8cad7] bg-white text-[#4f454d] shadow-sm"
                   }`}
                 >
-                  ○ 在庫ありのみを表示
+                  <span className="flex items-center gap-2.5">
+                    <span
+                      aria-hidden="true"
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[11px] font-bold ${
+                        stockOnly
+                          ? "border-[#4f9565] bg-[#4f9565] text-white"
+                          : "border-[#b9abb6] bg-white text-transparent"
+                      }`}
+                    >
+                      ✓
+                    </span>
+                    <span>
+                      <span className="block text-[12px] font-bold md:text-sm">
+                        在庫あり商品のみ表示
+                      </span>
+                      <span className="mt-0.5 block text-[9px] font-normal opacity-75 md:text-xs">
+                        在庫なし・入荷待ちなどを一覧から隠します
+                      </span>
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-[10px] font-bold md:text-xs">
+                    {stockOnly ? "ON" : "OFF"}
+                  </span>
                 </button>
               </div>
             )}
@@ -2637,26 +2704,154 @@ async function handleBugReport() {
                 <input type="checkbox" checked={reportShippingEnabled} onChange={(e) => setReportShippingEnabled(e.target.checked)} className="mt-0.5 h-4 w-4" />
                 <span>
                   <span className="block text-[12px] font-bold text-[#4d3d18] [-webkit-text-fill-color:#4d3d18] md:text-base">🚚 発送・取り寄せ目安も投稿する</span>
-                  <span className="mt-0.5 block text-[10px] leading-4 text-[#766744] [-webkit-text-fill-color:#766744] md:text-sm">任意です。商品ページなどに表示されている内容をそのまま選んでください。</span>
+                  <span className="mt-0.5 block text-[10px] leading-4 text-[#766744] [-webkit-text-fill-color:#766744] md:text-sm">
+                    任意です。日数表示なら「から」「まで」を選ぶだけで投稿できます。
+                  </span>
                 </span>
               </label>
               {reportShippingEnabled && (
                 <div className="mt-3 space-y-3 border-t border-[#ead9a8] pt-3">
-                  <label className="block">
-                    <span className="mb-1 block text-[11px] font-bold text-[#4d434c] md:text-sm">表示されている発送・取り寄せ目安</span>
-                    <select value={reportShippingPreset} onChange={(e) => setReportShippingPreset(e.target.value)} className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] md:rounded-xl md:p-3 md:text-sm">
-                      <option value="same_day">当日</option>
-                      <option value="same_or_next">当日〜翌日</option>
-                      <option value="one_two">1〜2日後</option>
-                      <option value="two_three">2〜3日後</option>
-                      <option value="three_four">3〜4日後</option>
-                      <option value="backorder_2_7">お取り寄せ2〜7日</option>
-                      <option value="date">出荷予定日が表示されている</option>
-                      <option value="other">その他の表示</option>
-                    </select>
-                  </label>
-                  {reportShippingPreset === "date" && <label className="block"><span className="mb-1 block text-[11px] font-bold text-[#4d434c] md:text-sm">出荷予定日</span><input type="date" value={reportShippingDate} onChange={(e) => setReportShippingDate(e.target.value)} className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] md:rounded-xl md:p-3 md:text-sm" /></label>}
-                  {reportShippingPreset === "other" && <label className="block"><span className="mb-1 block text-[11px] font-bold text-[#4d434c] md:text-sm">表示されている内容</span><input type="text" maxLength={200} value={reportShippingOther} onChange={(e) => setReportShippingOther(e.target.value)} placeholder="例: 入荷次第発送 / 3〜5営業日" className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] placeholder:text-[#766c74] md:rounded-xl md:p-3 md:text-sm" /></label>}
+                  <div>
+                    <div className="mb-1.5 text-[11px] font-bold text-[#4d434c] md:text-sm">
+                      表示されている発送・取り寄せ目安
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5 md:gap-2">
+                      {[
+                        ["range", "日数"],
+                        ["date", "日付"],
+                        ["other", "その他"],
+                      ].map(([value, label]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() =>
+                            setReportShippingMode(
+                              value as "range" | "date" | "other"
+                            )
+                          }
+                          className={`rounded-lg border px-2 py-2 text-[10px] font-bold md:rounded-xl md:px-3 md:py-2.5 md:text-sm ${
+                            reportShippingMode === value
+                              ? "border-[#8c6b49] bg-[#8c6b49] text-white"
+                              : "border-[#d8cad7] bg-white text-[#5e5145]"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {reportShippingMode === "range" && (
+                    <div className="rounded-xl border border-[#ead9a8] bg-white p-3">
+                      <div className="mb-2 text-[10px] leading-4 text-[#766744] md:text-xs">
+                        例: 「当日発送」は「当日～当日」、「当日～2日で発送」は「当日～2日」にします。
+                      </div>
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+                        <label className="block">
+                          <span className="mb-1 block text-[10px] font-bold text-[#4d434c] md:text-xs">
+                            から
+                          </span>
+                          <select
+                            value={reportShippingMinDays}
+                            onChange={(e) => {
+                              const nextMin = e.target.value;
+                              setReportShippingMinDays(nextMin);
+                              if (
+                                Number(reportShippingMaxDays) <
+                                Number(nextMin)
+                              ) {
+                                setReportShippingMaxDays(nextMin);
+                              }
+                            }}
+                            className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] md:rounded-xl md:p-3 md:text-sm"
+                          >
+                            <option value="0">当日</option>
+                            <option value="1">1日</option>
+                            <option value="2">2日</option>
+                            <option value="3">3日</option>
+                            <option value="4">4日</option>
+                          </select>
+                        </label>
+
+                        <div className="pb-2.5 text-sm font-bold text-[#6a5b4f] md:pb-3">
+                          ～
+                        </div>
+
+                        <label className="block">
+                          <span className="mb-1 block text-[10px] font-bold text-[#4d434c] md:text-xs">
+                            まで
+                          </span>
+                          <select
+                            value={reportShippingMaxDays}
+                            onChange={(e) => setReportShippingMaxDays(e.target.value)}
+                            className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] md:rounded-xl md:p-3 md:text-sm"
+                          >
+                            <option value="0">当日</option>
+                            <option value="1">1日</option>
+                            <option value="2">2日</option>
+                            <option value="3">3日</option>
+                            <option value="4">4日</option>
+                          </select>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {reportShippingMode === "date" && (
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-bold text-[#4d434c] md:text-sm">
+                        出荷予定日
+                      </span>
+                      <input
+                        type="date"
+                        value={reportShippingDate}
+                        onChange={(e) => setReportShippingDate(e.target.value)}
+                        className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] md:rounded-xl md:p-3 md:text-sm"
+                      />
+                    </label>
+                  )}
+
+                  {reportShippingMode === "other" && (
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-bold text-[#4d434c] md:text-sm">
+                        表示されている内容
+                      </span>
+                      <input
+                        type="text"
+                        maxLength={200}
+                        value={reportShippingOther}
+                        onChange={(e) => setReportShippingOther(e.target.value)}
+                        placeholder="例: お取り寄せ2〜7日 / 入荷次第発送 / 3〜5営業日"
+                        className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] placeholder:text-[#766c74] md:rounded-xl md:p-3 md:text-sm"
+                      />
+                      <span className="mt-1 block text-[9px] leading-4 text-[#766744] md:text-xs">
+                        4日を超える表示や、日数で表せない案内はこちらにそのまま入力してください。
+                      </span>
+                    </label>
+                  )}
+
+                  {reportShippingMode !== "other" && (
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-bold text-[#4d434c] md:text-sm">
+                        条件・補足
+                        <span className="ml-2 text-[10px] font-normal text-[#8a7b70] md:text-xs">
+                          任意
+                        </span>
+                      </span>
+                      <input
+                        type="text"
+                        maxLength={200}
+                        value={reportShippingCondition}
+                        onChange={(e) => setReportShippingCondition(e.target.value)}
+                        placeholder="例: 13時までの注文で当日発送"
+                        className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] placeholder:text-[#766c74] md:rounded-xl md:p-3 md:text-sm"
+                      />
+                      <span className="mt-1 block text-[9px] leading-4 text-[#766744] md:text-xs">
+                        時刻・注文条件などが表示されている場合は、そのまま入力してください。
+                      </span>
+                    </label>
+                  )}
+
                   <label className="block">
                     <span className="mb-1 block text-[11px] font-bold text-[#4d434c] md:text-sm">確認場所</span>
                     <select value={reportShippingSource} onChange={(e) => setReportShippingSource(e.target.value)} className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] md:rounded-xl md:p-3 md:text-sm"><option value="product_page">商品ページ</option><option value="cart_order">カート・注文画面</option><option value="email">メール</option><option value="other">その他</option></select>
