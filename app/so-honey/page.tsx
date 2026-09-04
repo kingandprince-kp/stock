@@ -861,24 +861,9 @@ setLoading(false);
 
     if (searchMode !== "online") return filteredByStock;
 
-    const scoreStore = (store: Store) => {
-      let best = 3;
-      for (const product of products) {
-        const status =
-          onlineProductFirstWeekStatusMap.get(
-            `${store.id}-${product.id}`
-          ) ?? null;
-        const value = status?.status ?? "check";
-        const score = value === "likely" ? 0 : value === "check" ? 1 : 2;
-        if (score < best) best = score;
-      }
-      return best;
-    };
-
-    return [...filteredByStock].sort((a, b) => {
-      const scoreDiff = scoreStore(a) - scoreStore(b);
-      return scoreDiff !== 0 ? scoreDiff : compareOnlineStores(a, b);
-    });
+    // オンライン店舗は指定された固定順を最優先する。
+    // 初週判定(likely/check/unlikely)では店舗自体の並び順を変えない。
+    return [...filteredByStock].sort(compareOnlineStores);
   }, [
     searchMode,
     visibleStores,
