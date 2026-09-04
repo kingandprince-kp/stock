@@ -3933,6 +3933,18 @@ function StoreCard({
                               <div className="mt-0.5 text-[9px] text-[#968d95] md:text-xs">
                                 {formatDate(currentReport.created_at)}
                               </div>
+                              {currentReport.is_own && (
+                                <button
+                                  type="button"
+                                  disabled={deletingOwnReportId === currentReport.id}
+                                  onClick={() => void onDeleteOwnReport(currentReport.id)}
+                                  className="mt-2 rounded-full border border-[#d7c7d4] bg-white px-2.5 py-1 text-[9px] font-bold text-[#775f70] opacity-100 [-webkit-text-fill-color:#775f70] disabled:opacity-50 md:px-3 md:py-1.5 md:text-xs"
+                                >
+                                  {deletingOwnReportId === currentReport.id
+                                    ? "削除中…"
+                                    : "自分の投稿を削除"}
+                                </button>
+                              )}
                             </>
                           ) : null}
                         </div>
@@ -4238,10 +4250,26 @@ function OnlineProductFirstWeekBadge({
   status: OnlineProductFirstWeekStatusRow | null;
   formatDate: (dateString: string) => string;
 }) {
-  if (!status || status.status === "check") {
+  if (!status) {
     return (
       <div className="mt-2 rounded-lg border border-[#ead7a7] bg-[#fff9e8] px-2 py-1.5 text-[9px] font-bold leading-4 text-[#6f5724] md:rounded-xl md:px-3 md:py-2 md:text-xs">
         ⏰ 初週集計: 発送予定を要確認
+      </div>
+    );
+  }
+
+  if (status.status === "check") {
+    return (
+      <div className="mt-2 rounded-lg border border-[#dfbd68] bg-[#fff7df] px-2 py-1.5 text-[9px] leading-4 text-[#6f5724] md:rounded-xl md:px-3 md:py-2 md:text-xs">
+        <div className="font-bold">🟡 初週集計: 要確認</div>
+        {status.shipping_note && (
+          <div className="mt-0.5">
+            発送目安: {status.shipping_note}
+          </div>
+        )}
+        <div className="mt-0.5">
+          {formatDate(status.verified_at)}確認
+        </div>
       </div>
     );
   }
