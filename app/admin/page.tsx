@@ -14,6 +14,7 @@ type InventoryReport = {
   product_id: number;
   quantity: number;
   stock_status: "in_stock" | "low_stock" | "backorder" | "sold_out" | null;
+  purchase_variant: "special" | "no_special" | null;
   comment: string | null;
   created_at: string;
 };
@@ -943,6 +944,7 @@ export default function AdminPage() {
             product_id,
             quantity,
             stock_status,
+            purchase_variant,
             comment,
             created_at
           `)
@@ -6230,6 +6232,12 @@ function AdminTabButton({
   );
 }
 
+function formatPurchaseVariant(value: "special" | "no_special" | null) {
+  if (value === "special") return "先着特典あり";
+  if (value === "no_special") return "特典なし";
+  return null;
+}
+
 function ReportsTab({
   reports, stores, products, deletingId, onDelete, onBulkDelete, formatDate,
 }: {
@@ -6248,7 +6256,7 @@ function ReportsTab({
     </BulkSelectionBar>
     {reports.map((report) => {
       const store=stores.find((x)=>x.id===report.store_id); const product=products.find((x)=>x.id===report.product_id);
-      return <article key={report.id} className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"><div className="flex flex-wrap items-start justify-between gap-5"><div className="flex min-w-0 flex-1 items-start gap-3"><SelectionCheckbox checked={selected.includes(report.id)} onChange={()=>toggle(report.id)} label={`投稿 #${report.id} を選択`} /><div><div className="text-lg font-bold">{store?getDisplayStoreName(store):"店舗不明"}</div><div className="mt-3">{product?.name??"商品不明"}</div><div className="mt-1 font-bold text-[#b95489]">{formatInventoryValue(report.quantity,report.stock_status)}</div><div className="mt-1 text-sm text-gray-500">{formatDate(report.created_at)}</div>{report.comment&&<div className="mt-3 rounded-xl bg-white p-3">💬 {report.comment}</div>}</div></div><button type="button" disabled={deletingId===report.id} onClick={()=>onDelete(report)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white disabled:opacity-50">削除</button></div></article>;
+      return <article key={report.id} className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"><div className="flex flex-wrap items-start justify-between gap-5"><div className="flex min-w-0 flex-1 items-start gap-3"><SelectionCheckbox checked={selected.includes(report.id)} onChange={()=>toggle(report.id)} label={`投稿 #${report.id} を選択`} /><div><div className="text-lg font-bold">{store?getDisplayStoreName(store):"店舗不明"}</div><div className="mt-3">{product?.name??"商品不明"}</div>{report.purchase_variant&&<div className="mt-1 inline-block rounded-full bg-[#efe1f1] px-2.5 py-1 text-xs font-bold text-[#6d4966]">{formatPurchaseVariant(report.purchase_variant)}</div>}<div className="mt-1 font-bold text-[#b95489]">{formatInventoryValue(report.quantity,report.stock_status)}</div><div className="mt-1 text-sm text-gray-500">{formatDate(report.created_at)}</div>{report.comment&&<div className="mt-3 rounded-xl bg-white p-3">💬 {report.comment}</div>}</div></div><button type="button" disabled={deletingId===report.id} onClick={()=>onDelete(report)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white disabled:opacity-50">削除</button></div></article>;
     })}
   </div>;
 }

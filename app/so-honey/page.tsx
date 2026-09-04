@@ -122,20 +122,20 @@ const CHAIN_PRIORITY = [
 ];
 
 const ONLINE_STORE_PRIORITY: string[][] = [
-  ["universal", "ユニバーサル"],
-  ["タワーレコード", "towerrecords", "towerrecord", "タワレコ"],
-  ["hmv"],
-  ["楽天", "rakuten"],
-  ["amazon"],
-  ["ジョーシン", "joshin"],
-  ["セブンネット", "7net"],
-  ["ネオウィング", "neowing"],
-  ["ビックカメラ", "biccamera"],
-  ["ヤマダ", "yamada", "ウェブコム", "webcom"],
+  ["universal", "ユニバーサル", "store.universal-music.co.jp"],
+  ["タワーレコード", "towerrecords", "towerrecord", "タワレコ", "tower.jp"],
+  ["hmv", "hmv.co.jp"],
+  ["楽天", "rakuten", "books.rakuten.co.jp"],
+  ["amazon", "amazon.co.jp"],
+  ["ジョーシン", "joshin", "joshinweb", "joshinweb.jp"],
+  ["セブンネット", "7net", "7net.omni7.jp"],
+  ["ネオウィング", "neowing", "neowing.co.jp"],
+  ["ビックカメラ", "biccamera", "biccamera.com"],
+  ["ヤマダ", "yamada", "ウェブコム", "webcom", "yamada-denkiweb.com"],
 ];
 
 const VERIFIED_ONLINE_PRODUCT_URLS: Record<
-  "universal" | "tower" | "hmv" | "neowing",
+  "universal" | "tower" | "hmv" | "amazon" | "joshin" | "neowing",
   Record<number, string>
 > = {
   universal: {
@@ -170,6 +170,24 @@ const VERIFIED_ONLINE_PRODUCT_URLS: Record<
     7: "https://www.hmv.co.jp/artist_King-Prince_000000000744568/item_So-Honey-EP%E3%80%90%E9%80%9A%E5%B8%B8%E7%9B%A4%EF%BC%9C%E5%88%9D%E5%9B%9E%E3%83%97%E3%83%AC%E3%82%B9%EF%BC%9E%E3%80%91_17062112",
     8: "https://www.hmv.co.jp/artist_King-Prince_000000000744568/item_%E3%80%8A4%E5%BD%A2%E6%85%8B%E5%90%8C%E6%99%82%E8%B3%BC%E5%85%A5%E7%89%B9%E5%85%B8%E4%BB%98Blu-ray%E3%82%BB%E3%83%83%E3%83%88%E3%80%8BSo-Honey-EP%E3%80%90%E5%88%9D%E5%9B%9E%E9%99%90%E5%AE%9A%E7%9B%A4A-%E5%88%9D%E5%9B%9E%E9%99%90%E5%AE%9A%E7%9B%A4B-%E5%88%9D%E5%9B%9E%E9%99%90%E5%AE%9ALIVE%E7%9B%A4-%E9%80%9A%E5%B8%B8%E7%9B%A4%EF%BC%9C%E5%88%9D%E5%9B%9E%E3%83%97%E3%83%AC%E3%82%B9%EF%BC%9E%E3%80%91_17062116",
     9: "https://www.hmv.co.jp/product/detail/17062117",
+  },
+  amazon: {
+    1: "https://www.amazon.co.jp/dp/B0H6PRKJNB",
+    2: "https://www.amazon.co.jp/dp/B0H6PW7STF",
+    3: "https://www.amazon.co.jp/dp/B0H6PQD33G",
+    4: "https://www.amazon.co.jp/dp/B0H6PN3S34",
+    5: "https://www.amazon.co.jp/dp/B0H6PTB8NC",
+    6: "https://www.amazon.co.jp/dp/B0H6PPWPGL",
+    7: "https://www.amazon.co.jp/dp/B0H6PR6R63",
+  },
+  joshin: {
+    1: "https://joshinweb.jp/dp/4988031882238.html",
+    2: "https://joshinweb.jp/dp/4988031882252.html",
+    3: "https://joshinweb.jp/dp/4988031882269.html",
+    4: "https://joshinweb.jp/dp/4988031882276.html",
+    5: "https://joshinweb.jp/dp/4988031882283.html",
+    6: "https://joshinweb.jp/dp/4988031882290.html",
+    7: "https://joshinweb.jp/dp/4988031882306.html",
   },
   neowing: {
     1: "https://www.neowing.co.jp/product/UPCJ-9079",
@@ -261,12 +279,15 @@ type OnlineStockStatus =
   | "backorder"
   | "sold_out";
 
+type PurchaseVariant = "special" | "no_special";
+
 type InventoryReport = {
   id: number;
   store_id: number;
   product_id: number;
   quantity: number;
   stock_status: OnlineStockStatus | null;
+  purchase_variant: PurchaseVariant | null;
   comment: string | null;
   created_at: string;
   is_own?: boolean;
@@ -350,6 +371,8 @@ export default function Home() {
  const [reportQuantity, setReportQuantity] = useState("");
 const [reportStockStatus, setReportStockStatus] =
   useState<OnlineStockStatus>("in_stock");
+const [reportPurchaseVariant, setReportPurchaseVariant] =
+  useState<PurchaseVariant>("special");
 const [reportShippingEnabled, setReportShippingEnabled] = useState(false);
 const [reportShippingPreset, setReportShippingPreset] = useState("same_or_next");
 const [reportShippingDate, setReportShippingDate] = useState("");
@@ -882,10 +905,15 @@ setLoading(false);
     const map = new Map<string, InventoryReport>();
 
     for (const report of reports) {
-      const key = `${report.store_id}-${report.product_id}`;
+      const variantKey = report.purchase_variant ?? "default";
+      const variantMapKey = `${report.store_id}-${report.product_id}-${variantKey}`;
+      if (!map.has(variantMapKey)) {
+        map.set(variantMapKey, report);
+      }
 
-      if (!map.has(key)) {
-        map.set(key, report);
+      const genericKey = `${report.store_id}-${report.product_id}`;
+      if (!map.has(genericKey)) {
+        map.set(genericKey, report);
       }
     }
 
@@ -979,9 +1007,17 @@ setLoading(false);
 
   const getLatestReport = (
     storeId: number,
-    productId: number
-  ) =>
-    latestReportMap.get(`${storeId}-${productId}`) ?? null;
+    productId: number,
+    purchaseVariant?: PurchaseVariant | "unknown"
+  ) => {
+    if (purchaseVariant === "unknown") {
+      return latestReportMap.get(`${storeId}-${productId}-default`) ?? null;
+    }
+    if (purchaseVariant) {
+      return latestReportMap.get(`${storeId}-${productId}-${purchaseVariant}`) ?? null;
+    }
+    return latestReportMap.get(`${storeId}-${productId}`) ?? null;
+  };
 
   const getStoreName = (storeId: number) => {
     const store = stores.find((item) => item.id === storeId);
@@ -1021,6 +1057,14 @@ setLoading(false);
    }
 
    const online = reportMode === "online";
+   const selectedProduct =
+     products.find((product) => String(product.id) === reportProductId) ?? null;
+   const rakutenVariantRequired =
+     online &&
+     selectedReportStore !== null &&
+     selectedProduct !== null &&
+     hasRakutenVariantLinks(selectedReportStore, selectedProduct);
+
    let quantity = 0;
 
    if (!online) {
@@ -1112,6 +1156,10 @@ setLoading(false);
            stockStatus: online
              ? reportStockStatus
              : undefined,
+           purchaseVariant:
+             rakutenVariantRequired
+               ? reportPurchaseVariant
+               : undefined,
            comment:
              reportComment.trim() === ""
                ? null
@@ -1175,6 +1223,7 @@ setLoading(false);
 
      setReportQuantity("");
      setReportStockStatus("in_stock");
+     setReportPurchaseVariant("special");
      setReportShippingEnabled(false);
      setReportShippingPreset("same_or_next");
      setReportShippingDate("");
@@ -2473,10 +2522,52 @@ async function handleBugReport() {
               />
             </label>
           ) : (
-            <div className="mt-3 md:mt-5">
-              <div className="text-[12px] font-bold text-[#211d21] md:text-base">
-                🛒 在庫状況
-              </div>
+            <div className="mt-3 space-y-3 md:mt-5 md:space-y-4">
+              {selectedReportStore &&
+                reportProducts.find(
+                  (product) => String(product.id) === reportProductId
+                ) &&
+                hasRakutenVariantLinks(
+                  selectedReportStore,
+                  reportProducts.find(
+                    (product) => String(product.id) === reportProductId
+                  )!
+                ) && (
+                  <div className="rounded-xl border border-[#d8c4d4] bg-[#fcf8fc] p-3">
+                    <div className="text-[12px] font-bold text-[#211d21] md:text-base">
+                      🎁 楽天ブックスの特典区分
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {[
+                        ["special", "先着特典あり"],
+                        ["no_special", "特典なし"],
+                      ].map(([value, label]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() =>
+                            setReportPurchaseVariant(value as PurchaseVariant)
+                          }
+                          className={`rounded-xl border px-3 py-2.5 text-[11px] font-bold md:text-sm ${
+                            reportPurchaseVariant === value
+                              ? "border-[#7e5597] bg-[#7e5597] text-white"
+                              : "border-[#d8c4d4] bg-white text-[#6d4966]"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-[10px] leading-5 text-[#7b6b77] md:text-xs">
+                      在庫状況は特典あり・なしで別々に記録されます。
+                    </p>
+                  </div>
+                )}
+
+              <div>
+                <div className="text-[12px] font-bold text-[#211d21] md:text-base">
+                  🛒 在庫状況
+                </div>
               <div className="mt-2 grid grid-cols-2 gap-2 md:gap-3">
                 {[
                   ["in_stock", "○ 在庫あり"],
@@ -2499,6 +2590,7 @@ async function handleBugReport() {
                     {label}
                   </button>
                 ))}
+              </div>
               </div>
             </div>
           )}
@@ -2811,6 +2903,11 @@ async function handleBugReport() {
 
                       <div className="mt-0.5 truncate text-[10px] leading-4 text-[#766a75] opacity-100 [-webkit-text-fill-color:#766a75] md:mt-1 md:text-base md:leading-normal">
                         {getProductName(report.product_id)}
+                        {report.purchase_variant && (
+                          <span className="ml-1 font-bold text-[#7b5573]">
+                            ({purchaseVariantLabel(report.purchase_variant)})
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -3336,7 +3433,8 @@ function StoreCard({
   products: Product[];
   getLatestReport: (
     storeId: number,
-    productId: number
+    productId: number,
+    purchaseVariant?: PurchaseVariant | "unknown"
   ) => InventoryReport | null;
   formatDate: (dateString: string) => string;
   onDeleteOwnReport: (reportId: number) => Promise<void>;
@@ -3655,6 +3753,17 @@ function StoreCard({
               store.id,
               product.id
             );
+            const hasVariants =
+              online && hasRakutenVariantLinks(store, product);
+            const specialReport = hasVariants
+              ? getLatestReport(store.id, product.id, "special")
+              : null;
+            const noSpecialReport = hasVariants
+              ? getLatestReport(store.id, product.id, "no_special")
+              : null;
+            const unknownVariantReport = hasVariants
+              ? getLatestReport(store.id, product.id, "unknown")
+              : null;
 
             return (
               <div
@@ -3727,7 +3836,53 @@ function StoreCard({
                   );
                 })()}
 
-                {!report ? (
+                {hasVariants ? (
+                  <div className="mt-2 space-y-2">
+                    {[
+                      ["先着特典あり", specialReport],
+                      ["特典なし", noSpecialReport],
+                    ].map(([label, variantReport]) => {
+                      const currentReport = variantReport as InventoryReport | null;
+                      return (
+                        <div key={label as string} className="rounded-lg border border-[#eaddea] bg-[#fcf9fc] px-2 py-1.5">
+                          <div className="text-[9px] font-bold text-[#6d4966] md:text-xs">
+                            {label as string}
+                          </div>
+                          {!currentReport ? (
+                            <div className="mt-0.5 text-[10px] font-bold text-[#746b73] md:text-sm">
+                              情報なし
+                            </div>
+                          ) : currentReport.stock_status ? (
+                            <>
+                              <span className="mt-1 inline-block rounded-full bg-[#f0dfec] px-2 py-0.5 text-[10px] font-bold text-[#6d4966] md:text-sm">
+                                {formatStockStatus(currentReport.stock_status)}
+                              </span>
+                              <div className="mt-0.5 text-[9px] text-[#968d95] md:text-xs">
+                                {formatDate(currentReport.created_at)}
+                              </div>
+                            </>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+
+                    {unknownVariantReport && (
+                      <div className="rounded-lg border border-[#e5c98b] bg-[#fff8e7] px-2 py-1.5">
+                        <div className="text-[9px] font-bold text-[#725d2a] md:text-xs">
+                          特典区分不明の既存投稿
+                        </div>
+                        {unknownVariantReport.stock_status && (
+                          <span className="mt-1 inline-block rounded-full bg-[#f4ead1] px-2 py-0.5 text-[10px] font-bold text-[#6a5625] md:text-sm">
+                            {formatStockStatus(unknownVariantReport.stock_status)}
+                          </span>
+                        )}
+                        <div className="mt-0.5 text-[9px] text-[#8d805e] md:text-xs">
+                          {formatDate(unknownVariantReport.created_at)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : !report ? (
                   <div className="mt-1.5 text-[11px] font-bold text-[#625861] md:mt-2 md:text-base">
                     情報なし
                   </div>
@@ -3752,7 +3907,7 @@ function StoreCard({
                   </div>
                 )}
 
-                {report && (
+                {!hasVariants && report && (
                   <div className="mt-0.5 text-[9px] text-[#968d95] md:mt-1 md:text-sm">
                     {formatDate(report.created_at)}
                   </div>
@@ -3765,14 +3920,14 @@ function StoreCard({
                   />
                 )}
 
-                {report?.comment && (
+                {!hasVariants && report?.comment && (
                   <div className="mt-auto pt-2 md:pt-3">
                     <div className="rounded-md bg-[#faedf4] px-2 py-1.5 text-[10px] leading-4 text-[#594d56] md:rounded-xl md:px-3 md:py-2.5 md:text-base md:leading-6">
                       💬 {report.comment}
                     </div>
                   </div>
                 )}
-                {report?.is_own && (
+                {!hasVariants && report?.is_own && (
                   <button
                     type="button"
                     disabled={deletingOwnReportId === report.id}
@@ -4382,13 +4537,30 @@ function comparePhysicalStores(
   );
 }
 
+function isRakutenStore(store: Store) {
+  const text = getOnlineStoreMatchText(store);
+  return (
+    text.includes(normalizeStoreText("楽天ブックス")) ||
+    text.includes("rakuten") ||
+    text.includes(normalizeStoreText("books.rakuten.co.jp"))
+  );
+}
+
+function hasRakutenVariantLinks(store: Store, product: Product) {
+  return isRakutenStore(store) && (RAKUTEN_PRODUCT_LINKS[product.id]?.length ?? 0) > 1;
+}
+
+function purchaseVariantLabel(value: PurchaseVariant | null) {
+  if (value === "special") return "先着特典あり";
+  if (value === "no_special") return "特典なし";
+  return "特典区分不明";
+}
+
 function getVerifiedOnlineProductLinks(
   store: Store,
   product: Product
 ): ProductLinkOption[] {
-  const text = normalizeStoreText(
-    `${store.chain_name ?? ""}${store.name}`
-  );
+  const text = getOnlineStoreMatchText(store);
 
   if (
     text.includes(normalizeStoreText("楽天ブックス")) ||
@@ -4401,6 +4573,8 @@ function getVerifiedOnlineProductLinks(
     | "universal"
     | "tower"
     | "hmv"
+    | "amazon"
+    | "joshin"
     | "neowing"
     | null = null;
 
@@ -4421,6 +4595,18 @@ function getVerifiedOnlineProductLinks(
   ) {
     storeKey = "hmv";
   } else if (
+    text.includes("amazon") ||
+    text.includes(normalizeStoreText("amazon.co.jp")) ||
+    store.id === 308
+  ) {
+    storeKey = "amazon";
+  } else if (
+    text.includes(normalizeStoreText("ジョーシン")) ||
+    text.includes("joshin") ||
+    text.includes("joshinweb")
+  ) {
+    storeKey = "joshin";
+  } else if (
     text.includes(normalizeStoreText("ネオウィング")) ||
     text.includes("neowing")
   ) {
@@ -4439,9 +4625,7 @@ function getVerifiedOnlineProductLinks(
 
 function compareOnlineStores(a: Store, b: Store) {
   const getOnlineRank = (store: Store) => {
-    const text = normalizeStoreText(
-      `${store.chain_name ?? ""}${store.name}`
-    );
+    const text = getOnlineStoreMatchText(store);
 
     const index = ONLINE_STORE_PRIORITY.findIndex(
       (aliases) =>
@@ -4584,6 +4768,12 @@ function normalizeStoreText(value: string) {
     .toLowerCase()
     .replace(/\s+/g, "")
     .replace(/[・･\-‐-–—―_]/g, "");
+}
+
+function getOnlineStoreMatchText(store: Store) {
+  return normalizeStoreText(
+    `${store.chain_name ?? ""} ${store.name} ${store.online_url ?? ""}`
+  );
 }
 
 function isOnlineStore(store: Store) {

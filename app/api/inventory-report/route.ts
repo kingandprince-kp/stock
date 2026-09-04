@@ -14,6 +14,7 @@ type RequestBody = {
   productId?: number;
   quantity?: number;
   stockStatus?: "in_stock" | "low_stock" | "backorder" | "sold_out";
+  purchaseVariant?: "special" | "no_special";
   comment?: string | null;
   clientId?: string;
   turnstileToken?: string;
@@ -28,6 +29,8 @@ type TurnstileResponse = {
 
 type StoreRow = {
   id: number;
+  name: string | null;
+  chain_name: string | null;
   store_type: string | null;
   prefecture: string | null;
 };
@@ -108,7 +111,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabase
       .from("inventory_reports")
       .select(
-        "id, store_id, product_id, quantity, stock_status, comment, created_at, client_hash"
+        "id, store_id, product_id, quantity, stock_status, purchase_variant, comment, created_at, client_hash"
       )
       .eq("review_status", "approved")
       .order("created_at", { ascending: false })
@@ -193,6 +196,7 @@ export async function POST(
       productId,
       quantity,
       stockStatus,
+      purchaseVariant,
       comment,
       clientId,
       turnstileToken,
@@ -451,7 +455,7 @@ export async function POST(
     } = await supabase
       .from("stores")
       .select(
-        "id, store_type, prefecture"
+        "id, name, chain_name, store_type, prefecture"
       )
       .eq("id", Number(storeId))
       .single();
@@ -474,6 +478,45 @@ export async function POST(
 
     const online =
       isOnlineStore(currentStore);
+
+    const storeText =
+      `${currentStore.chain_name ?? ""}${currentStore.name ?? ""}`
+        .toLowerCase()
+        .replace(/\s+/g, "");
+
+    const isRakutenBooks =
+      storeText.includes("楽天ブックス") ||
+      storeText.includes("rakuten");
+
+    const rakutenVariantRequired =
+      online &&
+      isRakutenBooks &&
+      Number(productId) >= 1 &&
+      Number(productId) <= 7;
+
+    const normalizedPurchaseVariant =
+      purchaseVariant === "special" ||
+      purchaseVariant === "no_special"
+        ? purchaseVariant
+        : null;
+
+    if (rakutenVariantRequired && !normalizedPurchaseVariant) {
+      await logSecurityEvent(
+        "invalid_request",
+        "楽天ブックスの特典区分が未指定"
+      );
+      return jsonError(
+        "楽天ブックスは先着特典あり・特典なしを選択してください。"
+      );
+    }
+
+    if (!rakutenVariantRequired && normalizedPurchaseVariant) {
+      await logSecurityEvent(
+        "invalid_request",
+        "対象外店舗または商品に特典区分が指定された"
+      );
+      return jsonError("特典区分の指定が不正です。");
+    }
 
     const { data: currentProductData, error: currentProductError } =
       await supabase
@@ -939,6 +982,10 @@ export async function POST(
           Number(productId),
         quantity: storedQuantity,
         stock_status: online ? normalizedStockStatus : null,
+        purchase_variant:
+          rakutenVariantRequired
+            ? normalizedPurchaseVariant
+            : null,
         comment: normalizedComment,
         review_status:
           reviewStatus,
