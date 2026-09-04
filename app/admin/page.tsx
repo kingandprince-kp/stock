@@ -123,11 +123,21 @@ type StoreChangeHistory = {
   changed_at: string;
 };
 
-type OnlineFirstWeekStatusAdmin = {
+type StoreInfoRequestAdmin = {
+  id: number;
   store_id: number;
-  status: "likely" | "check" | "unlikely";
-  note: string | null;
-  checked_at: string;
+  store_name: string;
+  request_type: "billboard" | "first_week_cutoff" | "online_product_first_week" | "other";
+  product_id: number | null;
+  product_name: string | null;
+  proposed_billboard_status: "target" | "not_target" | null;
+  proposed_first_week_status: "likely" | "check" | "unlikely" | null;
+  detail: string;
+  evidence: string | null;
+  status: "pending" | "approved" | "rejected";
+  requested_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
 };
 
 type StoreCommentAdmin = {
@@ -204,10 +214,9 @@ type AdminTab =
   | "deletions"
   | "user-deletions"
   | "store-history"
-  | "first-week"
   | "store-comments"
   | "requests"
-  | "billboard"
+  | "store-info"
   | "bugs"
   | "access"
   | "sales";
@@ -345,8 +354,8 @@ export default function AdminPage() {
   const [storeChangeHistory, setStoreChangeHistory] =
     useState<StoreChangeHistory[]>([]);
 
-  const [onlineFirstWeekStatuses, setOnlineFirstWeekStatuses] =
-    useState<OnlineFirstWeekStatusAdmin[]>([]);
+  const [storeInfoRequests, setStoreInfoRequests] =
+    useState<StoreInfoRequestAdmin[]>([]);
 
   const [storeComments, setStoreComments] =
     useState<StoreCommentAdmin[]>([]);
@@ -569,23 +578,21 @@ export default function AdminPage() {
     }, []);
 
   // =========================================
-  // オンライン初週判定・店舗コメント
+  // 店舗情報提供・店舗コメント
   // =========================================
 
-  const loadOnlineFirstWeekStatuses =
+  const loadStoreInfoRequests =
     useCallback(async () => {
       const { data, error } = await supabase.rpc(
-        "get_online_first_week_statuses_admin"
+        "get_store_info_requests_admin"
       );
       if (error) {
         setErrorMessage(
-          `オンライン初週判定を取得できませんでした: ${error.message}`
+          `店舗情報提供を取得できませんでした: ${error.message}`
         );
         return;
       }
-      setOnlineFirstWeekStatuses(
-        (data ?? []) as OnlineFirstWeekStatusAdmin[]
-      );
+      setStoreInfoRequests((data ?? []) as StoreInfoRequestAdmin[]);
     }, []);
 
   const loadStoreComments =
@@ -929,7 +936,7 @@ export default function AdminPage() {
         loadDeletionHistory(),
         loadUserDeletionHistory(),
         loadStoreChangeHistory(),
-        loadOnlineFirstWeekStatuses(),
+        loadStoreInfoRequests(),
         loadStoreComments(),
         loadStoreRequests(),
         loadBillboardInfoRequests(),
@@ -945,7 +952,7 @@ export default function AdminPage() {
       loadDeletionHistory,
       loadUserDeletionHistory,
       loadStoreChangeHistory,
-      loadOnlineFirstWeekStatuses,
+      loadStoreInfoRequests,
       loadStoreComments,
       loadStoreRequests,
       loadBillboardInfoRequests,
@@ -996,7 +1003,7 @@ export default function AdminPage() {
             setDeletions([]);
             setUserDeletions([]);
             setStoreChangeHistory([]);
-            setOnlineFirstWeekStatuses([]);
+            setStoreInfoRequests([]);
             setStoreComments([]);
             setStoreRequests([]);
             setBillboardInfoRequests([]);
@@ -1653,29 +1660,47 @@ export default function AdminPage() {
   // オンライン初週判定・店舗コメント管理
   // =========================================
 
-  async function handleUpdateOnlineFirstWeekStatus(
-    storeId: number,
-    status: "likely" | "check" | "unlikely",
-    note: string
-  ) {
+  async function handleApproveStoreInfoRequest(requestId: number) {
+    if (!window.confirm("この店舗情報を承認して反映しますか?")) return;
     setMessage("");
     setErrorMessage("");
     const { error } = await supabase.rpc(
-      "set_online_first_week_status_admin",
-      {
-        p_store_id: storeId,
-        p_status: status,
-        p_note: note.trim() === "" ? null : note.trim(),
-      }
+      "approve_store_info_request_admin",
+      { p_request_id: requestId }
     );
     if (error) {
-      setErrorMessage(
-        `初週判定を更新できませんでした: ${error.message}`
-      );
+      setErrorMessage(`店舗情報を承認できませんでした: ${error.message}`);
       return;
     }
-    await loadOnlineFirstWeekStatuses();
-    setMessage("オンライン初週判定を更新しました。");
+    await Promise.all([loadStoreInfoRequests(), loadAdminData()]);
+    setMessage("店舗情報を承認しました。");
+  }
+
+  async function handleRejectStoreInfoRequest(requestId: number) {
+    if (!window.confirm("この店舗情報を却下しますか?")) return;
+    setMessage("");
+    setErrorMessage("");
+    const { error } = await supabase.rpc(
+      "reject_store_info_request_admin",
+      { p_request_id: requestId }
+    );
+    if (error) {
+      setErrorMessage(`店舗情報を却下できませんでした: ${error.message}`);
+      return;
+    }
+    await loadStoreInfoRequests();
+    setMessage("店舗情報を却下しました。");
+  }
+
+  async function handleDeleteStoreInfoHistory(ids: number[]) {
+    if (!ids.length) return;
+    if (!window.confirm(`選択した${ids.length}件の処理済み店舗情報履歴を完全に削除します。
+この操作は元に戻せません。`)) return;
+    await runBulkRpc(
+      "bulk_delete_store_info_request_history_admin",
+      { p_request_ids: ids },
+      `${ids.length}件の店舗情報履歴を削除しました。`
+    );
   }
 
   async function handleDeleteStoreComment(commentId: number) {
@@ -2045,6 +2070,11 @@ export default function AdminPage() {
       [billboardInfoRequests]
     );
 
+  const pendingStoreInfoCount = useMemo(
+    () => storeInfoRequests.filter((request) => request.status === "pending").length,
+    [storeInfoRequests]
+  );
+
   const uncheckedBugReportCount =
     useMemo(
       () =>
@@ -2182,8 +2212,8 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* 13タブ */}
-          <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-3 lg:grid-cols-13">
+          {/* 12タブ */}
+          <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-3 lg:grid-cols-12">
             <AdminTabButton
               active={
                 activeTab === "reports"
@@ -2257,12 +2287,6 @@ export default function AdminPage() {
               🏪 店舗履歴
             </AdminTabButton>
 
-            <AdminTabButton
-              active={activeTab === "first-week"}
-              onClick={() => setActiveTab("first-week")}
-            >
-              ⏰ 初週判定
-            </AdminTabButton>
 
             <AdminTabButton
               active={activeTab === "store-comments"}
@@ -2295,16 +2319,16 @@ export default function AdminPage() {
 
             <AdminTabButton
               active={
-                activeTab === "billboard"
+                activeTab === "store-info"
               }
               onClick={() =>
-                setActiveTab("billboard")
+                setActiveTab("store-info")
               }
             >
-              📊 Billboard情報
-              {pendingBillboardInfoCount > 0 && (
+              📨 店舗情報
+              {pendingBillboardInfoCount + pendingStoreInfoCount > 0 && (
                 <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
-                  {pendingBillboardInfoCount}
+                  {pendingBillboardInfoCount + pendingStoreInfoCount}
                 </span>
               )}
             </AdminTabButton>
@@ -2440,14 +2464,6 @@ export default function AdminPage() {
               formatDate={formatDate}
             />
           ) : activeTab ===
-            "first-week" ? (
-            <OnlineFirstWeekAdminTab
-              stores={stores}
-              statuses={onlineFirstWeekStatuses}
-              onSave={handleUpdateOnlineFirstWeekStatus}
-              formatDate={formatDate}
-            />
-          ) : activeTab ===
             "store-comments" ? (
             <StoreCommentsAdminTab
               comments={storeComments}
@@ -2487,16 +2503,27 @@ export default function AdminPage() {
               }
             />
           ) : activeTab ===
-            "billboard" ? (
-            <BillboardInfoRequestsTab
-              requests={billboardInfoRequests}
-              stores={stores}
-              processingId={billboardProcessingId}
-              onApprove={handleApproveBillboardInfo}
-              onReject={handleRejectBillboardInfo}
-              onDeleteProcessed={handleDeleteBillboardHistory}
-              formatDate={formatDate}
-            />
+            "store-info" ? (
+            <div>
+              <StoreInfoRequestsAdminTab
+                requests={storeInfoRequests}
+                onApprove={handleApproveStoreInfoRequest}
+                onReject={handleRejectStoreInfoRequest}
+                onDeleteProcessed={handleDeleteStoreInfoHistory}
+                formatDate={formatDate}
+              />
+              <div className="mt-10 border-t border-gray-200 pt-8">
+                <BillboardInfoRequestsTab
+                  requests={billboardInfoRequests}
+                  stores={stores}
+                  processingId={billboardProcessingId}
+                  onApprove={handleApproveBillboardInfo}
+                  onReject={handleRejectBillboardInfo}
+                  onDeleteProcessed={handleDeleteBillboardHistory}
+                  formatDate={formatDate}
+                />
+              </div>
+            </div>
           ) : activeTab ===
             "bugs" ? (
             <BugReportsTab
@@ -2546,130 +2573,162 @@ export default function AdminPage() {
   );
 }
 
-function OnlineFirstWeekAdminTab({
-  stores,
-  statuses,
-  onSave,
+function StoreInfoRequestsAdminTab({
+  requests,
+  onApprove,
+  onReject,
+  onDeleteProcessed,
   formatDate,
 }: {
-  stores: Store[];
-  statuses: OnlineFirstWeekStatusAdmin[];
-  onSave: (
-    storeId: number,
-    status: "likely" | "check" | "unlikely",
-    note: string
-  ) => Promise<void>;
+  requests: StoreInfoRequestAdmin[];
+  onApprove: (id: number) => Promise<void>;
+  onReject: (id: number) => Promise<void>;
+  onDeleteProcessed: (ids: number[]) => Promise<void>;
   formatDate: (value: string) => string;
 }) {
-  const onlineStores = useMemo(
-    () =>
-      stores
-        .filter(
-          (store) =>
-            store.store_type === "online" ||
-            store.prefecture === "オンライン"
-        )
-        .sort((a, b) =>
-          getDisplayStoreName(a).localeCompare(getDisplayStoreName(b), "ja")
-        ),
-    [stores]
-  );
-  const statusMap = useMemo(() => {
-    const map = new Map<number, OnlineFirstWeekStatusAdmin>();
-    statuses.forEach((item) => map.set(item.store_id, item));
-    return map;
-  }, [statuses]);
-  const [search, setSearch] = useState("");
-  const [drafts, setDrafts] = useState<
-    Record<number, { status: "likely" | "check" | "unlikely"; note: string }>
-  >({});
+  const [selected, setSelected] = useState<number[]>([]);
+  const pending = requests.filter((request) => request.status === "pending");
+  const processed = requests.filter((request) => request.status !== "pending");
+  const processedIds = processed.map((request) => request.id);
+  const allSelected = processedIds.length > 0 && processedIds.every((id) => selected.includes(id));
 
-  const visible = onlineStores.filter((store) => {
-    const q = search.trim().toLowerCase();
-    return !q || getDisplayStoreName(store).toLowerCase().includes(q);
-  });
+  function typeLabel(request: StoreInfoRequestAdmin) {
+    if (request.request_type === "billboard") return "Billboard集計情報";
+    if (request.request_type === "first_week_cutoff") return "初週集計の締め時間";
+    if (request.request_type === "online_product_first_week") return "商品別の発送・初週情報";
+    return "その他店舗情報";
+  }
 
-  function getDraft(storeId: number) {
-    const existing = drafts[storeId];
-    if (existing) return existing;
-    const current = statusMap.get(storeId);
-    return {
-      status: current?.status ?? "check",
-      note: current?.note ?? "",
-    };
+  function statusLabel(status: StoreInfoRequestAdmin["proposed_first_week_status"]) {
+    if (status === "likely") return "間に合う見込み";
+    if (status === "unlikely") return "間に合わない見込み";
+    if (status === "check") return "要確認";
+    return null;
+  }
+
+  function card(request: StoreInfoRequestAdmin, processedRow = false) {
+    const firstWeekLabel = statusLabel(request.proposed_first_week_status);
+    return (
+      <div key={request.id} className="rounded-2xl border border-gray-200 bg-white p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="font-bold">{request.store_name}</div>
+            <div className="mt-1 text-xs text-gray-500">
+              #{request.id} / {formatDate(request.requested_at)}
+            </div>
+          </div>
+          <span className="rounded-full bg-[#f3e9f1] px-3 py-1 text-xs font-bold text-[#6d4966]">
+            {typeLabel(request)}
+          </span>
+        </div>
+
+        {request.proposed_billboard_status && (
+          <div className="mt-3 rounded-xl bg-[#f3edf8] p-3 text-sm">
+            <span className="font-bold">Billboard: </span>
+            {request.proposed_billboard_status === "target" ? "対象" : "対象外"}
+          </div>
+        )}
+        {request.product_name && (
+          <div className="mt-3 rounded-xl bg-gray-50 p-3 text-sm">
+            <span className="font-bold">商品: </span>{request.product_name}
+          </div>
+        )}
+        {firstWeekLabel && (
+          <div className="mt-2 rounded-xl bg-[#fff9e8] p-3 text-sm">
+            <span className="font-bold">初週集計: </span>{firstWeekLabel}
+          </div>
+        )}
+        <div className="mt-2 whitespace-pre-wrap rounded-xl bg-gray-50 p-3 text-sm leading-6">
+          <span className="font-bold">内容: </span>{request.detail}
+        </div>
+        {request.evidence && (
+          <div className="mt-2 whitespace-pre-wrap break-words rounded-xl bg-[#f8f1f7] p-3 text-sm leading-6">
+            <span className="font-bold">確認方法・ソース: </span>{request.evidence}
+          </div>
+        )}
+
+        {!processedRow ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void onApprove(request.id)}
+              className="rounded-xl bg-green-700 px-4 py-2 text-sm font-bold text-white"
+            >
+              {request.request_type === "other" ? "確認・処理済みにする" : "承認・反映"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void onReject(request.id)}
+              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white"
+            >
+              却下
+            </button>
+          </div>
+        ) : (
+          <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
+            <input
+              type="checkbox"
+              checked={selected.includes(request.id)}
+              onChange={() =>
+                setSelected((current) =>
+                  current.includes(request.id)
+                    ? current.filter((id) => id !== request.id)
+                    : [...current, request.id]
+                )
+              }
+            />
+            <span>{request.status === "approved" ? "承認済み" : "却下済み"}</span>
+            {request.reviewed_at && <span>{formatDate(request.reviewed_at)}</span>}
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
     <div className="mt-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-bold">⏰ オンライン初週判定</h2>
-          <p className="mt-1 text-sm text-gray-600">
-            「間に合う／間に合わない」は確認時点の目安です。更新すると確認日時も現在時刻に更新されます。
-          </p>
-        </div>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="オンラインショップを検索"
-          className="rounded-xl border border-gray-300 px-3 py-2 text-sm"
-        />
+      <div>
+        <h2 className="text-2xl font-bold">📨 店舗情報提供</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Billboard集計情報、初週締め時間、オンラインの商品別発送・初週情報、その他店舗情報を確認します。
+        </p>
       </div>
 
-      <div className="mt-5 space-y-3">
-        {visible.map((store) => {
-          const current = statusMap.get(store.id);
-          const draft = getDraft(store.id);
-          return (
-            <div key={store.id} className="rounded-2xl border border-gray-200 p-4">
-              <div className="font-bold">{getDisplayStoreName(store)}</div>
-              {current && (
-                <div className="mt-1 text-xs text-gray-500">
-                  最終確認: {formatDate(current.checked_at)}
-                </div>
-              )}
-              <div className="mt-3 grid gap-2 md:grid-cols-[220px_1fr_auto]">
-                <select
-                  value={draft.status}
-                  onChange={(e) =>
-                    setDrafts((prev) => ({
-                      ...prev,
-                      [store.id]: {
-                        ...draft,
-                        status: e.target.value as "likely" | "check" | "unlikely",
-                      },
-                    }))
-                  }
-                  className="rounded-xl border border-gray-300 p-2.5"
-                >
-                  <option value="likely">間に合う見込み</option>
-                  <option value="check">発送予定を要確認</option>
-                  <option value="unlikely">間に合わない見込み</option>
-                </select>
-                <input
-                  value={draft.note}
-                  onChange={(e) =>
-                    setDrafts((prev) => ({
-                      ...prev,
-                      [store.id]: { ...draft, note: e.target.value },
-                    }))
-                  }
-                  maxLength={500}
-                  placeholder="確認メモ(例: 9/6までに発送予定と商品ページで確認)"
-                  className="rounded-xl border border-gray-300 p-2.5"
-                />
-                <button
-                  type="button"
-                  onClick={() => void onSave(store.id, draft.status, draft.note)}
-                  className="rounded-xl bg-[#211d21] px-4 py-2.5 font-bold text-white"
-                >
-                  更新
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {pending.length === 0 ? (
+        <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">
+          未処理の店舗情報提供はありません。
+        </div>
+      ) : (
+        <div className="mt-5 space-y-4">{pending.map((request) => card(request))}</div>
+      )}
+
+      <details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50">
+        <summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">
+          処理済みの履歴 ({processed.length}件)
+        </summary>
+        <div className="border-t border-gray-200 p-4">
+          {processed.length > 0 && (
+            <BulkSelectionBar
+              count={selected.length}
+              allSelected={allSelected}
+              onToggleAll={() => setSelected(allSelected ? [] : processedIds)}
+            >
+              <button
+                disabled={!selected.length}
+                onClick={() => void onDeleteProcessed(selected)}
+                className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40"
+              >
+                選択した履歴を完全削除
+              </button>
+            </BulkSelectionBar>
+          )}
+          <div className="mt-3 space-y-3">
+            {processed.length ? processed.map((request) => card(request, true)) : (
+              <div className="py-3 text-center text-sm text-gray-500">処理済みの履歴はありません。</div>
+            )}
+          </div>
+        </div>
+      </details>
     </div>
   );
 }
@@ -4763,7 +4822,7 @@ function BillboardInfoRequestsTab({ requests, stores, processingId, onApprove, o
   const [selected,setSelected]=useState<number[]>([]); const pending=requests.filter(x=>x.status==="pending"); const processed=requests.filter(x=>x.status!=="pending"); const ids=processed.map(x=>x.id); const all=ids.length>0&&ids.every(id=>selected.includes(id));
   useEffect(()=>setSelected(c=>c.filter(id=>ids.includes(id))),[requests]); const toggle=(id:number)=>setSelected(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id]); const storeName=(id:number)=>{const x=stores.find(s=>s.id===id);return x?getDisplayStoreName(x):`店舗ID ${id}`};
   const card=(r:BillboardInfoRequest,selectable=false)=><article key={r.id} className="rounded-2xl border border-[#e5d7e6] bg-white p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex min-w-0 flex-1 items-start gap-3">{selectable&&<SelectionCheckbox checked={selected.includes(r.id)} onChange={()=>toggle(r.id)} label={`Billboard履歴 #${r.id} を選択`} />}<div className="min-w-0 flex-1"><div className="text-lg font-bold">{storeName(r.store_id)}</div><div className="mt-2"><span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-800">{r.proposed_status==="target"?"Billboard 対象":"Billboard 対象外"}</span>{r.status!=="pending"&&<span className={"ml-2 rounded-full px-3 py-1 text-xs font-bold "+(r.status==="approved"?"bg-green-100 text-green-700":"bg-red-100 text-red-700")}>{r.status==="approved"?"承認済み":"却下済み"}</span>}</div><div className="mt-3 text-sm font-bold text-gray-600">確認できるソースURL・エビデンス</div><div className="mt-1 whitespace-pre-wrap break-words rounded-xl bg-[#f8f4f7] p-3 text-sm">{r.evidence}</div><div className="mt-3 text-xs text-gray-500">受付: {formatDate(r.requested_at)}</div>{r.reviewed_at&&<div className="mt-1 text-xs text-gray-500">処理: {formatDate(r.reviewed_at)}</div>}</div></div>{r.status==="pending"&&<div className="flex gap-2"><button disabled={processingId===r.id} onClick={()=>onApprove(r)} className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white">内容確認済み・反映</button><button disabled={processingId===r.id} onClick={()=>onReject(r)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white">却下</button></div>}</div></article>;
-  return <div className="mt-6"><h2 className="text-2xl font-bold">📊 Billboard情報提供</h2><p className="mt-2 text-gray-500">「Billboard 要確認」の店舗から寄せられた情報です。ソースURLや電話確認・店頭確認などのエビデンスを確認してから反映してください。</p>{!pending.length?<div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">未処理のBillboard情報提供はありません。</div>:<div className="mt-5 space-y-4">{pending.map(r=>card(r))}</div>}<details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50"><summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">処理済みの履歴 ({processed.length}件)</summary><div className="border-t border-gray-200 p-4">{processed.length>0&&<BulkSelectionBar count={selected.length} allSelected={all} onToggleAll={()=>setSelected(all?[]:ids)}><button disabled={!selected.length} onClick={()=>onDeleteProcessed(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を完全削除</button></BulkSelectionBar>}<div className="mt-3 space-y-3">{processed.length?processed.map(r=>card(r,true)):<div className="py-3 text-center text-sm text-gray-500">処理済みの履歴はありません。</div>}</div></div></details></div>;
+  return <div className="mt-6"><h2 className="text-2xl font-bold">📊 Billboard情報提供</h2><p className="mt-2 text-gray-500">以前のBillboard情報提供機能から送信された履歴です。未処理のものがある場合はこちらで確認してください。</p>{!pending.length?<div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">未処理のBillboard情報提供はありません。</div>:<div className="mt-5 space-y-4">{pending.map(r=>card(r))}</div>}<details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50"><summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">処理済みの履歴 ({processed.length}件)</summary><div className="border-t border-gray-200 p-4">{processed.length>0&&<BulkSelectionBar count={selected.length} allSelected={all} onToggleAll={()=>setSelected(all?[]:ids)}><button disabled={!selected.length} onClick={()=>onDeleteProcessed(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を完全削除</button></BulkSelectionBar>}<div className="mt-3 space-y-3">{processed.length?processed.map(r=>card(r,true)):<div className="py-3 text-center text-sm text-gray-500">処理済みの履歴はありません。</div>}</div></div></details></div>;
 }
 
 function StoreRequestsTab({

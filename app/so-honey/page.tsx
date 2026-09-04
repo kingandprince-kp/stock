@@ -139,6 +139,8 @@ type Store = {
   phone: string | null;
   business_hours: string | null;
   official_url: string | null;
+  first_week_cutoff_note: string | null;
+  first_week_verified_at: string | null;
 };
 
 type Product = {
@@ -178,6 +180,28 @@ type SalesSummary = {
 };
 
 type BillboardInfoStatus = "target" | "not_target";
+
+type OnlineFirstWeekStatusValue = "likely" | "check" | "unlikely";
+
+type OnlineProductFirstWeekStatusRow = {
+  store_id: number;
+  product_id: number;
+  status: OnlineFirstWeekStatusValue;
+  shipping_note: string | null;
+  verified_at: string;
+};
+
+type StoreComment = {
+  id: number;
+  store_id: number;
+  body: string;
+  created_at: string;
+};
+
+type StoreCommentCount = {
+  store_id: number;
+  comment_count: number;
+};
 
 type SearchMode = "physical" | "online";
 
@@ -231,6 +255,10 @@ const [submitError, setSubmitError] = useState("");
   const [requestError, setRequestError] = useState("");
   const [salesData, setSalesData] =
   useState<SalesSummary | null>(null);
+  const [onlineProductFirstWeekStatuses, setOnlineProductFirstWeekStatuses] =
+    useState<OnlineProductFirstWeekStatusRow[]>([]);
+  const [storeCommentCounts, setStoreCommentCounts] =
+    useState<StoreCommentCount[]>([]);
   const [bugReportOpen, setBugReportOpen] = useState(false);
 const [bugDescription, setBugDescription] = useState("");
 const [bugDeviceType, setBugDeviceType] = useState("");
@@ -471,6 +499,36 @@ const percent =
   setSalesData(latest);
 }, []);
 
+const loadOnlineProductFirstWeekStatuses = useCallback(async () => {
+  const { data, error } = await supabase.rpc(
+    "get_online_product_first_week_statuses"
+  );
+
+  if (error) {
+    console.error("get_online_product_first_week_statuses error:", error);
+    return;
+  }
+
+  setOnlineProductFirstWeekStatuses(
+    (data ?? []) as OnlineProductFirstWeekStatusRow[]
+  );
+}, []);
+
+const loadStoreCommentCounts = useCallback(async () => {
+  const { data, error } = await supabase.rpc(
+    "get_store_comment_counts"
+  );
+
+  if (error) {
+    console.error("get_store_comment_counts error:", error);
+    return;
+  }
+
+  setStoreCommentCounts(
+    (data ?? []) as StoreCommentCount[]
+  );
+}, []);
+
   useEffect(() => {
     async function loadInitialData() {
       setLoading(true);
@@ -492,7 +550,9 @@ const percent =
             address,
             phone,
             business_hours,
-            official_url
+            official_url,
+            first_week_cutoff_note,
+            first_week_verified_at
           `)
           .limit(2000),
 
@@ -504,7 +564,7 @@ const percent =
 
       if (storesResult.error) {
         setDataError(
-          `店舗データを読み込めませんでした：${storesResult.error.message}`
+          `店舗データを読み込めませんでした: ${storesResult.error.message}`
         );
         setLoading(false);
         return;
@@ -512,7 +572,7 @@ const percent =
 
       if (productsResult.error) {
         setDataError(
-          `商品データを読み込めませんでした：${productsResult.error.message}`
+          `商品データを読み込めませんでした: ${productsResult.error.message}`
         );
         setLoading(false);
         return;
@@ -534,13 +594,20 @@ const percent =
       await Promise.all([
   loadInventoryReports(),
   loadSalesData(),
+  loadOnlineProductFirstWeekStatuses(),
+  loadStoreCommentCounts(),
 ]);
 
 setLoading(false);
     }
 
     loadInitialData();
-  }, [loadInventoryReports, loadSalesData]);
+  }, [
+    loadInventoryReports,
+    loadSalesData,
+    loadOnlineProductFirstWeekStatuses,
+    loadStoreCommentCounts,
+  ]);
 
   const physicalStores = useMemo(() => {
     return stores.filter(
@@ -693,6 +760,22 @@ setLoading(false);
 
     return map;
   }, [reports]);
+
+  const onlineProductFirstWeekStatusMap = useMemo(() => {
+    const map = new Map<string, OnlineProductFirstWeekStatusRow>();
+    for (const item of onlineProductFirstWeekStatuses) {
+      map.set(`${item.store_id}-${item.product_id}`, item);
+    }
+    return map;
+  }, [onlineProductFirstWeekStatuses]);
+
+  const storeCommentCountMap = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const item of storeCommentCounts) {
+      map.set(item.store_id, Number(item.comment_count) || 0);
+    }
+    return map;
+  }, [storeCommentCounts]);
 
   const latestFiveReports = reports.slice(0, 5);
 
@@ -1388,7 +1471,7 @@ async function handleBugReport() {
                 />
               </div>
 
-              {/* スマホ：タイトルの左右に蜂 */}
+              {/* スマホ: タイトルの左右に蜂 */}
               <div className="mx-auto mt-1 grid w-full max-w-[360px] grid-cols-[78px_minmax(0,1fr)_78px] items-center gap-0 md:block md:max-w-none">
                 <img
                   src="/bee-ren.png"
@@ -1565,7 +1648,7 @@ async function handleBugReport() {
 
               <div className="mt-3 rounded-lg border border-[#ead7a7] bg-[#fff9e8] p-3 text-[11px] leading-5 text-[#5f512f] md:mt-4 md:rounded-xl md:p-4 md:text-sm md:leading-6">
                 <div className="font-bold text-[#4f4021]">⏰ 初週集計の購入目安</div>
-                <p className="mt-1.5">実店舗は、基本的に日曜日17時までの購入を目安としています。タワーレコード・HMVは、日曜日の閉店時間まで対象となる場合があります。</p>
+                <p className="mt-1.5">初週集計の締め時間は店舗や購入方法によって異なる可能性があります。店舗ごとに確認できた情報のみ表示し、未確認の場合は「要確認」としています。</p>
                 <p className="mt-1.5">オンラインショップは、注文日時だけでなく発送時期などによって集計タイミングが変わるため、<strong>購入前に必ず各ショップの商品ページで発送予定をご確認ください。</strong></p>
                 <p className="mt-1.5 text-[#766744]">※表示は目安です。店舗・ショップや購入方法、在庫・発送状況によって変わる場合があります。</p>
               </div>
@@ -1825,6 +1908,11 @@ async function handleBugReport() {
                     formatDate={formatDate}
                     onDeleteOwnReport={handleDeleteOwnReport}
                     deletingOwnReportId={deletingOwnReportId}
+                    onlineProductFirstWeekStatusMap={onlineProductFirstWeekStatusMap}
+                    commentCount={
+                      storeCommentCountMap.get(store.id) ?? 0
+                    }
+                    onCommentsChanged={loadStoreCommentCounts}
                   />
                 ))}
               </div>
@@ -2737,6 +2825,9 @@ function StoreCard({
   formatDate,
   onDeleteOwnReport,
   deletingOwnReportId,
+  onlineProductFirstWeekStatusMap,
+  commentCount,
+  onCommentsChanged,
 }: {
   store: Store;
   products: Product[];
@@ -2747,70 +2838,105 @@ function StoreCard({
   formatDate: (dateString: string) => string;
   onDeleteOwnReport: (reportId: number) => Promise<void>;
   deletingOwnReportId: number | null;
+  onlineProductFirstWeekStatusMap: Map<string, OnlineProductFirstWeekStatusRow>;
+  commentCount: number;
+  onCommentsChanged: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
-  const [billboardInfoOpen, setBillboardInfoOpen] = useState(false);
-  const [billboardProposedStatus, setBillboardProposedStatus] =
-    useState<BillboardInfoStatus>("target");
-  const [billboardEvidence, setBillboardEvidence] = useState("");
-  const [billboardSubmitting, setBillboardSubmitting] = useState(false);
-  const [billboardMessage, setBillboardMessage] = useState("");
-  const [billboardError, setBillboardError] = useState("");
+  const [storeInfoOpen, setStoreInfoOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [comments, setComments] = useState<StoreComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentBody, setCommentBody] = useState("");
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [commentMessage, setCommentMessage] = useState("");
+  const [commentError, setCommentError] = useState("");
 
-  async function handleBillboardInfoSubmit() {
-    setBillboardMessage("");
-    setBillboardError("");
+  const loadComments = useCallback(async () => {
+    setCommentsLoading(true);
+    setCommentError("");
 
-    const evidence = billboardEvidence.trim();
+    const { data, error } = await supabase.rpc(
+      "get_store_comments",
+      { p_store_id: store.id, p_limit: 20 }
+    );
 
-    if (evidence === "") {
-      setBillboardError("確認できるソースURLまたはエビデンスを入力してください。");
+    if (error) {
+      setCommentError(
+        `コメントを読み込めませんでした: ${error.message}`
+      );
+      setCommentsLoading(false);
       return;
     }
 
-    if (evidence.length > 1000) {
-      setBillboardError("ソースURL・エビデンスは1000文字以内で入力してください。");
+    setComments((data ?? []) as StoreComment[]);
+    setCommentsLoading(false);
+  }, [store.id]);
+
+  async function toggleComments() {
+    const next = !commentsOpen;
+    setCommentsOpen(next);
+    setCommentMessage("");
+    setCommentError("");
+    if (next) {
+      await loadComments();
+    }
+  }
+
+  async function handleStoreCommentSubmit() {
+    setCommentMessage("");
+    setCommentError("");
+
+    const body = commentBody.trim();
+
+    if (!body) {
+      setCommentError("コメントを入力してください。");
       return;
     }
 
-    setBillboardSubmitting(true);
+    if (body.length > 300) {
+      setCommentError("コメントは300文字以内で入力してください。");
+      return;
+    }
+
+    if (/https?:\/\/|www\./i.test(body)) {
+      setCommentError("店舗コメントにはURLを投稿できません。");
+      return;
+    }
+
+    setCommentSubmitting(true);
 
     try {
       let clientId = localStorage.getItem("kp_inventory_client_id");
-
       if (!clientId) {
         clientId = crypto.randomUUID();
         localStorage.setItem("kp_inventory_client_id", clientId);
       }
 
       const { error } = await supabase.rpc(
-        "submit_billboard_info_request",
+        "submit_store_comment",
         {
           p_store_id: store.id,
-          p_proposed_status: billboardProposedStatus,
-          p_evidence: evidence,
+          p_body: body,
           p_client_id: clientId,
         }
       );
 
       if (error) {
-        setBillboardError(
-          `情報を送信できませんでした: ${error.message}`
-        );
+        setCommentError(error.message);
         return;
       }
 
-      setBillboardMessage(
-        "情報を送信しました。内容を確認のうえ、サイトへ反映いたします。在庫チェッカーへのご協力、ありがとうございます。"
-      );
-      setBillboardEvidence("");
+      setCommentBody("");
+      setCommentMessage("コメントを投稿しました。ありがとうございます。");
+      await Promise.all([loadComments(), onCommentsChanged()]);
     } catch (error) {
       console.error(error);
-      setBillboardError(
-        "送信中にエラーが発生しました。もう一度お試しください。"
+      setCommentError(
+        "コメント投稿中にエラーが発生しました。もう一度お試しください。"
       );
     } finally {
-      setBillboardSubmitting(false);
+      setCommentSubmitting(false);
     }
   }
 
@@ -2843,7 +2969,7 @@ function StoreCard({
     <article className="rounded-2xl border border-[#e8d9e7] bg-white p-3.5 shadow-sm md:rounded-3xl md:p-6">
             {/* 店舗基本情報 ＋ 集計対象 */}
       <div className="md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-4">
-        {/* 左：店舗名・所在地・営業時間 */}
+        {/* 左: 店舗名・所在地・営業時間 */}
         <div className="min-w-0">
           <h3 className="text-base font-bold leading-5 text-[#1d191d] md:text-2xl md:leading-snug">
             {getDisplayStoreName(store)}
@@ -2863,16 +2989,19 @@ function StoreCard({
             )}
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {online ? (
-              <span className="rounded-full border border-[#d7c7a0] bg-[#fff8e5] px-2.5 py-1 text-[10px] font-bold text-[#6a5727] md:px-3 md:py-1.5 md:text-sm">⏰ 初週集計: 発送予定を要確認</span>
-            ) : (
-              <span className="rounded-full border border-[#d7c7a0] bg-[#fff8e5] px-2.5 py-1 text-[10px] font-bold text-[#6a5727] md:px-3 md:py-1.5 md:text-sm">⏰ 初週集計目安: {isLateClosingOriconChain(store) ? "日曜 閉店まで" : "日曜 17時まで"}</span>
-            )}
-          </div>
+          {!online && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <span className="rounded-full border border-[#d7c7a0] bg-[#fff8e5] px-2.5 py-1 text-[10px] font-bold text-[#6a5727] md:px-3 md:py-1.5 md:text-sm">
+                ⏰ 初週締め時間: {store.first_week_cutoff_note ?? "要確認"}
+                {store.first_week_verified_at && (
+                  <span className="ml-1 font-normal">({formatDate(store.first_week_verified_at)}確認)</span>
+                )}
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* スマホ：下 / PC：右 */}
+        {/* スマホ: 下 / PC: 右 */}
         <div className="mt-1.5 flex flex-wrap items-center gap-1 md:mt-0 md:justify-end md:gap-2">
           {store.oricon_target === true && (
             <span className="whitespace-nowrap rounded-md border border-[#bd4f88] bg-[#d9609b] px-2 py-0.5 text-[9px] font-bold text-white md:rounded-xl md:px-4 md:py-2 md:text-base">
@@ -2891,17 +3020,6 @@ function StoreCard({
               <span className="whitespace-nowrap rounded-md border border-[#9e85b8] bg-[#eee7f4] px-2 py-0.5 text-[9px] font-bold text-[#5b486b] md:rounded-xl md:px-4 md:py-2 md:text-base">
                 Billboard 要確認
               </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setBillboardInfoOpen((current) => !current);
-                  setBillboardMessage("");
-                  setBillboardError("");
-                }}
-                className="whitespace-nowrap rounded-md border border-[#9e85b8] bg-white px-2 py-0.5 text-[9px] font-bold text-[#5b486b] md:rounded-xl md:px-3 md:py-2 md:text-sm"
-              >
-                情報提供する
-              </button>
             </>
           )}
 
@@ -2913,79 +3031,22 @@ function StoreCard({
         </div>
       </div>
 
-      {store.billboard_status === "check_store" && billboardInfoOpen && (
-        <div className="mt-3 rounded-xl border border-[#d9c8df] bg-[#faf7fc] p-3 md:mt-4 md:rounded-2xl md:p-4">
-          <div className="text-[11px] font-bold text-[#5b486b] md:text-sm">
-            Billboard集計対象情報を提供する
-          </div>
-          <p className="mt-1 text-[10px] leading-5 text-[#6d626c] md:text-sm md:leading-6">
-            公式ページなどのURLのほか、店舗への電話確認・店頭での確認内容なども送信できます。内容を確認後、サイトへ反映します。
-          </p>
+      <div className="mt-2.5">
+        <button
+          type="button"
+          onClick={() => setStoreInfoOpen((current) => !current)}
+          className="rounded-full border border-[#cdb9ca] bg-white px-3 py-1.5 text-[10px] font-bold text-[#6d4966] md:px-4 md:py-2 md:text-sm"
+        >
+          📨 店舗情報を提供 {storeInfoOpen ? "∧" : "∨"}
+        </button>
+      </div>
 
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <label className="block">
-              <div className="mb-1 text-[11px] font-bold text-[#4d434c] md:text-sm">
-                情報の内容
-              </div>
-              <select
-                value={billboardProposedStatus}
-                onChange={(event) =>
-                  setBillboardProposedStatus(
-                    event.target.value as BillboardInfoStatus
-                  )
-                }
-                className="w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] md:rounded-xl md:p-3 md:text-sm"
-              >
-                <option value="target">Billboard 対象</option>
-                <option value="not_target">Billboard 対象外</option>
-              </select>
-            </label>
-          </div>
-
-          <label className="mt-3 block">
-            <div className="mb-1 text-[11px] font-bold text-[#4d434c] md:text-sm">
-              確認できるソースURL・エビデンス <span className="text-red-600">必須</span>
-            </div>
-            <textarea
-              value={billboardEvidence}
-              onChange={(event) => setBillboardEvidence(event.target.value)}
-              maxLength={1000}
-              rows={4}
-              placeholder={"例）https://...\n店舗へ電話で確認。8/31、店員さんよりBillboard集計対象との回答あり。\n店頭掲示でBillboard集計対象と確認。"}
-              className="w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] md:rounded-xl md:p-3 md:text-sm"
-            />
-          </label>
-
-          {billboardError && (
-            <div className="mt-2 rounded-lg bg-red-50 p-2 text-[11px] font-bold text-red-700 md:text-sm">
-              {billboardError}
-            </div>
-          )}
-
-          {billboardMessage && (
-            <div className="mt-2 rounded-lg bg-green-50 p-2 text-[11px] font-bold text-green-700 md:text-sm">
-              {billboardMessage}
-            </div>
-          )}
-
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={billboardSubmitting}
-              onClick={handleBillboardInfoSubmit}
-              className="rounded-lg bg-[#6d4966] px-4 py-2 text-[11px] font-bold text-white disabled:opacity-50 md:rounded-xl md:text-sm"
-            >
-              {billboardSubmitting ? "送信中…" : "情報を送信"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setBillboardInfoOpen(false)}
-              className="rounded-lg border border-[#d8cad7] bg-white px-4 py-2 text-[11px] font-bold text-[#5b486b] md:rounded-xl md:text-sm"
-            >
-              閉じる
-            </button>
-          </div>
-        </div>
+      {storeInfoOpen && (
+        <StoreInfoContributionForm
+          store={store}
+          products={storeProducts}
+          onClose={() => setStoreInfoOpen(false)}
+        />
       )}
 
       {/* 在庫 */}
@@ -3049,6 +3110,13 @@ function StoreCard({
                   </div>
                 )}
 
+                {online && (
+                  <OnlineProductFirstWeekBadge
+                    status={onlineProductFirstWeekStatusMap.get(`${store.id}-${product.id}`) ?? null}
+                    formatDate={formatDate}
+                  />
+                )}
+
                 {report?.comment && (
                   <div className="mt-auto pt-2 md:pt-3">
                     <div className="rounded-md bg-[#faedf4] px-2 py-1.5 text-[10px] leading-4 text-[#594d56] md:rounded-xl md:px-3 md:py-2.5 md:text-base md:leading-6">
@@ -3072,6 +3140,93 @@ function StoreCard({
             );
           })}
         </div>
+      </div>
+
+      <div className="mt-2.5 rounded-xl border border-[#eaddea] bg-[#fbf7fa] md:mt-4 md:rounded-2xl">
+        <button
+          type="button"
+          onClick={() => void toggleComments()}
+          className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left md:px-4 md:py-3.5"
+        >
+          <div>
+            <div className="text-[11px] font-bold text-[#4e424b] md:text-base">
+              💬 店舗コメント({commentCount})
+            </div>
+            <div className="mt-0.5 text-[9px] text-[#81757f] md:text-xs">
+              混雑・レジ・入荷予定・売場状況などを共有できます
+            </div>
+          </div>
+          <span className="shrink-0 text-[#9b6c91]">
+            {commentsOpen ? "∧" : "∨"}
+          </span>
+        </button>
+
+        {commentsOpen && (
+          <div className="border-t border-[#eaddea] px-3 pb-3 pt-3 md:px-4 md:pb-4 md:pt-4">
+            {commentsLoading ? (
+              <div className="text-[11px] text-[#81757f] md:text-sm">
+                コメントを読み込み中…
+              </div>
+            ) : comments.length === 0 ? (
+              <div className="rounded-lg bg-white p-3 text-[11px] text-[#81757f] md:rounded-xl md:text-sm">
+                まだコメントはありません。
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {comments.map((comment) => (
+                  <div
+                    key={comment.id}
+                    className="rounded-lg border border-[#eee3ec] bg-white px-3 py-2.5 md:rounded-xl md:px-4 md:py-3"
+                  >
+                    <div className="whitespace-pre-wrap break-words text-[11px] leading-5 text-[#403940] md:text-sm md:leading-6">
+                      {comment.body}
+                    </div>
+                    <div className="mt-1 text-[9px] text-[#948a92] md:text-xs">
+                      {formatDate(comment.created_at)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-3 rounded-xl bg-white p-3 md:mt-4 md:p-4">
+              <div className="text-[10px] font-bold text-[#4e424b] md:text-sm">
+                コメントを追加
+              </div>
+              <textarea
+                value={commentBody}
+                onChange={(event) => setCommentBody(event.target.value)}
+                maxLength={300}
+                rows={3}
+                placeholder="例)レジは5人ほど並んでいます／店員さんに再入荷予定ありと確認しました"
+                className="mt-2 w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[11px] outline-none focus:border-[#bb79a7] focus:ring-2 focus:ring-[#eedbea] md:rounded-xl md:p-3 md:text-sm"
+              />
+              <div className="mt-1 text-[9px] leading-4 text-[#81757f] md:text-xs md:leading-5">
+                個人情報・誹謗中傷・URLの投稿はお控えください。リアルタイム情報は時間とともに変わるため、参考情報としてご利用ください。
+              </div>
+
+              {commentError && (
+                <div className="mt-2 rounded-lg bg-red-50 p-2 text-[10px] font-bold text-red-700 md:text-sm">
+                  {commentError}
+                </div>
+              )}
+              {commentMessage && (
+                <div className="mt-2 rounded-lg bg-green-50 p-2 text-[10px] font-bold text-green-700 md:text-sm">
+                  {commentMessage}
+                </div>
+              )}
+
+              <button
+                type="button"
+                disabled={commentSubmitting}
+                onClick={() => void handleStoreCommentSubmit()}
+                className="mt-2.5 rounded-lg bg-[#6d4966] px-4 py-2 text-[11px] font-bold text-white disabled:opacity-50 md:rounded-xl md:text-sm"
+              >
+                {commentSubmitting ? "投稿中…" : "コメントを投稿"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <button
@@ -3106,7 +3261,7 @@ function StoreCard({
               </div>
 
               <div className="mt-3 rounded-xl border border-[#ead7a7] bg-[#fff9e8] px-3 py-2 text-[10px] leading-5 text-[#6f5724] md:px-4 md:py-3 md:text-sm md:leading-6">
-                <span className="font-bold">初週集計について: </span>オンラインは在庫や発送予定が随時変わります。表示内容にかかわらず、購入前に商品ページで発送予定日を必ずご確認ください。
+                <span className="font-bold">初週集計について: </span>オンラインは在庫や発送予定が随時変わります。表示は確認時点の目安であり、初週集計への反映を保証するものではありません。<strong>購入前に商品ページで発送予定日を必ずご確認ください。</strong>
               </div>
 
               {store.id === 308 && (
@@ -3196,6 +3351,281 @@ function StoreCard({
         </div>
       )}
     </article>
+  );
+}
+
+function OnlineProductFirstWeekBadge({
+  status,
+  formatDate,
+}: {
+  status: OnlineProductFirstWeekStatusRow | null;
+  formatDate: (dateString: string) => string;
+}) {
+  if (!status || status.status === "check") {
+    return (
+      <div className="mt-2 rounded-lg border border-[#ead7a7] bg-[#fff9e8] px-2 py-1.5 text-[9px] font-bold leading-4 text-[#6f5724] md:rounded-xl md:px-3 md:py-2 md:text-xs">
+        ⏰ 初週集計: 発送予定を要確認
+      </div>
+    );
+  }
+
+  const likely = status.status === "likely";
+  return (
+    <div
+      className={`mt-2 rounded-lg border px-2 py-1.5 text-[9px] leading-4 md:rounded-xl md:px-3 md:py-2 md:text-xs ${
+        likely
+          ? "border-[#9dc9a6] bg-[#eef9f0] text-[#30673b]"
+          : "border-[#e2a9ae] bg-[#fff0f1] text-[#8a3740]"
+      }`}
+    >
+      <div className="font-bold">
+        {likely ? "🟢 初週集計: 間に合う見込み" : "🔴 初週集計: 間に合わない見込み"}
+      </div>
+      {status.shipping_note && (
+        <div className="mt-0.5 font-normal">{status.shipping_note}</div>
+      )}
+      <div className="mt-0.5 font-normal">{formatDate(status.verified_at)}確認</div>
+    </div>
+  );
+}
+
+function StoreInfoContributionForm({
+  store,
+  products,
+  onClose,
+}: {
+  store: Store;
+  products: Product[];
+  onClose: () => void;
+}) {
+  const online = isOnlineStore(store);
+  const [requestType, setRequestType] = useState<
+    "billboard" | "first_week_cutoff" | "online_product_first_week" | "other"
+  >("billboard");
+  const [billboardStatus, setBillboardStatus] =
+    useState<BillboardInfoStatus>("target");
+  const [productId, setProductId] = useState(products[0] ? String(products[0].id) : "");
+  const [firstWeekStatus, setFirstWeekStatus] =
+    useState<OnlineFirstWeekStatusValue>("check");
+  const [detail, setDetail] = useState("");
+  const [evidence, setEvidence] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (online && requestType === "first_week_cutoff") {
+      setRequestType("online_product_first_week");
+    }
+    if (!online && requestType === "online_product_first_week") {
+      setRequestType("first_week_cutoff");
+    }
+  }, [online, requestType]);
+
+  async function submit() {
+    setMessage("");
+    setError("");
+
+    const cleanDetail = detail.trim();
+    const cleanEvidence = evidence.trim();
+
+    if (requestType !== "billboard" && !cleanDetail) {
+      setError("提供する内容を入力してください。");
+      return;
+    }
+    if (requestType === "billboard" && !cleanEvidence) {
+      setError("Billboard情報は確認方法・ソースを入力してください。");
+      return;
+    }
+    if (requestType === "online_product_first_week" && !productId) {
+      setError("商品を選択してください。");
+      return;
+    }
+    if (cleanDetail.length > 1000 || cleanEvidence.length > 1000) {
+      setError("内容と確認方法・ソースはそれぞれ1000文字以内で入力してください。");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      let clientId = localStorage.getItem("kp_inventory_client_id");
+      if (!clientId) {
+        clientId = crypto.randomUUID();
+        localStorage.setItem("kp_inventory_client_id", clientId);
+      }
+
+      if (requestType === "billboard") {
+        const { error: rpcError } = await supabase.rpc(
+          "submit_billboard_info_request",
+          {
+            p_store_id: store.id,
+            p_proposed_status: billboardStatus,
+            p_evidence: cleanEvidence,
+            p_client_id: clientId,
+          }
+        );
+        if (rpcError) throw rpcError;
+      } else {
+        const { error: rpcError } = await supabase.rpc(
+          "submit_store_info_request",
+          {
+            p_store_id: store.id,
+            p_request_type: requestType,
+            p_product_id:
+              requestType === "online_product_first_week" ? Number(productId) : null,
+            p_first_week_status:
+              requestType === "online_product_first_week" ? firstWeekStatus : null,
+            p_detail: cleanDetail,
+            p_evidence: cleanEvidence || null,
+            p_client_id: clientId,
+          }
+        );
+        if (rpcError) throw rpcError;
+      }
+
+      setMessage("店舗情報を送信しました。確認後、必要に応じてサイトへ反映します。ありがとうございます。");
+      setDetail("");
+      setEvidence("");
+    } catch (submitError) {
+      console.error(submitError);
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "送信できませんでした。時間をおいてもう一度お試しください。"
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-[#d9c8df] bg-[#faf7fc] p-3 md:mt-4 md:rounded-2xl md:p-4">
+      <div className="text-[11px] font-bold text-[#5b486b] md:text-sm">📨 店舗情報を提供</div>
+      <p className="mt-1 text-[10px] leading-5 text-[#6d626c] md:text-sm md:leading-6">
+        サイト表示の修正や、初週集計に関する確認情報を送信できます。確認後に反映します。
+      </p>
+
+      <label className="mt-3 block">
+        <div className="mb-1 text-[11px] font-bold text-[#4d434c] md:text-sm">情報の種類</div>
+        <select
+          value={requestType}
+          onChange={(event) => setRequestType(event.target.value as typeof requestType)}
+          className="w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] md:rounded-xl md:p-3 md:text-sm"
+        >
+          <option value="billboard">Billboard集計情報</option>
+          {online ? (
+            <option value="online_product_first_week">商品別の発送・初週情報</option>
+          ) : (
+            <option value="first_week_cutoff">初週集計の締め時間</option>
+          )}
+          <option value="other">その他店舗情報</option>
+        </select>
+      </label>
+
+      {requestType === "billboard" && (
+        <label className="mt-3 block">
+          <div className="mb-1 text-[11px] font-bold text-[#4d434c] md:text-sm">Billboard情報</div>
+          <select
+            value={billboardStatus}
+            onChange={(event) => setBillboardStatus(event.target.value as BillboardInfoStatus)}
+            className="w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] md:rounded-xl md:p-3 md:text-sm"
+          >
+            <option value="target">Billboard 対象</option>
+            <option value="not_target">Billboard 対象外</option>
+          </select>
+        </label>
+      )}
+
+      {requestType === "online_product_first_week" && (
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <label className="block">
+            <div className="mb-1 text-[11px] font-bold text-[#4d434c] md:text-sm">商品</div>
+            <select
+              value={productId}
+              onChange={(event) => setProductId(event.target.value)}
+              className="w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] md:rounded-xl md:p-3 md:text-sm"
+            >
+              {products.map((product) => (
+                <option key={product.id} value={product.id}>{product.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <div className="mb-1 text-[11px] font-bold text-[#4d434c] md:text-sm">初週集計の状況</div>
+            <select
+              value={firstWeekStatus}
+              onChange={(event) => setFirstWeekStatus(event.target.value as OnlineFirstWeekStatusValue)}
+              className="w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] md:rounded-xl md:p-3 md:text-sm"
+            >
+              <option value="likely">間に合う見込み</option>
+              <option value="check">要確認</option>
+              <option value="unlikely">間に合わない見込み</option>
+            </select>
+          </label>
+        </div>
+      )}
+
+      {requestType !== "billboard" && (
+        <label className="mt-3 block">
+          <div className="mb-1 text-[11px] font-bold text-[#4d434c] md:text-sm">
+            {requestType === "first_week_cutoff"
+              ? "確認した締め時間"
+              : requestType === "online_product_first_week"
+                ? "発送予定・確認内容"
+                : "提供する情報"}
+          </div>
+          <textarea
+            value={detail}
+            onChange={(event) => setDetail(event.target.value)}
+            maxLength={1000}
+            rows={3}
+            placeholder={
+              requestType === "first_week_cutoff"
+                ? "例)店舗へ電話確認。初週集計は日曜18:00までとの案内"
+                : requestType === "online_product_first_week"
+                  ? "例)商品ページで9/6発送予定と確認"
+                  : "例)サイトに掲載している店舗情報についての修正・補足"
+            }
+            className="w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] md:rounded-xl md:p-3 md:text-sm"
+          />
+        </label>
+      )}
+
+      <label className="mt-3 block">
+        <div className="mb-1 text-[11px] font-bold text-[#4d434c] md:text-sm">
+          確認方法・ソース {requestType === "billboard" && <span className="text-red-600">必須</span>}
+        </div>
+        <textarea
+          value={evidence}
+          onChange={(event) => setEvidence(event.target.value)}
+          maxLength={1000}
+          rows={3}
+          placeholder="例)公式ページURL、電話確認、店頭確認など"
+          className="w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] md:rounded-xl md:p-3 md:text-sm"
+        />
+      </label>
+
+      {error && <div className="mt-2 rounded-lg bg-red-50 p-2 text-[11px] font-bold text-red-700 md:text-sm">{error}</div>}
+      {message && <div className="mt-2 rounded-lg bg-green-50 p-2 text-[11px] font-bold text-green-700 md:text-sm">{message}</div>}
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={() => void submit()}
+          className="rounded-lg bg-[#6d4966] px-4 py-2 text-[11px] font-bold text-white disabled:opacity-50 md:rounded-xl md:text-sm"
+        >
+          {submitting ? "送信中…" : "情報を送信"}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg border border-[#d8cad7] bg-white px-4 py-2 text-[11px] font-bold text-[#5b486b] md:rounded-xl md:text-sm"
+        >
+          閉じる
+        </button>
+      </div>
+    </div>
   );
 }
 
