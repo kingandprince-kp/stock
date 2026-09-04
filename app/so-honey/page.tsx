@@ -2489,7 +2489,11 @@ async function handleBugReport() {
             </button>
           </div>
 
-          <div className="mt-3 grid gap-3 md:mt-5 md:grid-cols-2 md:gap-4">
+          <div
+            className={`mt-3 grid gap-3 md:mt-5 md:gap-4 ${
+              reportMode === "physical" ? "grid-cols-2" : "grid-cols-1"
+            }`}
+          >
             {reportMode === "physical" && (
               <label className="space-y-1.5 md:space-y-2">
                 <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
@@ -2514,31 +2518,29 @@ async function handleBugReport() {
               </label>
             )}
 
+            <label className="space-y-1.5 md:space-y-2">
+              <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
+                🔎{" "}
+                {reportMode === "online"
+                  ? "オンラインショップを検索"
+                  : "店舗を検索"}
+              </span>
 
+              <input
+                value={reportStoreSearch}
+                onChange={(e) => {
+                  setReportStoreSearch(e.target.value);
+                  setReportStoreId("");
+                }}
+                placeholder={
+                  reportMode === "online"
+                    ? "ショップ名を入力"
+                    : "店舗名・チェーン名・市区町村を入力"
+                }
+                className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 md:text-base"
+              />
+            </label>
           </div>
-
-          <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
-            <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
-              🔎{" "}
-              {reportMode === "online"
-                ? "オンラインショップを検索"
-                : "店舗を検索"}
-            </span>
-
-            <input
-              value={reportStoreSearch}
-              onChange={(e) => {
-                setReportStoreSearch(e.target.value);
-                setReportStoreId("");
-              }}
-              placeholder={
-                reportMode === "online"
-                  ? "ショップ名を入力"
-                  : "店舗名・チェーン名・市区町村を入力"
-              }
-              className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 md:text-base"
-            />
-          </label>
 
           <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-[#eaddea] bg-[#fcf9fc] p-1.5 md:mt-3 md:max-h-72 md:rounded-2xl md:p-2">
             {reportCandidates.length === 0 ? (
@@ -2572,40 +2574,6 @@ async function handleBugReport() {
             )}
           </div>
 
-          {selectedReportStore && (
-            <div className="mt-2 rounded-xl border border-[#d2b4ca] bg-[#f4e5f0] p-3 md:mt-3 md:rounded-2xl md:p-4">
-              <div className="text-[10px] font-bold text-[#986b8e] md:text-sm">
-                選択中
-              </div>
-
-              <div className="mt-0.5 text-[12px] font-bold text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] md:mt-1 md:text-base">
-                {getDisplayStoreName(selectedReportStore)}
-              </div>
-            </div>
-          )}
-
-          {reportMode === "physical" && (
-            <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
-              <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
-                💿 商品
-              </span>
-
-              <select
-                value={reportProductId}
-                onChange={(e) =>
-                  setReportProductId(e.target.value)
-                }
-                className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] md:rounded-2xl md:p-3.5 md:text-base"
-              >
-                {reportProducts.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-
           {reportMode === "online" && (
             <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
               <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
@@ -2629,33 +2597,55 @@ async function handleBugReport() {
           )}
 
           {reportMode === "physical" ? (
-            <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
-              <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
-                🔢 在庫枚数
-              </span>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                autoComplete="off"
-                value={reportQuantity}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === "") {
-                    setReportQuantity("");
-                    return;
+            <div className="mt-3 grid grid-cols-2 gap-3 md:mt-5 md:gap-4">
+              <label className="space-y-1.5 md:space-y-2">
+                <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
+                  💿 商品
+                </span>
+
+                <select
+                  value={reportProductId}
+                  onChange={(e) =>
+                    setReportProductId(e.target.value)
                   }
-                  if (/^[0-9]+$/.test(value)) {
-                    const number = Number(value);
-                    if (number >= 0 && number <= 100) {
-                      setReportQuantity(value);
+                  className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] md:rounded-2xl md:p-3.5 md:text-base"
+                >
+                  {reportProducts.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-1.5 md:space-y-2">
+                <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
+                  🔢 在庫枚数
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
+                  value={reportQuantity}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === "") {
+                      setReportQuantity("");
+                      return;
                     }
-                  }
-                }}
-                placeholder="例: 5"
-                className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 md:text-base"
-              />
-            </label>
+                    if (/^[0-9]+$/.test(value)) {
+                      const number = Number(value);
+                      if (number >= 0 && number <= 100) {
+                        setReportQuantity(value);
+                      }
+                    }
+                  }}
+                  placeholder="例: 5"
+                  className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 md:text-base"
+                />
+              </label>
+            </div>
           ) : (
             <div className="mt-3 space-y-3 md:mt-5 md:space-y-4">
               {selectedReportStore &&
