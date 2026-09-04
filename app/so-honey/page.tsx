@@ -244,6 +244,43 @@ const RAKUTEN_PRODUCT_LINKS: Record<number, ProductLinkOption[]> = {
   ],
 };
 
+const SEVEN_PRODUCT_LINKS: Record<number, ProductLinkOption[]> = {
+  1: [
+    { label: "先着特典あり", url: "https://7net.omni7.jp/detail/1301601115.html" },
+    { label: "特典なし", url: "https://7net.omni7.jp/detail/1301601124.html" },
+  ],
+  2: [
+    { label: "先着特典あり", url: "https://7net.omni7.jp/detail/1301601116.html" },
+    { label: "特典なし", url: "https://7net.omni7.jp/detail/1301601125.html" },
+  ],
+  3: [
+    { label: "先着特典あり", url: "https://7net.omni7.jp/detail/1301601117.html" },
+    { label: "特典なし", url: "https://7net.omni7.jp/detail/1301601126.html" },
+  ],
+  4: [
+    { label: "先着特典あり", url: "https://7net.omni7.jp/detail/1301601118.html" },
+    { label: "特典なし", url: "https://7net.omni7.jp/detail/1301601127.html" },
+  ],
+  5: [
+    { label: "先着特典あり", url: "https://7net.omni7.jp/detail/1301601119.html" },
+    { label: "特典なし", url: "https://7net.omni7.jp/detail/1301601128.html" },
+  ],
+  6: [
+    { label: "先着特典あり", url: "https://7net.omni7.jp/detail/1301601120.html" },
+    { label: "特典なし", url: "https://7net.omni7.jp/detail/1301601129.html" },
+  ],
+  7: [
+    { label: "先着特典あり", url: "https://7net.omni7.jp/detail/1301601121.html" },
+    { label: "特典なし", url: "https://7net.omni7.jp/detail/1301601130.html" },
+  ],
+  8: [
+    { label: "同時購入特典+先着特典あり", url: "https://7net.omni7.jp/detail/1301601122.html" },
+  ],
+  9: [
+    { label: "同時購入特典+先着特典あり", url: "https://7net.omni7.jp/detail/1301601123.html" },
+  ],
+};
+
 type Store = {
   id: number;
   prefecture: string;
@@ -1063,7 +1100,7 @@ setLoading(false);
      online &&
      selectedReportStore !== null &&
      selectedProduct !== null &&
-     hasRakutenVariantLinks(selectedReportStore, selectedProduct);
+     hasPurchaseVariantLinks(selectedReportStore, selectedProduct);
 
    let quantity = 0;
 
@@ -2527,7 +2564,7 @@ async function handleBugReport() {
                 reportProducts.find(
                   (product) => String(product.id) === reportProductId
                 ) &&
-                hasRakutenVariantLinks(
+                hasPurchaseVariantLinks(
                   selectedReportStore,
                   reportProducts.find(
                     (product) => String(product.id) === reportProductId
@@ -2535,7 +2572,7 @@ async function handleBugReport() {
                 ) && (
                   <div className="rounded-xl border border-[#d8c4d4] bg-[#fcf8fc] p-3">
                     <div className="text-[12px] font-bold text-[#211d21] md:text-base">
-                      🎁 楽天ブックスの特典区分
+                      🎁 {purchaseVariantStoreLabel(selectedReportStore)}の特典区分
                     </div>
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       {[
@@ -3754,7 +3791,7 @@ function StoreCard({
               product.id
             );
             const hasVariants =
-              online && hasRakutenVariantLinks(store, product);
+              online && hasPurchaseVariantLinks(store, product);
             const specialReport = hasVariants
               ? getLatestReport(store.id, product.id, "special")
               : null;
@@ -4546,8 +4583,29 @@ function isRakutenStore(store: Store) {
   );
 }
 
-function hasRakutenVariantLinks(store: Store, product: Product) {
-  return isRakutenStore(store) && (RAKUTEN_PRODUCT_LINKS[product.id]?.length ?? 0) > 1;
+function isSevenStore(store: Store) {
+  const text = getOnlineStoreMatchText(store);
+  return (
+    text.includes(normalizeStoreText("セブンネット")) ||
+    text.includes("7net") ||
+    text.includes(normalizeStoreText("7net.omni7.jp"))
+  );
+}
+
+function hasPurchaseVariantLinks(store: Store, product: Product) {
+  if (isRakutenStore(store)) {
+    return (RAKUTEN_PRODUCT_LINKS[product.id]?.length ?? 0) > 1;
+  }
+  if (isSevenStore(store)) {
+    return (SEVEN_PRODUCT_LINKS[product.id]?.length ?? 0) > 1;
+  }
+  return false;
+}
+
+function purchaseVariantStoreLabel(store: Store) {
+  if (isRakutenStore(store)) return "楽天ブックス";
+  if (isSevenStore(store)) return "セブンネット";
+  return "オンラインショップ";
 }
 
 function purchaseVariantLabel(value: PurchaseVariant | null) {
@@ -4564,9 +4622,18 @@ function getVerifiedOnlineProductLinks(
 
   if (
     text.includes(normalizeStoreText("楽天ブックス")) ||
-    text.includes("rakuten")
+    text.includes("rakuten") ||
+    text.includes(normalizeStoreText("books.rakuten.co.jp"))
   ) {
     return RAKUTEN_PRODUCT_LINKS[product.id] ?? [];
+  }
+
+  if (
+    text.includes(normalizeStoreText("セブンネット")) ||
+    text.includes("7net") ||
+    text.includes(normalizeStoreText("7net.omni7.jp"))
+  ) {
+    return SEVEN_PRODUCT_LINKS[product.id] ?? [];
   }
 
   let storeKey:

@@ -488,9 +488,14 @@ export async function POST(
       storeText.includes("楽天ブックス") ||
       storeText.includes("rakuten");
 
-    const rakutenVariantRequired =
+    const isSevenNet =
+      storeText.includes("セブンネット") ||
+      storeText.includes("7net") ||
+      storeText.includes("omni7");
+
+    const purchaseVariantRequired =
       online &&
-      isRakutenBooks &&
+      (isRakutenBooks || isSevenNet) &&
       Number(productId) >= 1 &&
       Number(productId) <= 7;
 
@@ -500,17 +505,17 @@ export async function POST(
         ? purchaseVariant
         : null;
 
-    if (rakutenVariantRequired && !normalizedPurchaseVariant) {
+    if (purchaseVariantRequired && !normalizedPurchaseVariant) {
       await logSecurityEvent(
         "invalid_request",
-        "楽天ブックスの特典区分が未指定"
+        "特典あり・なし商品の特典区分が未指定"
       );
       return jsonError(
-        "楽天ブックスは先着特典あり・特典なしを選択してください。"
+        "このショップは先着特典あり・特典なしを選択してください。"
       );
     }
 
-    if (!rakutenVariantRequired && normalizedPurchaseVariant) {
+    if (!purchaseVariantRequired && normalizedPurchaseVariant) {
       await logSecurityEvent(
         "invalid_request",
         "対象外店舗または商品に特典区分が指定された"
@@ -983,7 +988,7 @@ export async function POST(
         quantity: storedQuantity,
         stock_status: online ? normalizedStockStatus : null,
         purchase_variant:
-          rakutenVariantRequired
+          purchaseVariantRequired
             ? normalizedPurchaseVariant
             : null,
         comment: normalizedComment,
