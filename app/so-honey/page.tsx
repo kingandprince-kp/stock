@@ -125,10 +125,10 @@ const ONLINE_STORE_PRIORITY: string[][] = [
   ["universal", "ユニバーサル", "store.universal-music.co.jp"],
   ["タワーレコード", "towerrecords", "towerrecord", "タワレコ", "tower.jp"],
   ["hmv", "hmv.co.jp"],
-  ["楽天", "rakuten", "books.rakuten.co.jp"],
+  ["楽天ブックス", "rakutenbooks"],
   ["amazon", "amazon.co.jp"],
   ["ジョーシン", "joshin", "joshinweb", "joshinweb.jp"],
-  ["セブンネット", "7net", "7net.omni7.jp"],
+  ["セブンネット", "セブンネットショッピング", "7netshopping"],
   ["ネオウィング", "neowing", "neowing.co.jp"],
   ["ビックカメラ", "biccamera", "biccamera.com"],
   ["ヤマダ", "yamada", "ウェブコム", "webcom", "yamada-denkiweb.com"],
@@ -3630,6 +3630,13 @@ function StoreCard({
 
   const storeProducts = online
     ? allStoreProducts.filter((product) => {
+        if (
+          isJoshinStore(store) &&
+          (product.id === 8 || product.id === 9)
+        ) {
+          return false;
+        }
+
         const status =
           onlineProductFirstWeekStatusMap.get(
             `${store.id}-${product.id}`
@@ -3798,9 +3805,6 @@ function StoreCard({
             const noSpecialReport = hasVariants
               ? getLatestReport(store.id, product.id, "no_special")
               : null;
-            const unknownVariantReport = hasVariants
-              ? getLatestReport(store.id, product.id, "unknown")
-              : null;
 
             return (
               <div
@@ -3903,21 +3907,6 @@ function StoreCard({
                       );
                     })}
 
-                    {unknownVariantReport && (
-                      <div className="rounded-lg border border-[#e5c98b] bg-[#fff8e7] px-2 py-1.5">
-                        <div className="text-[9px] font-bold text-[#725d2a] md:text-xs">
-                          特典区分不明の既存投稿
-                        </div>
-                        {unknownVariantReport.stock_status && (
-                          <span className="mt-1 inline-block rounded-full bg-[#f4ead1] px-2 py-0.5 text-[10px] font-bold text-[#6a5625] md:text-sm">
-                            {formatStockStatus(unknownVariantReport.stock_status)}
-                          </span>
-                        )}
-                        <div className="mt-0.5 text-[9px] text-[#8d805e] md:text-xs">
-                          {formatDate(unknownVariantReport.created_at)}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ) : !report ? (
                   <div className="mt-1.5 text-[11px] font-bold text-[#625861] md:mt-2 md:text-base">
@@ -4575,20 +4564,30 @@ function comparePhysicalStores(
 }
 
 function isRakutenStore(store: Store) {
-  const text = getOnlineStoreMatchText(store);
+  const name = normalizeStoreText(store.name ?? "");
+
   return (
-    text.includes(normalizeStoreText("楽天ブックス")) ||
-    text.includes("rakuten") ||
-    text.includes(normalizeStoreText("books.rakuten.co.jp"))
+    name === normalizeStoreText("楽天ブックス") ||
+    name === "rakutenbooks"
   );
 }
 
 function isSevenStore(store: Store) {
-  const text = getOnlineStoreMatchText(store);
+  const name = normalizeStoreText(store.name ?? "");
+
   return (
-    text.includes(normalizeStoreText("セブンネット")) ||
-    text.includes("7net") ||
-    text.includes(normalizeStoreText("7net.omni7.jp"))
+    name === normalizeStoreText("セブンネット") ||
+    name === normalizeStoreText("セブンネットショッピング") ||
+    name === "7netshopping"
+  );
+}
+
+function isJoshinStore(store: Store) {
+  const name = normalizeStoreText(store.name ?? "");
+
+  return (
+    name.includes(normalizeStoreText("ジョーシン")) ||
+    name.includes("joshin")
   );
 }
 
@@ -4618,21 +4617,13 @@ function getVerifiedOnlineProductLinks(
   store: Store,
   product: Product
 ): ProductLinkOption[] {
-  const text = getOnlineStoreMatchText(store);
+  const name = normalizeStoreText(store.name ?? "");
 
-  if (
-    text.includes(normalizeStoreText("楽天ブックス")) ||
-    text.includes("rakuten") ||
-    text.includes(normalizeStoreText("books.rakuten.co.jp"))
-  ) {
+  if (isRakutenStore(store)) {
     return RAKUTEN_PRODUCT_LINKS[product.id] ?? [];
   }
 
-  if (
-    text.includes(normalizeStoreText("セブンネット")) ||
-    text.includes("7net") ||
-    text.includes(normalizeStoreText("7net.omni7.jp"))
-  ) {
+  if (isSevenStore(store)) {
     return SEVEN_PRODUCT_LINKS[product.id] ?? [];
   }
 
@@ -4646,64 +4637,95 @@ function getVerifiedOnlineProductLinks(
     | null = null;
 
   if (
-    text.includes("universal") ||
-    text.includes(normalizeStoreText("ユニバーサル"))
+    name.includes("universal") ||
+    name.includes(normalizeStoreText("ユニバーサル"))
   ) {
     storeKey = "universal";
   } else if (
-    text.includes(normalizeStoreText("タワーレコード")) ||
-    text.includes("towerrecords") ||
-    text.includes("towerrecord") ||
-    text.includes(normalizeStoreText("タワレコ"))
+    name.includes(normalizeStoreText("タワーレコード")) ||
+    name.includes("towerrecords") ||
+    name.includes("towerrecord") ||
+    name.includes(normalizeStoreText("タワレコ"))
   ) {
     storeKey = "tower";
   } else if (
-    text.includes("hmv")
+    name.includes("hmv")
   ) {
     storeKey = "hmv";
   } else if (
-    text.includes("amazon") ||
-    text.includes(normalizeStoreText("amazon.co.jp")) ||
+    name === "amazon" ||
+    name.includes("amazoncojp") ||
     store.id === 308
   ) {
     storeKey = "amazon";
-  } else if (
-    text.includes(normalizeStoreText("ジョーシン")) ||
-    text.includes("joshin") ||
-    text.includes("joshinweb")
-  ) {
+  } else if (isJoshinStore(store)) {
     storeKey = "joshin";
   } else if (
-    text.includes(normalizeStoreText("ネオウィング")) ||
-    text.includes("neowing")
+    name.includes(normalizeStoreText("ネオウィング")) ||
+    name.includes("neowing")
   ) {
     storeKey = "neowing";
   }
 
   if (!storeKey) return [];
 
-  const url =
+  const productUrl =
     VERIFIED_ONLINE_PRODUCT_URLS[storeKey][product.id] ?? null;
 
-  return url
-    ? [{ label: "商品ページを開く", url }]
+  return productUrl
+    ? [{ label: "商品ページを開く", url: productUrl }]
     : [];
 }
 
 function compareOnlineStores(a: Store, b: Store) {
   const getOnlineRank = (store: Store) => {
-    const text = getOnlineStoreMatchText(store);
+    const name = normalizeStoreText(store.name ?? "");
 
-    const index = ONLINE_STORE_PRIORITY.findIndex(
-      (aliases) =>
-        aliases.some((alias) =>
-          text.includes(normalizeStoreText(alias))
-        )
-    );
+    if (
+      name.includes("universal") ||
+      name.includes(normalizeStoreText("ユニバーサル"))
+    ) return 0;
 
-    return index === -1
-      ? ONLINE_STORE_PRIORITY.length
-      : index;
+    if (
+      name.includes(normalizeStoreText("タワーレコード")) ||
+      name.includes("towerrecords") ||
+      name.includes("towerrecord") ||
+      name.includes(normalizeStoreText("タワレコ"))
+    ) return 1;
+
+    if (name.includes("hmv")) return 2;
+
+    if (isRakutenStore(store)) return 3;
+
+    if (
+      name === "amazon" ||
+      name.includes("amazoncojp") ||
+      store.id === 308
+    ) return 4;
+
+    if (isJoshinStore(store)) return 5;
+
+    if (isSevenStore(store)) return 6;
+
+    if (
+      name.includes(normalizeStoreText("ネオウィング")) ||
+      name.includes("neowing")
+    ) return 7;
+
+    if (
+      name.includes(normalizeStoreText("ビックカメラ.com")) ||
+      name.includes(normalizeStoreText("ビックカメラドットコム")) ||
+      name === "biccamera.com" ||
+      name === "biccamera"
+    ) return 8;
+
+    if (
+      name.includes(normalizeStoreText("ヤマダウェブコム")) ||
+      name.includes("yamadawebcom") ||
+      name.includes("yamadaweb")
+    ) return 9;
+
+    return 10;
   };
 
   const rankA = getOnlineRank(a);
@@ -4841,6 +4863,16 @@ function getOnlineStoreMatchText(store: Store) {
   return normalizeStoreText(
     `${store.chain_name ?? ""} ${store.name} ${store.online_url ?? ""}`
   );
+}
+
+function getOnlineStoreIdentityText(store: Store) {
+  return normalizeStoreText(
+    `${store.chain_name ?? ""} ${store.name}`
+  );
+}
+
+function getOnlineStoreUrlText(store: Store) {
+  return normalizeStoreText(store.online_url ?? "");
 }
 
 function isOnlineStore(store: Store) {

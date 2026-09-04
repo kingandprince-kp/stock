@@ -479,19 +479,19 @@ export async function POST(
     const online =
       isOnlineStore(currentStore);
 
-    const storeText =
-      `${currentStore.chain_name ?? ""}${currentStore.name ?? ""}`
+    const normalizedStoreName =
+      (currentStore.name ?? "")
         .toLowerCase()
         .replace(/\s+/g, "");
 
     const isRakutenBooks =
-      storeText.includes("楽天ブックス") ||
-      storeText.includes("rakuten");
+      normalizedStoreName === "楽天ブックス" ||
+      normalizedStoreName === "rakutenbooks";
 
     const isSevenNet =
-      storeText.includes("セブンネット") ||
-      storeText.includes("7net") ||
-      storeText.includes("omni7");
+      normalizedStoreName === "セブンネット" ||
+      normalizedStoreName === "セブンネットショッピング" ||
+      normalizedStoreName === "7netshopping";
 
     const purchaseVariantRequired =
       online &&
