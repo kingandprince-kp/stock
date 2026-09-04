@@ -1782,7 +1782,7 @@ async function handleBugReport() {
       : hashtag;
 
     window.open(
-      `https://x.com/intent/post?text=${encodeURIComponent(text)}`,
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
       "_blank",
       "noopener,noreferrer"
     );
@@ -3841,7 +3841,7 @@ function StoreCard({
                             aria-hidden="true"
                             className="ml-1 inline-block text-[10px] no-underline md:text-sm"
                           >
-                            ↗
+                            ↗︎
                           </span>
                         </div>
                         <div className="mt-1 text-[9px] font-bold text-[#8a6c9d] no-underline md:text-[11px]">
@@ -3868,7 +3868,7 @@ function StoreCard({
                           >
                             {link.label}
                             <span aria-hidden="true" className="ml-1 no-underline">
-                              ↗
+                              ↗︎
                             </span>
                           </a>
                         ))}
@@ -4934,19 +4934,9 @@ function shortPrefectureName(prefecture: string) {
 
 function ExternalArrow() {
   return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 16 16"
-      className="ml-1 inline-block h-[0.9em] w-[0.9em] align-[-0.08em]"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M5 11L11 5" />
-      <path d="M6.5 5H11V9.5" />
-    </svg>
+    <span aria-hidden="true" className="ml-1 inline-block no-underline">
+      ↗︎
+    </span>
   );
 }
 
