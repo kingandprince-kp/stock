@@ -3194,7 +3194,7 @@ async function handleBugReport() {
 
         {/* ===== FOOTER ===== */}
         {/* ===== 不具合報告 ===== */}
-        <section className="rounded-xl border border-[#cdbdca] bg-white p-3 shadow-sm md:rounded-2xl md:p-4">
+        <section className="rounded-2xl border-2 border-[#d96ca5] bg-[#fff4fa] p-3.5 shadow-md md:rounded-3xl md:p-5">
           <button
             type="button"
             onClick={() => {
@@ -3202,23 +3202,32 @@ async function handleBugReport() {
               setBugMessage("");
               setBugError("");
             }}
-            className="flex w-full items-center justify-between gap-3 text-left"
+            className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-3 text-left shadow-sm transition hover:bg-[#fffafd] md:px-4 md:py-4"
           >
-            <span className="text-[11px] font-bold text-[#40363e] md:text-sm">
-              💡 不具合・ご要望
-              <span className="ml-2 font-normal text-[#6d5968]">使いにくい点・こんな機能がほしい、もお気軽に</span>
+            <span className="min-w-0">
+              <span className="block text-[13px] font-bold text-[#8f2f68] md:text-base">
+                💡 不具合・ご要望はこちら
+              </span>
+              <span className="mt-1 block text-[10px] font-medium leading-4 text-[#5f4a58] md:text-sm md:leading-5">
+                使いにくいところや、ほしい機能などもお気軽にお寄せください
+              </span>
             </span>
 
-            <span className="text-xs font-bold text-[#6d5968]">
-              {bugReportOpen ? "∧" : "∨"}
+            <span className="shrink-0 rounded-full bg-[#d95c9d] px-3 py-1.5 text-[10px] font-bold text-white shadow-sm md:px-4 md:py-2 md:text-xs">
+              {bugReportOpen ? "フォームを閉じる ∧" : "フォームを開く ∨"}
             </span>
           </button>
 
           {bugReportOpen && (
-            <div className="mt-3 border-t border-[#d8cad6] pt-3 text-[#352f34]">
-              <p className="text-[10px] font-medium leading-4 text-[#4f454d] md:text-xs md:leading-5">
-                不具合のご報告だけでなく、「こんな機能があるといい」「こうすると使いやすい」などのご要望もお寄せください。いただいた内容は確認し、可能な範囲で改善に努めます。
-              </p>
+            <div className="mt-3 rounded-xl border border-[#e5bfd4] bg-white p-3.5 text-[#352f34] shadow-sm md:rounded-2xl md:p-5">
+              <div className="rounded-lg border border-[#efd3e2] bg-[#fff6fb] px-3 py-2.5 md:rounded-xl md:px-4 md:py-3">
+                <div className="text-[11px] font-bold text-[#8f2f68] md:text-sm">
+                  不具合だけでなく、ご要望・改善案も送れます
+                </div>
+                <p className="mt-1 text-[10px] font-medium leading-4 text-[#4f454d] md:text-xs md:leading-5">
+                  「こんな機能がほしい」「ここが使いにくい」など、気づいたことをお気軽にお寄せください。いただいた内容を確認し、可能な範囲で改善します。
+                </p>
+              </div>
 
               <label className="mt-3 block">
                 <div className="mb-1 text-[11px] font-bold text-[#352f34] md:text-sm">
@@ -3235,7 +3244,7 @@ async function handleBugReport() {
                     setBugMessage("");
                     setBugError("");
                   }}
-                  className="w-full rounded-lg border border-[#cdbdca] bg-white px-3 py-2 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] md:text-sm"
+                  className="w-full rounded-lg border-2 border-[#d9b3c8] bg-white px-3 py-2.5 text-[12px] text-[#2f292e] opacity-100 outline-none [color:#2f292e] [-webkit-text-fill-color:#2f292e] focus:border-[#c84d8d] focus:ring-2 focus:ring-[#f2d6e5] md:text-sm"
                 >
                   <option value="bug">不具合</option>
                   <option value="request">ご要望・改善案</option>
@@ -3256,7 +3265,7 @@ async function handleBugReport() {
                     setBugDescription(e.target.value)
                   }
                   placeholder={bugReportType === "bug" ? "例: 店舗をタップしても反応しない" : "例: こんな機能があると便利、ここをこうすると使いやすい"}
-                  className="w-full rounded-lg border border-[#cdbdca] bg-white px-3 py-2 text-[12px] text-[#2f292e] outline-none placeholder:text-[#766c74] focus:border-[#a95e92] focus:ring-1 focus:ring-[#e7cfe0] md:text-sm"
+                  className="w-full rounded-lg border-2 border-[#d9b3c8] bg-white px-3 py-2.5 text-[12px] text-[#2f292e] outline-none placeholder:text-[#766c74] focus:border-[#c84d8d] focus:ring-2 focus:ring-[#f2d6e5] md:text-sm"
                 />
               </label>
 
@@ -3528,7 +3537,7 @@ async function handleBugReport() {
                 type="button"
                 onClick={handleBugReport}
                 disabled={bugSubmitting}
-                className="mt-3 rounded-lg bg-[#5e4b59] px-4 py-2 text-[11px] font-bold text-white transition hover:bg-[#4f3f4b] disabled:opacity-50 md:text-sm"
+                className="mt-4 w-full rounded-xl bg-[#d95c9d] px-4 py-3 text-[12px] font-bold text-white shadow-md transition hover:bg-[#c84d8d] disabled:opacity-50 md:py-3.5 md:text-sm"
               >
                 {bugSubmitting
                   ? "送信中…"
