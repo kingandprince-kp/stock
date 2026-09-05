@@ -2037,7 +2037,7 @@ async function handleBugReport() {
           }`}
         >
           <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-center gap-3 md:gap-5">
-            <div className="min-w-0">
+            <div className="min-w-0 text-center">
               <div className="text-[12px] font-bold text-[#3f3340] md:text-base">
                 見つけた在庫をみんなに共有
               </div>
