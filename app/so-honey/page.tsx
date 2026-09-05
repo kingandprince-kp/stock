@@ -353,6 +353,7 @@ type OnlineProductFirstWeekStatusRow = {
   shipping_note: string | null;
   verified_at: string;
   shipping_type: "relative" | "date" | "other" | null;
+  shipping_basis: "shipping" | "delivery" | null;
   shipping_min_days: number | null;
   shipping_max_days: number | null;
   shipping_date: string | null;
@@ -424,6 +425,7 @@ const [physicalStockInput, setPhysicalStockInput] =
 const [reportPurchaseVariant, setReportPurchaseVariant] =
   useState<PurchaseVariant>("special");
 const [reportShippingEnabled, setReportShippingEnabled] = useState(false);
+const [reportShippingBasis, setReportShippingBasis] = useState<"shipping" | "delivery">("shipping");
 const [reportShippingMode, setReportShippingMode] =
   useState<"range" | "date" | "other">("range");
 const [reportShippingMinDays, setReportShippingMinDays] = useState("0");
@@ -1183,6 +1185,11 @@ setLoading(false);
    }
 
    if (online && reportShippingEnabled) {
+     if (reportShippingBasis === "delivery" && reportShippingMode === "range") {
+       setSubmitError("お届け目安は日付またはその他を選択してください。");
+       return;
+     }
+
      if (reportShippingMode === "range") {
        const minDays = Number(reportShippingMinDays);
        const maxDays = Number(reportShippingMaxDays);
@@ -1206,12 +1213,12 @@ setLoading(false);
      }
 
      if (reportShippingMode === "date" && !reportShippingDate) {
-       setSubmitError("発送予定日を入力してください。");
+       setSubmitError(reportShippingBasis === "delivery" ? "お届け予定日を入力してください。" : "発送予定日を入力してください。");
        return;
      }
 
      if (reportShippingMode === "other" && !reportShippingOther.trim()) {
-       setSubmitError("表示されている発送案内を入力してください。");
+       setSubmitError(reportShippingBasis === "delivery" ? "表示されているお届け案内を入力してください。" : "表示されている発送案内を入力してください。");
        return;
      }
 
@@ -1321,18 +1328,18 @@ setLoading(false);
            ? reportShippingOther.trim()
            : reportShippingCondition.trim();
 
-       const { error: shippingError } = await supabase.rpc("submit_store_info_request_v2", {
+       const { error: shippingError } = await supabase.rpc("submit_store_info_request_v3", {
          p_store_id: Number(reportStoreId), p_request_type: "online_product_first_week", p_product_id: Number(reportProductId),
-         p_detail: detail, p_evidence: null, p_client_id: clientId, p_shipping_type: shippingType,
+         p_detail: detail, p_evidence: null, p_client_id: clientId, p_shipping_type: shippingType, p_shipping_basis: reportShippingBasis,
          p_shipping_min_days: range ? range[0] : null, p_shipping_max_days: range ? range[1] : null,
          p_shipping_date: reportShippingMode === "date" ? reportShippingDate : null,
          p_confirmation_source: reportShippingSource, p_confirmation_source_detail: reportShippingSourceDetail.trim() || null,
        });
        if (shippingError) {
          console.error("shipping info submit error:", shippingError);
-         setSubmitMessage("在庫情報は投稿できました。発送・取り寄せ目安だけ送信できなかったため、必要であればもう一度お試しください。");
+         setSubmitMessage("在庫情報は投稿できました。発送・お届け目安だけ送信できなかったため、必要であればもう一度お試しください。");
        } else {
-         setSubmitMessage("在庫情報と発送・取り寄せ目安を投稿しました。ありがとうございます!");
+         setSubmitMessage("在庫情報と発送・お届け目安を投稿しました。ありがとうございます!");
        }
      } else {
        setSubmitMessage("在庫情報を投稿しました。在庫チェッカーへのご協力、ありがとうございます!");
@@ -2037,7 +2044,7 @@ async function handleBugReport() {
           }`}
         >
           <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-center gap-3 md:gap-5">
-            <div className="min-w-0 text-center">
+            <div className="min-w-0">
               <div className="text-[12px] font-bold text-[#3f3340] md:text-base">
                 見つけた在庫をみんなに共有
               </div>
@@ -2084,7 +2091,7 @@ async function handleBugReport() {
             isAndroid ? "bg-white" : "bg-white/95 backdrop-blur"
           }`}
         >
-          <div className="grid grid-cols-3 gap-1.5 md:gap-2">
+          <div className={`grid gap-1.5 md:gap-2 ${reportShippingBasis === "shipping" ? "grid-cols-3" : "grid-cols-2"}`}>
             <a
               href="#stores"
               className="whitespace-nowrap rounded-lg bg-[#f4e4f1] px-1 py-2.5 text-center text-[10px] font-bold text-[#68415f] transition hover:bg-[#ead2e5] md:rounded-xl md:px-2 md:py-3.5 md:text-base"
@@ -2798,7 +2805,7 @@ async function handleBugReport() {
               <label className="flex cursor-pointer items-start gap-2">
                 <input type="checkbox" checked={reportShippingEnabled} onChange={(e) => setReportShippingEnabled(e.target.checked)} className="mt-0.5 h-4 w-4" />
                 <span>
-                  <span className="block text-[12px] font-bold text-[#4d3d18] [-webkit-text-fill-color:#4d3d18] md:text-base">🚚 発送・取り寄せ目安も投稿する</span>
+                  <span className="block text-[12px] font-bold text-[#4d3d18] [-webkit-text-fill-color:#4d3d18] md:text-base">🚚 発送・お届け目安も投稿する</span>
                   <span className="mt-0.5 block text-[10px] leading-4 text-[#766744] [-webkit-text-fill-color:#766744] md:text-sm">
                     任意です。日数表示なら「から」「まで」を選ぶだけで投稿できます。
                   </span>
@@ -2808,11 +2815,42 @@ async function handleBugReport() {
                 <div className="mt-3 space-y-3 border-t border-[#ead9a8] pt-3">
                   <div>
                     <div className="mb-1.5 text-[11px] font-bold text-[#4d434c] md:text-sm">
-                      表示されている発送・取り寄せ目安
+                      何を基準にした表示ですか？
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 md:gap-2">
+                      {[
+                        ["shipping", "発送・出荷"],
+                        ["delivery", "お届け・到着"],
+                      ].map(([value, label]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => {
+                            const next = value as "shipping" | "delivery";
+                            setReportShippingBasis(next);
+                            if (next === "delivery" && reportShippingMode === "range") {
+                              setReportShippingMode("date");
+                            }
+                          }}
+                          className={`rounded-lg border px-2 py-2 text-[10px] font-bold md:rounded-xl md:px-3 md:py-2.5 md:text-sm ${
+                            reportShippingBasis === value
+                              ? "border-[#8c6b49] bg-[#8c6b49] text-white"
+                              : "border-[#d8cad7] bg-white text-[#5e5145]"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="mb-1.5 text-[11px] font-bold text-[#4d434c] md:text-sm">
+                      表示されている目安
                     </div>
                     <div className="grid grid-cols-3 gap-1.5 md:gap-2">
                       {[
-                        ["range", "日数"],
+                        ...(reportShippingBasis === "shipping" ? [["range", "日数"]] : []),
                         ["date", "日付"],
                         ["other", "その他"],
                       ].map(([value, label]) => (
@@ -2836,7 +2874,7 @@ async function handleBugReport() {
                     </div>
                   </div>
 
-                  {reportShippingMode === "range" && (
+                  {reportShippingBasis === "shipping" && reportShippingMode === "range" && (
                     <div className="rounded-xl border border-[#ead9a8] bg-white p-3">
                       <div className="mb-2 text-[10px] leading-4 text-[#766744] md:text-xs">
                         例: 「当日発送」は「当日～当日」、「当日～2日で発送」は「当日～2日」にします。
@@ -2895,7 +2933,7 @@ async function handleBugReport() {
                   {reportShippingMode === "date" && (
                     <label className="block">
                       <span className="mb-1 block text-[11px] font-bold text-[#4d434c] md:text-sm">
-                        出荷予定日
+                        {reportShippingBasis === "delivery" ? "お届け予定日" : "発送・出荷予定日"}
                       </span>
                       <input
                         type="date"
@@ -2916,7 +2954,11 @@ async function handleBugReport() {
                         maxLength={200}
                         value={reportShippingOther}
                         onChange={(e) => setReportShippingOther(e.target.value)}
-                        placeholder="例: お取り寄せ2〜7日 / 入荷次第発送 / 3〜5営業日"
+                        placeholder={
+                          reportShippingBasis === "delivery"
+                            ? "例: 地域によりお届け日が異なる / お届け日未定"
+                            : "例: お取り寄せ2〜7日 / 入荷次第発送 / 3〜5営業日"
+                        }
                         className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] placeholder:text-[#766c74] md:rounded-xl md:p-3 md:text-sm"
                       />
                       <span className="mt-1 block text-[9px] leading-4 text-[#766744] md:text-xs">
@@ -2938,7 +2980,11 @@ async function handleBugReport() {
                         maxLength={200}
                         value={reportShippingCondition}
                         onChange={(e) => setReportShippingCondition(e.target.value)}
-                        placeholder="例: 13時までの注文で当日発送"
+                        placeholder={
+                          reportShippingBasis === "delivery"
+                            ? "例: 配送先によってお届け日が異なる"
+                            : "例: 13時までの注文で当日発送"
+                        }
                         className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] placeholder:text-[#766c74] md:rounded-xl md:p-3 md:text-sm"
                       />
                       <span className="mt-1 block text-[9px] leading-4 text-[#766744] md:text-xs">
@@ -2952,7 +2998,14 @@ async function handleBugReport() {
                     <select value={reportShippingSource} onChange={(e) => setReportShippingSource(e.target.value)} className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] md:rounded-xl md:p-3 md:text-sm"><option value="product_page">商品ページ</option><option value="cart_order">カート・注文画面</option><option value="email">メール</option><option value="other">その他</option></select>
                   </label>
                   {reportShippingSource === "other" && <input type="text" maxLength={100} value={reportShippingSourceDetail} onChange={(e) => setReportShippingSourceDetail(e.target.value)} placeholder="確認場所を入力" className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] placeholder:text-[#766c74] md:rounded-xl md:p-3 md:text-sm" />}
-                  <p className="text-[10px] leading-4 text-[#766744] [-webkit-text-fill-color:#766744] md:text-xs">9/6までに出荷予定なら「間に合う見込み」、9/7以降なら「間に合わない見込み」、期間がまたがる場合は「要確認」として判定します。お取り寄せは不確実性も考慮します。</p>
+                  <p className="text-[10px] leading-4 text-[#766744] [-webkit-text-fill-color:#766744] md:text-xs">
+                    発送・出荷は9/6までなら「間に合う見込み」、9/7以降なら「間に合わない見込み」、期間がまたがる場合は「要確認」として判定します。お届け予定日は、表示された日付が9/6までなら「間に合う見込み」、9/7以降なら「間に合わない見込み」とします。日付を特定できないお届け案内は「要確認」です。
+                  </p>
+                  {reportShippingBasis === "delivery" && (
+                    <p className="rounded-lg bg-[#fff3d6] px-2.5 py-2 text-[10px] leading-4 text-[#6f5724] [-webkit-text-fill-color:#6f5724] md:text-xs">
+                      ※表示されたお届け予定日を基準とした見込みです。配送地域等により異なるため、ご自身の配送先で表示されるお届け予定日をご確認ください。
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -4507,7 +4560,7 @@ function StoreCard({
               </div>
 
               <div className="mt-3 rounded-xl border border-[#ead7a7] bg-[#fff9e8] px-3 py-2 text-[10px] leading-5 text-[#6f5724] md:px-4 md:py-3 md:text-sm md:leading-6">
-                <span className="font-bold">初週集計について: </span>オンラインは在庫や発送予定が随時変わります。表示は確認時点の目安であり、初週集計への反映を保証するものではありません。<strong>購入前に商品ページで発送予定日を必ずご確認ください。</strong>
+                <span className="font-bold">初週集計について: </span>オンラインは在庫や発送・お届け予定が随時変わります。表示は確認時点の目安であり、初週集計への反映を保証するものではありません。<strong>購入前にご自身の配送先で表示される発送・お届け予定を必ずご確認ください。</strong>
               </div>
 
               {store.id === 308 && (
@@ -4610,7 +4663,7 @@ function OnlineProductFirstWeekBadge({
   if (!status) {
     return (
       <div className="mt-2 rounded-lg border border-[#ead7a7] bg-[#fff9e8] px-2 py-1.5 text-[9px] font-bold leading-4 text-[#6f5724] md:rounded-xl md:px-3 md:py-2 md:text-xs">
-        ⏰ 初週集計: 発送予定を要確認
+        ⏰ 初週集計: 発送・お届け予定を要確認
       </div>
     );
   }
@@ -4645,6 +4698,11 @@ function OnlineProductFirstWeekBadge({
       </div>
       {status.shipping_note && (
         <div className="mt-0.5 font-normal">{status.shipping_note}</div>
+      )}
+      {status.shipping_basis === "delivery" && (
+        <div className="mt-1 font-normal">
+          ※表示されたお届け予定日を基準とした見込みです。配送地域等により異なるため、ご自身の配送先で表示されるお届け予定日をご確認ください。
+        </div>
       )}
       <div className="mt-0.5 font-normal">{formatDate(status.verified_at)}確認</div>
     </div>
