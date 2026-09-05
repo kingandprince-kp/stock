@@ -557,6 +557,13 @@ export async function POST(
         ? (stockStatus as OnlineStockStatus)
         : null;
 
+    const normalizedPhysicalStockStatus =
+      !online &&
+      (normalizedStockStatus === "in_stock" ||
+        normalizedStockStatus === "sold_out")
+        ? normalizedStockStatus
+        : null;
+
     if (online) {
       if (!normalizedStockStatus) {
         await logSecurityEvent(
@@ -569,31 +576,50 @@ export async function POST(
       }
     } else {
       if (
-        !Number.isInteger(quantity) ||
-        Number(quantity) < 0 ||
-        Number(quantity) > 100
+        typeof stockStatus === "string" &&
+        stockStatus !== "in_stock" &&
+        stockStatus !== "sold_out"
       ) {
         await logSecurityEvent(
           "invalid_request",
-          "在庫枚数が0〜100の範囲外"
+          "実店舗の在庫状態が不正"
         );
         return jsonError(
-          "在庫枚数は0〜100の整数で入力してください。"
+          "実店舗の在庫状況を確認してください。"
         );
       }
 
-      if (Number(quantity) >= 50 && !normalizedComment) {
-        await logSecurityEvent(
-          "invalid_request",
-          "50枚以上の投稿でコメント未入力"
-        );
-        return jsonError(
-          "50枚以上の在庫情報は、確認できた状況をコメント欄に入力してください。"
-        );
+      if (!normalizedPhysicalStockStatus) {
+        if (
+          !Number.isInteger(quantity) ||
+          Number(quantity) < 0 ||
+          Number(quantity) > 100
+        ) {
+          await logSecurityEvent(
+            "invalid_request",
+            "在庫枚数が0〜100の範囲外"
+          );
+          return jsonError(
+            "在庫枚数は0〜100の整数で入力してください。"
+          );
+        }
+
+        if (Number(quantity) >= 50 && !normalizedComment) {
+          await logSecurityEvent(
+            "invalid_request",
+            "50枚以上の投稿でコメント未入力"
+          );
+          return jsonError(
+            "50枚以上の在庫情報は、確認できた状況をコメント欄に入力してください。"
+          );
+        }
       }
     }
 
-    const storedQuantity = online ? 0 : Number(quantity);
+    const storedQuantity =
+      online || normalizedPhysicalStockStatus
+        ? 0
+        : Number(quantity);
 
     const now = Date.now();
 
@@ -987,7 +1013,9 @@ export async function POST(
         product_id:
           Number(productId),
         quantity: storedQuantity,
-        stock_status: online ? normalizedStockStatus : null,
+        stock_status: online
+          ? normalizedStockStatus
+          : normalizedPhysicalStockStatus,
         purchase_variant:
           purchaseVariantRequired
             ? normalizedPurchaseVariant
