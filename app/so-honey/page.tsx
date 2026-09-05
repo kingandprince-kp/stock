@@ -2999,7 +2999,7 @@ async function handleBugReport() {
                   </label>
                   {reportShippingSource === "other" && <input type="text" maxLength={100} value={reportShippingSourceDetail} onChange={(e) => setReportShippingSourceDetail(e.target.value)} placeholder="確認場所を入力" className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] placeholder:text-[#766c74] md:rounded-xl md:p-3 md:text-sm" />}
                   <p className="text-[10px] leading-4 text-[#766744] [-webkit-text-fill-color:#766744] md:text-xs">
-                    発送・出荷は9/6までなら「間に合う見込み」、9/7以降なら「間に合わない見込み」、期間がまたがる場合は「要確認」として判定します。お届け予定日は、表示された日付が9/6までなら「間に合う見込み」、9/7以降なら「間に合わない見込み」とします。日付を特定できないお届け案内は「要確認」です。
+                    発送・出荷は9/6までなら「間に合う見込み」、9/7以降なら「間に合わない見込み」、期間がまたがる場合は「要確認」として表示します。お届け予定日は、表示された日付が9/7までなら「間に合う見込み」、9/8以降なら「間に合わない見込み」とします。日付を特定できないお届け案内は「要確認」です。
                   </p>
                   {reportShippingBasis === "delivery" && (
                     <p className="rounded-lg bg-[#fff3d6] px-2.5 py-2 text-[10px] leading-4 text-[#6f5724] [-webkit-text-fill-color:#6f5724] md:text-xs">
