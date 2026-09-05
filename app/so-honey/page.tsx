@@ -373,6 +373,17 @@ type StoreComment = {
   body: string;
   created_at: string;
   is_own: boolean;
+  applause_count: number;
+  applauded_by_me: boolean;
+};
+
+type PhysicalStockInput = "quantity" | "in_stock" | "sold_out";
+
+type TodayActivity = {
+  inventory_posts: number;
+  updated_stores: number;
+  store_comments: number;
+  applause: number;
 };
 
 type StoreCommentCount = {
@@ -408,6 +419,8 @@ export default function Home() {
  const [reportQuantity, setReportQuantity] = useState("");
 const [reportStockStatus, setReportStockStatus] =
   useState<OnlineStockStatus>("in_stock");
+const [physicalStockInput, setPhysicalStockInput] =
+  useState<PhysicalStockInput>("quantity");
 const [reportPurchaseVariant, setReportPurchaseVariant] =
   useState<PurchaseVariant>("special");
 const [reportShippingEnabled, setReportShippingEnabled] = useState(false);
@@ -452,6 +465,8 @@ const [submitError, setSubmitError] = useState("");
   const [xShareOpen, setXShareOpen] = useState(false);
   const [storeCommentCounts, setStoreCommentCounts] =
     useState<StoreCommentCount[]>([]);
+  const [todayActivity, setTodayActivity] =
+    useState<TodayActivity | null>(null);
   const [bugReportOpen, setBugReportOpen] = useState(false);
 const [bugReportType, setBugReportType] = useState<"bug" | "request">("bug");
 const [bugDescription, setBugDescription] = useState("");
@@ -675,6 +690,25 @@ const percent =
     }
   }, []);
 
+  const loadTodayActivity = useCallback(async () => {
+    const { data, error } = await supabase.rpc("get_today_community_activity");
+
+    if (error) {
+      console.error("today activity load error:", error);
+      return;
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return;
+
+    setTodayActivity({
+      inventory_posts: Number(row.inventory_posts ?? 0),
+      updated_stores: Number(row.updated_stores ?? 0),
+      store_comments: Number(row.store_comments ?? 0),
+      applause: Number(row.applause ?? 0),
+    });
+  }, []);
+
   const loadSalesData = useCallback(async () => {
   const { data, error } = await supabase.rpc(
     "get_sales_summary_v2"
@@ -791,6 +825,7 @@ const loadStoreCommentCounts = useCallback(async () => {
   loadSalesData(),
   loadOnlineProductFirstWeekStatuses(),
   loadStoreCommentCounts(),
+        loadTodayActivity(),
 ]);
 
 setLoading(false);
@@ -1108,7 +1143,7 @@ setLoading(false);
 
    let quantity = 0;
 
-   if (!online) {
+   if (!online && physicalStockInput === "quantity") {
      if (reportQuantity.trim() === "") {
        setSubmitError("在庫枚数を入力してください。");
        return;
@@ -1137,6 +1172,7 @@ setLoading(false);
 
    if (
      !online &&
+     physicalStockInput === "quantity" &&
      quantity >= 50 &&
      reportComment.trim() === ""
    ) {
@@ -1220,7 +1256,9 @@ setLoading(false);
            quantity: online ? undefined : quantity,
            stockStatus: online
              ? reportStockStatus
-             : undefined,
+             : physicalStockInput === "quantity"
+             ? undefined
+             : physicalStockInput,
            purchaseVariant:
              rakutenVariantRequired
                ? reportPurchaseVariant
@@ -1294,13 +1332,14 @@ setLoading(false);
          console.error("shipping info submit error:", shippingError);
          setSubmitMessage("在庫情報は投稿できました。発送・取り寄せ目安だけ送信できなかったため、必要であればもう一度お試しください。");
        } else {
-         setSubmitMessage("在庫情報と発送・取り寄せ目安を投稿しました。発送情報は確認後に反映します。ありがとうございます!");
+         setSubmitMessage("在庫情報と発送・取り寄せ目安を投稿しました。ありがとうございます!");
        }
      } else {
        setSubmitMessage("在庫情報を投稿しました。在庫チェッカーへのご協力、ありがとうございます!");
      }
 
      setReportQuantity("");
+     setPhysicalStockInput("quantity");
      setReportStockStatus("in_stock");
      setReportPurchaseVariant("special");
      setReportShippingEnabled(false);
@@ -1313,7 +1352,10 @@ setLoading(false);
      setReportShippingSource("product_page");
      setReportShippingSourceDetail("");
      setReportComment("");
-     await loadInventoryReports();
+     await Promise.all([
+       loadInventoryReports(),
+       loadOnlineProductFirstWeekStatuses(),
+     ]);
    } catch (error) {
      console.error(error);
      setSubmitError(
@@ -2014,6 +2056,32 @@ async function handleBugReport() {
           </div>
         </section>
 
+        {/* ===== 今日のみんなの活動 ===== */}
+        <section className="rounded-2xl border border-[#ead7e5] bg-[#fff9fc] px-3 py-3 shadow-sm md:px-5 md:py-4">
+          <div className="text-[12px] font-bold text-[#5f3e57] md:text-base">
+            🍯 今日のみんなの活動
+          </div>
+          <div className="mt-0.5 text-[9px] text-[#8b7785] md:text-xs">
+            みんなの情報共有が在庫探しにつながっています
+          </div>
+          <div className="mt-2.5 grid grid-cols-2 gap-1.5 md:grid-cols-4 md:gap-2">
+            {[
+              ["✍️", "在庫投稿", todayActivity?.inventory_posts ?? null, "件"],
+              ["🏪", "更新店舗", todayActivity?.updated_stores ?? null, "店舗"],
+              ["💬", "コメント", todayActivity?.store_comments ?? null, "件"],
+              ["👏", "応援", todayActivity?.applause ?? null, "回"],
+            ].map(([icon, label, value, unit]) => (
+              <div key={String(label)} className="rounded-xl border border-[#eedfea] bg-white px-2 py-2 text-center md:px-3 md:py-3">
+                <div className="text-[10px] font-bold text-[#816376] md:text-xs">{icon} {label}</div>
+                <div className="mt-0.5 text-lg font-bold text-[#2b2329] md:text-2xl">
+                  {value === null ? "－" : Number(value).toLocaleString()}
+                  {value !== null && <span className="ml-0.5 text-[9px] font-normal md:text-xs">{unit}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* ===== 上部ナビ ===== */}
         <nav
           className={`sticky top-2 z-40 rounded-xl border border-[#e3d4e3] p-1.5 shadow-md md:rounded-2xl md:p-2 ${
@@ -2451,8 +2519,7 @@ async function handleBugReport() {
 
           <div className="mt-3 rounded-xl border border-[#ead7a7] bg-[#fff9e8] p-3 text-[11px] leading-5 text-[#5f512f] md:mt-4 md:rounded-2xl md:p-4 md:text-sm md:leading-6">
             <div className="font-bold text-[#4f4021]">📞 複数店舗をまとめて確認・投稿される方へ</div>
-            <p className="mt-1.5">システム設計上、短時間に複数店舗の投稿が続いた場合、確認のためすぐに反映されないことがあります。電話で複数店舗へ確認してくださった場合などは、せっかくの情報をできるだけ正しく確認できるよう、<strong>コメント欄に「電話確認」「複数店舗をまとめて確認」など、どのように確認した情報か一言添えていただけると助かります。</strong></p>
-            <p className="mt-1.5 text-[#766744]">※安全な情報共有のための仕組みです。ご協力ありがとうございます。</p>
+            <p className="mt-1.5">電話確認などで複数店舗の情報をまとめて投稿してくださる場合は、<strong>コメント欄に「電話確認」「複数店舗をまとめて確認」など、どのように確認した情報か一言添えていただけると助かります。</strong></p>
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-1.5 rounded-xl bg-[#f6edf5] p-1.5 md:mt-5 md:gap-2 md:rounded-2xl md:p-2">
@@ -2489,11 +2556,7 @@ async function handleBugReport() {
             </button>
           </div>
 
-          <div
-            className={`mt-3 grid gap-3 md:mt-5 md:gap-4 ${
-              reportMode === "physical" ? "grid-cols-2" : "grid-cols-1"
-            }`}
-          >
+          <div className="mt-3 grid gap-3 md:mt-5 md:grid-cols-2 md:gap-4">
             {reportMode === "physical" && (
               <label className="space-y-1.5 md:space-y-2">
                 <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
@@ -2520,31 +2583,47 @@ async function handleBugReport() {
 
             <label className="space-y-1.5 md:space-y-2">
               <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
-                🔎{" "}
-                {reportMode === "online"
-                  ? "オンラインショップを検索"
-                  : "店舗を検索"}
+                💿 商品
               </span>
 
-              <input
-                value={reportStoreSearch}
-                onChange={(e) => {
-                  setReportStoreSearch(e.target.value);
-                  setReportStoreId("");
-                }}
-                placeholder={
-                  reportMode === "online"
-                    ? "ショップ名を入力"
-                    : "店舗名・チェーン名・市区町村を入力"
+              <select
+                value={reportProductId}
+                onChange={(e) =>
+                  setReportProductId(e.target.value)
                 }
-                className={`w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 ${
-                  reportMode === "physical"
-                    ? "text-[10px] placeholder:text-[9px] sm:text-[11px] sm:placeholder:text-[10px] md:text-sm md:placeholder:text-xs"
-                    : "text-[12px] md:text-base"
-                }`}
-              />
+                className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] md:rounded-2xl md:p-3.5 md:text-base"
+              >
+                {reportProducts.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
+
+          <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
+            <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
+              🔎{" "}
+              {reportMode === "online"
+                ? "オンラインショップを検索"
+                : "店舗を検索"}
+            </span>
+
+            <input
+              value={reportStoreSearch}
+              onChange={(e) => {
+                setReportStoreSearch(e.target.value);
+                setReportStoreId("");
+              }}
+              placeholder={
+                reportMode === "online"
+                  ? "ショップ名を入力"
+                  : "店舗名・チェーン名・市区町村を入力"
+              }
+              className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 md:text-base"
+            />
+          </label>
 
           <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-[#eaddea] bg-[#fcf9fc] p-1.5 md:mt-3 md:max-h-72 md:rounded-2xl md:p-2">
             {reportCandidates.length === 0 ? (
@@ -2578,54 +2657,44 @@ async function handleBugReport() {
             )}
           </div>
 
-          {reportMode === "online" && (
-            <label className="mt-3 block space-y-1.5 md:mt-5 md:space-y-2">
-              <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
-                💿 商品
-              </span>
+          {selectedReportStore && (
+            <div className="mt-2 rounded-xl border border-[#d2b4ca] bg-[#f4e5f0] p-3 md:mt-3 md:rounded-2xl md:p-4">
+              <div className="text-[10px] font-bold text-[#986b8e] md:text-sm">
+                選択中
+              </div>
 
-              <select
-                value={reportProductId}
-                onChange={(e) =>
-                  setReportProductId(e.target.value)
-                }
-                className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] md:rounded-2xl md:p-3.5 md:text-base"
-              >
-                {reportProducts.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <div className="mt-0.5 text-[12px] font-bold text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] md:mt-1 md:text-base">
+                {getDisplayStoreName(selectedReportStore)}
+              </div>
+            </div>
           )}
 
           {reportMode === "physical" ? (
-            <div className="mt-3 grid grid-cols-2 gap-3 md:mt-5 md:gap-4">
-              <label className="space-y-1.5 md:space-y-2">
-                <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
-                  💿 商品
-                </span>
-
-                <select
-                  value={reportProductId}
-                  onChange={(e) =>
-                    setReportProductId(e.target.value)
-                  }
-                  className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] md:rounded-2xl md:p-3.5 md:text-base"
-                >
-                  {reportProducts.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="space-y-1.5 md:space-y-2">
-                <span className="text-[12px] font-bold text-[#211d21] opacity-100 md:text-base">
-                  🔢 在庫枚数
-                </span>
+            <div className="mt-3 md:mt-5">
+              <div className="text-[12px] font-bold text-[#211d21] md:text-base">
+                🔢 在庫状況
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-1.5 md:gap-2">
+                {[
+                  ["quantity", "枚数を入力"],
+                  ["in_stock", "○ 在庫あり"],
+                  ["sold_out", "× 在庫なし"],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setPhysicalStockInput(value as PhysicalStockInput)}
+                    className={`rounded-xl border px-2 py-2.5 text-[10px] font-bold md:px-3 md:py-3 md:text-sm ${
+                      physicalStockInput === value
+                        ? "border-[#9e638d] bg-[#ead8e6] text-[#4f2f46]"
+                        : "border-[#d9c9d8] bg-[#fdfafd] text-[#5f545d]"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {physicalStockInput === "quantity" ? (
                 <input
                   type="text"
                   inputMode="numeric"
@@ -2646,9 +2715,13 @@ async function handleBugReport() {
                     }
                   }}
                   placeholder="例: 5"
-                  className="w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 md:text-base"
+                  className="mt-2 w-full rounded-xl border border-[#d9c9d8] bg-[#fdfafd] p-2.5 text-[12px] text-[#211d21] opacity-100 [color:#211d21] [-webkit-text-fill-color:#211d21] placeholder:text-[#766c74] placeholder:opacity-100 md:rounded-2xl md:p-3.5 md:text-base"
                 />
-              </label>
+              ) : (
+                <div className="mt-2 rounded-xl bg-[#fbf7fa] px-3 py-2 text-[10px] leading-5 text-[#756873] md:text-sm">
+                  枚数が分からなくても投稿できます。在庫が多い場合は、コメントに「在庫潤沢」「店頭に多数あり」など状況を添えていただけると参考になります。
+                </div>
+              )}
             </div>
           ) : (
             <div className="mt-3 space-y-3 md:mt-5 md:space-y-4">
@@ -3214,7 +3287,7 @@ async function handleBugReport() {
 
         {/* ===== FOOTER ===== */}
         {/* ===== 不具合報告 ===== */}
-        <section className="rounded-2xl border-2 border-[#d96ca5] bg-[#fff4fa] p-3.5 shadow-md md:rounded-3xl md:p-5">
+        <section className="rounded-xl border border-[#cdbdca] bg-white p-3 shadow-sm md:rounded-2xl md:p-4">
           <button
             type="button"
             onClick={() => {
@@ -3222,32 +3295,23 @@ async function handleBugReport() {
               setBugMessage("");
               setBugError("");
             }}
-            className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-3 text-left shadow-sm transition hover:bg-[#fffafd] md:px-4 md:py-4"
+            className="flex w-full items-center justify-between gap-3 text-left"
           >
-            <span className="min-w-0">
-              <span className="block text-[13px] font-bold text-[#8f2f68] md:text-base">
-                💡 不具合・ご要望はこちら
-              </span>
-              <span className="mt-1 block text-[10px] font-medium leading-4 text-[#5f4a58] md:text-sm md:leading-5">
-                使いにくいところや、ほしい機能などもお気軽にお寄せください
-              </span>
+            <span className="text-[11px] font-bold text-[#40363e] md:text-sm">
+              💡 不具合・ご要望
+              <span className="ml-2 font-normal text-[#6d5968]">使いにくい点・こんな機能がほしい、もお気軽に</span>
             </span>
 
-            <span className="shrink-0 rounded-full bg-[#d95c9d] px-3 py-1.5 text-[10px] font-bold text-white shadow-sm md:px-4 md:py-2 md:text-xs">
-              {bugReportOpen ? "フォームを閉じる ∧" : "フォームを開く ∨"}
+            <span className="text-xs font-bold text-[#6d5968]">
+              {bugReportOpen ? "∧" : "∨"}
             </span>
           </button>
 
           {bugReportOpen && (
-            <div className="mt-3 rounded-xl border border-[#e5bfd4] bg-white p-3.5 text-[#352f34] shadow-sm md:rounded-2xl md:p-5">
-              <div className="rounded-lg border border-[#efd3e2] bg-[#fff6fb] px-3 py-2.5 md:rounded-xl md:px-4 md:py-3">
-                <div className="text-[11px] font-bold text-[#8f2f68] md:text-sm">
-                  不具合だけでなく、ご要望・改善案も送れます
-                </div>
-                <p className="mt-1 text-[10px] font-medium leading-4 text-[#4f454d] md:text-xs md:leading-5">
-                  「こんな機能がほしい」「ここが使いにくい」など、気づいたことをお気軽にお寄せください。いただいた内容を確認し、可能な範囲で改善します。
-                </p>
-              </div>
+            <div className="mt-3 border-t border-[#d8cad6] pt-3 text-[#352f34]">
+              <p className="text-[10px] font-medium leading-4 text-[#4f454d] md:text-xs md:leading-5">
+                不具合のご報告だけでなく、「こんな機能があるといい」「こうすると使いやすい」などのご要望もお寄せください。いただいた内容は確認し、可能な範囲で改善に努めます。
+              </p>
 
               <label className="mt-3 block">
                 <div className="mb-1 text-[11px] font-bold text-[#352f34] md:text-sm">
@@ -3264,7 +3328,7 @@ async function handleBugReport() {
                     setBugMessage("");
                     setBugError("");
                   }}
-                  className="w-full rounded-lg border-2 border-[#d9b3c8] bg-white px-3 py-2.5 text-[12px] text-[#2f292e] opacity-100 outline-none [color:#2f292e] [-webkit-text-fill-color:#2f292e] focus:border-[#c84d8d] focus:ring-2 focus:ring-[#f2d6e5] md:text-sm"
+                  className="w-full rounded-lg border border-[#cdbdca] bg-white px-3 py-2 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] md:text-sm"
                 >
                   <option value="bug">不具合</option>
                   <option value="request">ご要望・改善案</option>
@@ -3285,7 +3349,7 @@ async function handleBugReport() {
                     setBugDescription(e.target.value)
                   }
                   placeholder={bugReportType === "bug" ? "例: 店舗をタップしても反応しない" : "例: こんな機能があると便利、ここをこうすると使いやすい"}
-                  className="w-full rounded-lg border-2 border-[#d9b3c8] bg-white px-3 py-2.5 text-[12px] text-[#2f292e] outline-none placeholder:text-[#766c74] focus:border-[#c84d8d] focus:ring-2 focus:ring-[#f2d6e5] md:text-sm"
+                  className="w-full rounded-lg border border-[#cdbdca] bg-white px-3 py-2 text-[12px] text-[#2f292e] outline-none placeholder:text-[#766c74] focus:border-[#a95e92] focus:ring-1 focus:ring-[#e7cfe0] md:text-sm"
                 />
               </label>
 
@@ -3557,7 +3621,7 @@ async function handleBugReport() {
                 type="button"
                 onClick={handleBugReport}
                 disabled={bugSubmitting}
-                className="mt-4 w-full rounded-xl bg-[#d95c9d] px-4 py-3 text-[12px] font-bold text-white shadow-md transition hover:bg-[#c84d8d] disabled:opacity-50 md:py-3.5 md:text-sm"
+                className="mt-3 rounded-lg bg-[#5e4b59] px-4 py-2 text-[11px] font-bold text-white transition hover:bg-[#4f3f4b] disabled:opacity-50 md:text-sm"
               >
                 {bugSubmitting
                   ? "送信中…"
@@ -3568,6 +3632,15 @@ async function handleBugReport() {
             </div>
           )}
         </section>
+        <section className="rounded-xl border border-[#eaddea] bg-white/80 px-3 py-3 text-[#655764] md:rounded-2xl md:px-5 md:py-4">
+          <div className="text-[11px] font-bold text-[#5d4658] md:text-sm">更新履歴</div>
+          <div className="mt-2 space-y-1.5 text-[9px] leading-4 md:text-xs md:leading-5">
+            <div><span className="font-bold">v3. 2026/9/5</span>　在庫あり/なし のみの投稿に対応</div>
+            <div><span className="font-bold">v2. 2026/9/5</span>　オンライン発送予定・初週見込み・店舗ごとのコメント機能・X共有・主要オンラインショップの各形態ごとの直リンク・在庫あり/初週見込みごとのフィルター機能に対応</div>
+            <div><span className="font-bold">v1. 2026/9/2</span>　在庫チェッカー公開</div>
+          </div>
+        </section>
+
         <footer className="pb-3 pt-4 text-center md:pb-4 md:pt-5">
           <div className="text-[10px] leading-4 text-[#403940] md:text-sm md:leading-6">
             <p>
@@ -3748,6 +3821,7 @@ function StoreCard({
   const [commentBody, setCommentBody] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [deletingOwnCommentId, setDeletingOwnCommentId] = useState<number | null>(null);
+  const [applaudingCommentId, setApplaudingCommentId] = useState<number | null>(null);
   const [commentMessage, setCommentMessage] = useState("");
   const [commentError, setCommentError] = useState("");
 
@@ -3845,6 +3919,37 @@ function StoreCard({
     }
   }
 
+  async function handleApplause(commentId: number) {
+    setCommentError("");
+    let clientId = localStorage.getItem("kp_inventory_client_id");
+
+    if (!clientId) {
+      clientId = crypto.randomUUID();
+      localStorage.setItem("kp_inventory_client_id", clientId);
+    }
+
+    setApplaudingCommentId(commentId);
+
+    try {
+      const { error } = await supabase.rpc("toggle_store_comment_applause", {
+        p_comment_id: commentId,
+        p_client_id: clientId,
+      });
+
+      if (error) {
+        setCommentError(error.message);
+        return;
+      }
+
+      await loadComments();
+    } catch (error) {
+      console.error(error);
+      setCommentError("応援を更新できませんでした。もう一度お試しください。");
+    } finally {
+      setApplaudingCommentId(null);
+    }
+  }
+
   async function handleDeleteOwnStoreComment(commentId: number) {
     setCommentMessage("");
     setCommentError("");
@@ -3936,35 +4041,33 @@ function StoreCard({
 
   return (
     <article className="rounded-2xl border border-[#e8d9e7] bg-white p-3.5 shadow-sm md:rounded-3xl md:p-6">
-            {/* 店舗基本情報 */}
-      <div>
-        <h3 className="text-base font-bold leading-5 text-[#1d191d] md:text-2xl md:leading-snug">
-          {getDisplayStoreName(store)}
-        </h3>
-
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#403940] md:text-sm">
-          <span className="whitespace-nowrap">
-            {online
-              ? "🛒 オンラインショップ"
-              : `📍 ${store.prefecture}${store.city ? ` ${store.city}` : ""}`}
-          </span>
-
-          {!online && store.business_hours && (
-            <span className="whitespace-nowrap font-bold text-[#3e373e]">
-              🕒 営業時間: {formatBusinessHours(store.business_hours)}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* 集計情報 + 店舗情報提供 */}
-      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2.5 md:mt-3 md:gap-4">
+            {/* 店舗基本情報 ＋ 集計対象 */}
+      <div className="md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-4">
+        {/* 左: 店舗名・所在地・営業時間 */}
         <div className="min-w-0">
+          <h3 className="text-base font-bold leading-5 text-[#1d191d] md:text-2xl md:leading-snug">
+            {getDisplayStoreName(store)}
+          </h3>
+
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#403940] md:text-sm">
+            <span className="whitespace-nowrap">
+              {online
+                ? "🛒 オンラインショップ"
+                : `📍 ${store.prefecture}${store.city ? ` ${store.city}` : ""}`}
+            </span>
+
+            {!online && store.business_hours && (
+              <span className="whitespace-nowrap font-bold text-[#3e373e]">
+                🕒 営業時間: {formatBusinessHours(store.business_hours)}
+              </span>
+            )}
+          </div>
+
           {!online && (() => {
             const cutoff = getFirstWeekCutoffDisplay(store);
             const cutoffConfirmed = cutoff !== "要確認";
             return (
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <span
                   className={`rounded-full border px-2.5 py-1 text-[10px] font-bold md:px-3 md:py-1.5 md:text-sm ${
                     cutoffConfirmed
@@ -3980,43 +4083,48 @@ function StoreCard({
               </div>
             );
           })()}
+        </div>
 
-          <div className={`${!online ? "mt-1.5" : ""} flex flex-wrap items-center gap-1 md:gap-2`}>
-            {store.oricon_target === true && (
-              <span className="whitespace-nowrap rounded-md border border-[#bd4f88] bg-[#d9609b] px-2 py-0.5 text-[9px] font-bold text-white md:rounded-xl md:px-4 md:py-2 md:text-base">
-                オリコン対象
-              </span>
-            )}
+        {/* スマホ: 下 / PC: 右 */}
+        <div className="mt-1.5 flex flex-wrap items-center gap-1 md:mt-0 md:justify-end md:gap-2">
+          {store.oricon_target === true && (
+            <span className="whitespace-nowrap rounded-md border border-[#bd4f88] bg-[#d9609b] px-2 py-0.5 text-[9px] font-bold text-white md:rounded-xl md:px-4 md:py-2 md:text-base">
+              オリコン対象
+            </span>
+          )}
 
-            {store.billboard_status === "target" && (
-              <span className="whitespace-nowrap rounded-md border border-[#7250a5] bg-[#835ab3] px-2 py-0.5 text-[9px] font-bold text-white md:rounded-xl md:px-4 md:py-2 md:text-base">
-                Billboard 対象
-              </span>
-            )}
+          {store.billboard_status === "target" && (
+            <span className="whitespace-nowrap rounded-md border border-[#7250a5] bg-[#835ab3] px-2 py-0.5 text-[9px] font-bold text-white md:rounded-xl md:px-4 md:py-2 md:text-base">
+              Billboard 対象
+            </span>
+          )}
 
-            {store.billboard_status === "check_store" && (
+          {store.billboard_status === "check_store" && (
+            <>
               <span className="whitespace-nowrap rounded-md border border-[#9e85b8] bg-[#eee7f4] px-2 py-0.5 text-[9px] font-bold text-[#5b486b] md:rounded-xl md:px-4 md:py-2 md:text-base">
                 Billboard 要確認
               </span>
-            )}
+            </>
+          )}
 
-            {store.billboard_status === "not_target" && (
-              <span className="whitespace-nowrap rounded-md border border-[#a9a2a8] bg-[#ece9ec] px-2 py-0.5 text-[9px] font-bold text-[#595159] md:rounded-xl md:px-4 md:py-2 md:text-base">
-                Billboard 対象外
-              </span>
-            )}
-          </div>
+          {store.billboard_status === "not_target" && (
+            <span className="whitespace-nowrap rounded-md border border-[#a9a2a8] bg-[#ece9ec] px-2 py-0.5 text-[9px] font-bold text-[#595159] md:rounded-xl md:px-4 md:py-2 md:text-base">
+              Billboard 対象外
+            </span>
+          )}
         </div>
+      </div>
 
+      <div className="mt-2.5">
         <button
           type="button"
           onClick={() => setStoreInfoOpen((current) => !current)}
-          className="w-[150px] shrink-0 rounded-xl border border-[#cdb9ca] bg-white px-2.5 py-2 text-left text-[#6d4966] shadow-sm transition hover:bg-[#faf4f8] sm:w-[175px] md:w-[230px] md:rounded-2xl md:px-4 md:py-2.5"
+          className="rounded-xl border border-[#cdb9ca] bg-white px-3 py-2 text-left text-[#6d4966] shadow-sm transition hover:bg-[#faf4f8] md:rounded-2xl md:px-4 md:py-2.5"
         >
-          <span className="block text-[10px] font-bold leading-4 sm:text-[11px] md:text-sm">
+          <span className="block text-[11px] font-bold md:text-sm">
             📨 店舗情報を提供 {storeInfoOpen ? "∧" : "∨"}
           </span>
-          <span className="mt-0.5 block text-[8px] font-bold leading-3.5 text-[#8b6a83] sm:text-[9px] md:text-xs md:leading-5">
+          <span className="mt-0.5 block text-[9px] font-bold text-[#8b6a83] md:text-xs">
             {online
               ? "Billboard・その他の店舗情報はこちら"
               : "⏰ 初週集計の締め時間をご存じの方はこちら"}
@@ -4179,7 +4287,7 @@ function StoreCard({
                   <div className="mt-1.5 text-[11px] font-bold text-[#625861] md:mt-2 md:text-base">
                     情報なし
                   </div>
-                ) : online && report.stock_status ? (
+                ) : report.stock_status ? (
                   <div className="mt-1.5 md:mt-4">
                     <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold md:px-3 md:py-1.5 md:text-base ${getOnlineStockStatusClass(report.stock_status)}`}>
                       {formatStockStatus(report.stock_status)}
@@ -4281,6 +4389,18 @@ function StoreCard({
                       <div className="text-[9px] text-[#948a92] md:text-xs">
                         {formatDate(comment.created_at)}
                       </div>
+                      <button
+                        type="button"
+                        disabled={applaudingCommentId === comment.id}
+                        onClick={() => void handleApplause(comment.id)}
+                        className={`rounded-full border px-2.5 py-1 text-[9px] font-bold disabled:opacity-50 md:px-3 md:py-1.5 md:text-xs ${
+                          comment.applauded_by_me
+                            ? "border-[#d99abc] bg-[#f8e4ef] text-[#8a466b]"
+                            : "border-[#dfd2dc] bg-white text-[#765f70]"
+                        }`}
+                      >
+                        👏 応援 {comment.applause_count > 0 ? comment.applause_count : ""}
+                      </button>
                       {comment.is_own && (
                         <button
                           type="button"

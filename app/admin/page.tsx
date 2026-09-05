@@ -434,6 +434,8 @@ export default function AdminPage() {
 
   const [activeTab, setActiveTab] =
     useState<AdminTab>("reports");
+  const [storeInfoSubTab, setStoreInfoSubTab] =
+    useState<"store-info" | "billboard">("store-info");
 
   const [loading, setLoading] =
     useState(true);
@@ -2202,7 +2204,7 @@ export default function AdminPage() {
   if (!loggedIn) {
     return (
       <main
-        className="min-h-screen bg-[#f8f1f7] p-4 md:p-8"
+        className="min-h-screen bg-[#f8f1f7] p-3 md:p-8"
         style={{
           fontFamily:
             '"Meiryo", "メイリオ", sans-serif',
@@ -2220,7 +2222,7 @@ export default function AdminPage() {
 
             <form
               onSubmit={handleLogin}
-              className="mt-6 space-y-4"
+              className="mt-3 space-y-2"
             >
               <label className="block">
                 <div className="mb-2 font-bold">
@@ -2337,7 +2339,7 @@ export default function AdminPage() {
         }
       `}</style>
       <div className="mx-auto max-w-7xl">
-        <section className="rounded-3xl bg-white p-5 shadow-sm md:p-8">
+        <section className="rounded-3xl bg-white p-3 shadow-sm md:p-8">
 
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -2365,7 +2367,7 @@ export default function AdminPage() {
           </div>
 
           {/* 12タブ */}
-          <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-3 lg:grid-cols-12">
+          <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-3 lg:grid-cols-12">
             <AdminTabButton
               active={
                 activeTab === "reports"
@@ -2525,26 +2527,26 @@ export default function AdminPage() {
           </div>
 
           {message && (
-            <div className="mt-5 rounded-xl bg-green-50 p-4 font-bold text-green-700">
+            <div className="mt-3 rounded-xl bg-green-50 p-3 font-bold text-green-700">
               {message}
             </div>
           )}
 
           {errorMessage && (
-            <div className="mt-5 rounded-xl bg-red-50 p-4 font-bold text-red-700">
+            <div className="mt-3 rounded-xl bg-red-50 p-3 font-bold text-red-700">
               {errorMessage}
             </div>
           )}
 
           <button
             onClick={loadAdminData}
-            className="mt-5 rounded-xl bg-[#f0dfec] px-5 py-3 font-bold text-[#6d4966]"
+            className="mt-3 rounded-xl bg-[#f0dfec] px-5 py-3 font-bold text-[#6d4966]"
           >
             ↻ 最新の状態に更新
           </button>
 
           {loading ? (
-            <div className="mt-8">
+            <div className="mt-4">
               読み込み中…
             </div>
           ) : activeTab ===
@@ -2656,29 +2658,22 @@ export default function AdminPage() {
             />
           ) : activeTab ===
             "store-info" ? (
-            <div>
-              <StoreInfoRequestsAdminTab
-                requests={storeInfoRequests}
-                history={storeInfoRequestHistory}
-                products={products}
-                onApprove={handleApproveStoreInfoRequest}
-                onReject={handleRejectStoreInfoRequest}
-                onUpdate={handleUpdateStoreInfoRequest}
-                onWithdraw={handleWithdrawStoreInfoRequest}
-                onDeleteProcessed={handleDeleteStoreInfoHistory}
-                formatDate={formatDate}
-              />
-              <div className="mt-10 border-t border-gray-200 pt-8">
-                <BillboardInfoRequestsTab
-                  requests={billboardInfoRequests}
-                  stores={stores}
-                  processingId={billboardProcessingId}
-                  onApprove={handleApproveBillboardInfo}
-                  onReject={handleRejectBillboardInfo}
-                  onDeleteProcessed={handleDeleteBillboardHistory}
-                  formatDate={formatDate}
-                />
+            <div className="mt-2">
+              <div className="sticky top-2 z-20 mb-3 grid grid-cols-2 gap-1 rounded-xl border border-[#dfd1dc] bg-white/95 p-1 shadow-sm backdrop-blur">
+                <button type="button" onClick={() => setStoreInfoSubTab("store-info")} className={`rounded-lg px-2 py-2 text-xs font-bold ${storeInfoSubTab === "store-info" ? "bg-[#211d21] text-white" : "bg-[#f8f1f7] text-[#6f5368]"}`}>
+                  📨 店舗情報提供
+                  {pendingStoreInfoCount > 0 && <span className="ml-1 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] text-white">{pendingStoreInfoCount}</span>}
+                </button>
+                <button type="button" onClick={() => setStoreInfoSubTab("billboard")} className={`rounded-lg px-2 py-2 text-xs font-bold ${storeInfoSubTab === "billboard" ? "bg-[#211d21] text-white" : "bg-[#f8f1f7] text-[#6f5368]"}`}>
+                  📊 Billboard情報提供
+                  {pendingBillboardInfoCount > 0 && <span className="ml-1 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] text-white">{pendingBillboardInfoCount}</span>}
+                </button>
               </div>
+              {storeInfoSubTab === "store-info" ? (
+                <StoreInfoRequestsAdminTab requests={storeInfoRequests} history={storeInfoRequestHistory} products={products} onApprove={handleApproveStoreInfoRequest} onReject={handleRejectStoreInfoRequest} onUpdate={handleUpdateStoreInfoRequest} onWithdraw={handleWithdrawStoreInfoRequest} onDeleteProcessed={handleDeleteStoreInfoHistory} formatDate={formatDate} />
+              ) : (
+                <BillboardInfoRequestsTab requests={billboardInfoRequests} stores={stores} processingId={billboardProcessingId} onApprove={handleApproveBillboardInfo} onReject={handleRejectBillboardInfo} onDeleteProcessed={handleDeleteBillboardHistory} formatDate={formatDate} />
+              )}
             </div>
           ) : activeTab ===
             "bugs" ? (
@@ -2905,7 +2900,7 @@ function StoreInfoRequestsAdminTab({
     const isEditing = editingId === request.id;
 
     return (
-      <div key={request.id} className="rounded-2xl border border-gray-200 bg-white p-4">
+      <div key={request.id} className="rounded-xl border border-gray-200 bg-white p-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="font-bold">{request.store_name}</div>
@@ -2938,7 +2933,7 @@ function StoreInfoRequestsAdminTab({
         )}
 
         {isEditing && (
-          <div className="mt-3 space-y-3 rounded-2xl border border-[#d8cad7] bg-[#fbf7fa] p-4">
+          <div className="mt-3 space-y-2 rounded-xl border border-[#d8cad7] bg-[#fbf7fa] p-3">
             <div className="font-bold text-[#5b486b]">編集</div>
             {request.request_type === "online_product_first_week" && (
               <>
@@ -3054,7 +3049,7 @@ function StoreInfoRequestsAdminTab({
   }
 
   return (
-    <div className="mt-8">
+    <div className="mt-4">
       <div>
         <h2 className="text-2xl font-bold">📨 店舗情報提供</h2>
         <p className="mt-1 text-sm text-gray-600">
@@ -3062,16 +3057,16 @@ function StoreInfoRequestsAdminTab({
         </p>
       </div>
 
-      <div className="mt-5">
+      <div className="mt-3">
         <h3 className="text-lg font-bold">未処理({pending.length})</h3>
         {pending.length === 0 ? (
-          <div className="mt-3 rounded-xl bg-gray-50 p-4 text-sm text-gray-500">未処理の店舗情報提供はありません。</div>
+          <div className="mt-3 rounded-xl bg-gray-50 p-3 text-sm text-gray-500">未処理の店舗情報提供はありません。</div>
         ) : (
-          <div className="mt-3 space-y-3">{pending.map((request) => card(request))}</div>
+          <div className="mt-3 space-y-2">{pending.map((request) => card(request))}</div>
         )}
       </div>
 
-      <div className="mt-7 border-t border-gray-200 pt-6">
+      <div className="mt-4 border-t border-gray-200 pt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-lg font-bold">処理済み({processed.length})</h3>
           {processed.length > 0 && (
@@ -3081,7 +3076,7 @@ function StoreInfoRequestsAdminTab({
             </div>
           )}
         </div>
-        <div className="mt-3 space-y-3">{processed.map((request) => card(request, true))}</div>
+        <div className="mt-3 space-y-2">{processed.map((request) => card(request, true))}</div>
       </div>
     </div>
   );
@@ -3109,7 +3104,7 @@ function StoreCommentsAdminTab({
   });
 
   return (
-    <div className="mt-8">
+    <div className="mt-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold">💬 店舗コメント管理</h2>
@@ -3125,14 +3120,14 @@ function StoreCommentsAdminTab({
         />
       </div>
 
-      <div className="mt-5 space-y-3">
+      <div className="mt-3 space-y-2">
         {visible.length === 0 ? (
-          <div className="rounded-xl bg-gray-50 p-4 text-gray-500">コメントはありません。</div>
+          <div className="rounded-xl bg-gray-50 p-3 text-gray-500">コメントはありません。</div>
         ) : (
           visible.map((comment) => (
             <div
               key={comment.id}
-              className={`rounded-2xl border p-4 ${comment.is_deleted ? "border-gray-200 bg-gray-50 opacity-70" : "border-[#eaddea] bg-white"}`}
+              className={`rounded-xl border p-3 ${comment.is_deleted ? "border-gray-200 bg-gray-50 opacity-70" : "border-[#eaddea] bg-white"}`}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -3222,23 +3217,23 @@ function StoreChangeHistoryTab({
   };
 
   return (
-    <div className="mt-6">
+    <div className="mt-3">
       <h2 className="text-2xl font-bold">🏪 店舗変更・削除履歴</h2>
       <p className="mt-2 text-gray-500">
         stores の変更・削除を自動記録しています。削除された店舗も、削除直前の情報を確認できます。
       </p>
 
       {history.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
+        <div className="mt-3 rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
           店舗の変更・削除履歴はまだありません。
         </div>
       ) : (
-        <div className="mt-6 space-y-3">
+        <div className="mt-3 space-y-2">
           {history.map((row) => {
             const changedFields = changes(row);
             return (
-              <details key={row.id} className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc]">
-                <summary className="cursor-pointer select-none p-4">
+              <details key={row.id} className="rounded-xl border border-[#eaddea] bg-[#fcf9fc]">
+                <summary className="cursor-pointer select-none p-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -3261,7 +3256,7 @@ function StoreChangeHistoryTab({
                   </div>
                 </summary>
 
-                <div className="border-t border-[#eaddea] p-4">
+                <div className="border-t border-[#eaddea] p-3">
                   {row.action_type === "DELETE" ? (
                     <div>
                       <div className="mb-3 font-bold text-red-700">削除直前の店舗情報</div>
@@ -3279,9 +3274,9 @@ function StoreChangeHistoryTab({
                   ) : changedFields.length === 0 ? (
                     <div className="text-gray-500">変更内容を特定できませんでした。</div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {changedFields.map((key) => (
-                        <div key={key} className="rounded-xl bg-white p-4">
+                        <div key={key} className="rounded-xl bg-white p-3">
                           <div className="text-sm font-bold text-gray-600">{fieldLabels[key] ?? key}</div>
                           <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
                             <div className="rounded-lg bg-red-50 p-3">
@@ -3343,28 +3338,28 @@ function AccessTab({
   ).sort(([a], [b]) => b.localeCompare(a));
 
   return (
-    <div className="mt-8">
+    <div className="mt-4">
       <h2 className="text-2xl font-bold">👀 アクセス数</h2>
       <p className="mt-2 text-sm text-gray-600">
         管理画面だけに表示されます。PVはページ表示回数、訪問者数は同じブラウザを日ごとに重複除外した目安です。IPアドレスはアクセス集計には保存しません。
       </p>
 
-      <div className="mt-5 grid gap-3 md:grid-cols-3">
-        <div className="rounded-2xl border bg-white p-5">
+      <div className="mt-3 grid gap-3 md:grid-cols-3">
+        <div className="rounded-xl border bg-white p-3">
           <div className="text-sm text-gray-500">今日のPV</div>
           <div className="mt-1 text-3xl font-bold">{todayViews.toLocaleString()}</div>
         </div>
-        <div className="rounded-2xl border bg-white p-5">
+        <div className="rounded-xl border bg-white p-3">
           <div className="text-sm text-gray-500">今日の訪問者数</div>
           <div className="mt-1 text-3xl font-bold">{todayUnique.toLocaleString()}</div>
         </div>
-        <div className="rounded-2xl border bg-white p-5">
+        <div className="rounded-xl border bg-white p-3">
           <div className="text-sm text-gray-500">直近30日のPV</div>
           <div className="mt-1 text-3xl font-bold">{totalViews.toLocaleString()}</div>
         </div>
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-2xl border bg-white">
+      <div className="mt-3 overflow-x-auto rounded-xl border bg-white">
         <table className="w-full min-w-[520px] text-left text-sm">
           <thead className="bg-[#f5edf4]">
             <tr>
@@ -3428,7 +3423,12 @@ function ReviewReportsTab({
 
   const pending = reports.filter(
     (r) =>
-      r.review_status === "pending"
+      r.review_status === "pending" ||
+      (
+        r.review_status === "approved" &&
+        Boolean(r.review_reason) &&
+        !r.reviewed_at
+      )
   );
 
   const approved = reports.filter(
@@ -3608,8 +3608,10 @@ function ReviewReportsTab({
         events
           .filter(
             (event) =>
-              event.event_type ===
-                "auto_rollback_pending" &&
+              (
+                event.event_type === "auto_rollback_pending" ||
+                event.event_type === "attention_series"
+              ) &&
               event.report_id !== null
           )
           .sort(
@@ -3717,7 +3719,11 @@ function ReviewReportsTab({
             event.event_type ===
               "pending" ||
             event.event_type ===
-              "submitted"
+              "submitted" ||
+            event.event_type ===
+              "attention" ||
+            event.event_type ===
+              "attention_series"
           )
       );
 
@@ -3866,7 +3872,7 @@ function ReviewReportsTab({
     return (
       <details
         key={series.key}
-        className="rounded-2xl border border-orange-200 bg-orange-50/60"
+        className="rounded-xl border border-orange-200 bg-orange-50/60"
       >
         <summary className="cursor-pointer px-5 py-4 font-bold text-[#8a4b20]">
           ⚠️ 連続投稿グループ
@@ -3888,7 +3894,7 @@ function ReviewReportsTab({
           </span>
         </summary>
 
-        <div className="border-t border-orange-200 p-4">
+        <div className="border-t border-orange-200 p-3">
           <p className="mb-4 text-sm leading-6 text-gray-600">
             この一覧には、自動保留になる前に一度公開されていた投稿も含みます。
             同じブラウザ・同じIPからの自動巻き戻し履歴をまとめています。
@@ -3904,7 +3910,7 @@ function ReviewReportsTab({
                   key={
                     storeId
                   }
-                  className="rounded-xl border border-orange-100 bg-white p-4"
+                  className="rounded-xl border border-orange-100 bg-white p-3"
                 >
                   <div className="font-bold text-[#2c252b]">
                     {
@@ -3983,7 +3989,7 @@ function ReviewReportsTab({
   ) => (
     <article
       key={r.id}
-      className="rounded-xl border border-gray-200 bg-white p-4 text-gray-600"
+      className="rounded-xl border border-gray-200 bg-white p-3 text-gray-600"
     >
       <div className="flex items-start gap-3">
         <SelectionCheckbox
@@ -4057,18 +4063,18 @@ function ReviewReportsTab({
   );
 
   return (
-    <div className="mt-6">
+    <div className="mt-3">
       <h2 className="text-2xl font-bold">
         🔎 要確認の在庫投稿
       </h2>
 
       <p className="mt-2 text-gray-500">
-        自動判定で保留になった投稿です。
-        承認するまで公開ページには表示されません。
+        自動判定で要確認になった投稿です。
+        現在は公開を止めず、投稿済みの状態で確認対象として表示しています。
       </p>
 
-      <div className="mt-5 grid gap-3 md:grid-cols-3">
-        <div className="rounded-2xl border border-[#e8d7e4] bg-white p-4">
+      <div className="mt-3 grid gap-3 md:grid-cols-3">
+        <div className="rounded-xl border border-[#e8d7e4] bg-white p-3">
           <div className="text-sm font-bold text-[#8b6881]">
             📊 今日の在庫投稿
           </div>
@@ -4083,7 +4089,7 @@ function ReviewReportsTab({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[#e8d7e4] bg-white p-4">
+        <div className="rounded-xl border border-[#e8d7e4] bg-white p-3">
           <div className="text-sm font-bold text-[#8b6881]">
             🏬 今日投稿された店舗
           </div>
@@ -4095,7 +4101,7 @@ function ReviewReportsTab({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[#e8d7e4] bg-white p-4">
+        <div className="rounded-xl border border-[#e8d7e4] bg-white p-3">
           <div className="text-sm font-bold text-[#8b6881]">
             ⚠️ 最初からPending
           </div>
@@ -4113,7 +4119,7 @@ function ReviewReportsTab({
 
       {visibleRollbackSeries.length >
         0 && (
-        <div className="mt-6">
+        <div className="mt-3">
           <h3 className="text-lg font-bold text-[#6f4d65]">
             🔗 連続投稿のまとまり
           </h3>
@@ -4123,7 +4129,7 @@ function ReviewReportsTab({
             店舗ごとの件数までまとめて確認できます。
           </p>
 
-          <div className="mt-3 space-y-3">
+          <div className="mt-3 space-y-2">
             {visibleRollbackSeries.map(
               renderSeries
             )}
@@ -4132,7 +4138,7 @@ function ReviewReportsTab({
       )}
 
       {pending.length > 0 && (
-        <div className="mt-5">
+        <div className="mt-3">
           <BulkSelectionBar
             count={
               pendingSel.length
@@ -4167,7 +4173,7 @@ function ReviewReportsTab({
               }
               className="rounded-xl bg-green-700 px-4 py-2 font-bold text-white disabled:opacity-40"
             >
-              一括承認・公開
+              一括確認済み
             </button>
 
             <button
@@ -4182,22 +4188,22 @@ function ReviewReportsTab({
               }
               className="rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-40"
             >
-              一括却下
+              一括非公開
             </button>
           </BulkSelectionBar>
         </div>
       )}
 
       {!pending.length ? (
-        <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">
+        <div className="mt-3 rounded-xl border border-green-200 bg-green-50 p-3 text-center font-bold text-green-700">
           現在、要確認の投稿はありません。
         </div>
       ) : (
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 space-y-2">
           {pending.map((r) => (
             <article
               key={r.id}
-              className="rounded-2xl border border-orange-200 bg-orange-50 p-5"
+              className="rounded-xl border border-orange-200 bg-orange-50 p-3"
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
@@ -4457,7 +4463,7 @@ function ReviewReportsTab({
         </div>
       )}
 
-      <div className="mt-7">
+      <div className="mt-4">
         <BulkSelectionBar
           count={
             historySel.length
@@ -4499,8 +4505,8 @@ function ReviewReportsTab({
         </BulkSelectionBar>
       </div>
 
-      <div className="mt-3 space-y-3">
-        <details className="rounded-2xl border border-green-200 bg-green-50/50">
+      <div className="mt-3 space-y-2">
+        <details className="rounded-xl border border-green-200 bg-green-50/50">
           <summary className="cursor-pointer px-5 py-4 font-bold text-green-700">
             承認済みの履歴
             (
@@ -4508,7 +4514,7 @@ function ReviewReportsTab({
             件)
           </summary>
 
-          <div className="space-y-3 border-t border-green-200 p-4">
+          <div className="space-y-2 border-t border-green-200 p-3">
             {approved.length ? (
               approved.map((r) =>
                 hist(r, "承認")
@@ -4521,7 +4527,7 @@ function ReviewReportsTab({
           </div>
         </details>
 
-        <details className="rounded-2xl border border-gray-200 bg-gray-50">
+        <details className="rounded-xl border border-gray-200 bg-gray-50">
           <summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">
             却下済みの履歴
             (
@@ -4529,7 +4535,7 @@ function ReviewReportsTab({
             件)
           </summary>
 
-          <div className="space-y-3 border-t border-gray-200 p-4">
+          <div className="space-y-2 border-t border-gray-200 p-3">
             {rejected.length ? (
               rejected.map((r) =>
                 hist(r, "却下")
@@ -4706,7 +4712,7 @@ function SecurityEventsTab({
   };
 
   return (
-    <div className="mt-6">
+    <div className="mt-3">
       <h2 className="text-2xl font-bold">
         🛡️ セキュリティ履歴
       </h2>
@@ -4714,14 +4720,14 @@ function SecurityEventsTab({
         正常投稿を含め、投稿試行を種類別に絞り込み・並べ替えて確認できます。
       </p>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SecuritySummary label="24時間の全記録" value={last24h} />
         <SecuritySummary label="7日間の全記録" value={last7d} />
         <SecuritySummary label="24時間の拒否" value={blocked24h} />
         <SecuritySummary label="24時間の要確認" value={pending24h} />
       </div>
 
-      <div className="mt-5 rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4">
+      <div className="mt-3 rounded-xl border border-[#eaddea] bg-[#fcf9fc] p-3">
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
             <span className="text-sm font-bold text-gray-600">
@@ -4765,21 +4771,21 @@ function SecurityEventsTab({
       {visibleEvents.length > 0 && <div className="mt-4"><BulkSelectionBar count={selected.length} allSelected={allVisibleSelected} onToggleAll={() => { if (allVisibleSelected) setSelected((c)=>c.filter(id=>!visibleIds.includes(id))); else setSelected((c)=>Array.from(new Set([...c,...visibleIds]))); }}><button disabled={!selected.length} onClick={()=>onDeleteSelected(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を完全削除</button></BulkSelectionBar><div className="mt-2 text-xs text-gray-500">「全選択」は現在の絞り込み結果だけを選択します。</div></div>}
 
       {events.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
+        <div className="mt-3 rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
           セキュリティ履歴はまだありません。
         </div>
       ) : visibleEvents.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
+        <div className="mt-3 rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
           この条件に該当する履歴はありません。
         </div>
       ) : (
-        <div className="mt-6 space-y-3">
+        <div className="mt-3 space-y-2">
           {visibleEvents.map((event) => (
             <details
               key={event.id}
-              className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc]"
+              className="rounded-xl border border-[#eaddea] bg-[#fcf9fc]"
             >
-              <summary className="cursor-pointer select-none p-4">
+              <summary className="cursor-pointer select-none p-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex min-w-0 flex-1 items-start gap-3">
                     <SelectionCheckbox checked={selected.includes(event.id)} onChange={() => toggleSelected(event.id)} label={`セキュリティ履歴 #${event.id} を選択`} />
@@ -4882,7 +4888,7 @@ function SecurityEventsTab({
                 </div>
               )}
 
-              <div className="border-t border-[#eaddea] p-4">
+              <div className="border-t border-[#eaddea] p-3">
                 {event.reason && (
                   <div className="rounded-xl bg-white p-3">
                     <span className="font-bold">理由: </span>
@@ -4917,7 +4923,7 @@ function SecuritySummary({
   value: number;
 }) {
   return (
-    <div className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4">
+    <div className="rounded-xl border border-[#eaddea] bg-[#fcf9fc] p-3">
       <div className="text-sm font-bold text-gray-500">
         {label}
       </div>
@@ -4955,9 +4961,9 @@ function BugReportsTab({ reports, checkingId, onCheck, onBulkCheck, onDeleteSele
   const [imageUrls,setImageUrls]=useState<Record<string,string>>({}); const [selected,setSelected]=useState<number[]>([]); const unchecked=useMemo(()=>reports.filter(r=>!r.checked_at),[reports]); const checked=useMemo(()=>reports.filter(r=>Boolean(r.checked_at)),[reports]); const ids=reports.map(r=>r.id); const all=ids.length>0&&ids.every(id=>selected.includes(id)); const selectedUnchecked=selected.filter(id=>unchecked.some(r=>r.id===id));
   useEffect(()=>setSelected(c=>c.filter(id=>ids.includes(id))),[reports]); const toggle=(id:number)=>setSelected(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id]);
   useEffect(()=>{let cancelled=false;async function load(){const paths=Array.from(new Set(reports.flatMap(r=>Array.isArray(r.image_urls)&&r.image_urls.length?r.image_urls:r.image_url?[r.image_url]:[])));const next:Record<string,string>={};await Promise.all(paths.map(async path=>{const {data,error}=await supabase.storage.from("bug-report-images").createSignedUrl(path,3600);if(!error&&data?.signedUrl)next[path]=data.signedUrl}));if(!cancelled)setImageUrls(next)}load();return()=>{cancelled=true}},[reports]);
-  if(!reports.length)return <div className="mt-8 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">不具合・要望はありません。</div>;
+  if(!reports.length)return <div className="mt-4 rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500">不具合・要望はありません。</div>;
   const wrapped=(r:BugReport,done:boolean)=><div key={r.id} className="flex items-start gap-3"><div className="pt-4"><SelectionCheckbox checked={selected.includes(r.id)} onChange={()=>toggle(r.id)} label={`不具合・要望 #${r.id} を選択`} /></div><div className="min-w-0 flex-1"><BugReportCard report={r} imageUrls={imageUrls} checked={done} checking={checkingId===r.id} onCheck={()=>onCheck(r)} formatDate={formatDate}/></div></div>;
-  return <div className="mt-6"><h2 className="text-2xl font-bold">⚠️ 不具合・要望</h2><p className="mt-2 text-gray-500">未確認の報告だけを上に表示します。複数選択で一括確認・削除もできます。</p><div className="mt-5"><BulkSelectionBar count={selected.length} allSelected={all} onToggleAll={()=>setSelected(all?[]:ids)}><button disabled={!selectedUnchecked.length} onClick={()=>onBulkCheck(selectedUnchecked)} className="rounded-xl bg-green-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した未確認を一括確認済み</button><button disabled={!selected.length} onClick={()=>onDeleteSelected(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した報告を完全削除</button></BulkSelectionBar></div>{!unchecked.length?<div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">未確認の不具合・要望はありません。</div>:<div className="mt-4 space-y-4">{unchecked.map(r=>wrapped(r,false))}</div>}{checked.length>0&&<details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50"><summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">✓ 確認済みの報告 ({checked.length}件)</summary><div className="space-y-3 border-t border-gray-200 p-4">{checked.map(r=>wrapped(r,true))}</div></details>}</div>;
+  return <div className="mt-3"><h2 className="text-2xl font-bold">⚠️ 不具合・要望</h2><p className="mt-2 text-gray-500">未確認の報告だけを上に表示します。複数選択で一括確認・削除もできます。</p><div className="mt-3"><BulkSelectionBar count={selected.length} allSelected={all} onToggleAll={()=>setSelected(all?[]:ids)}><button disabled={!selectedUnchecked.length} onClick={()=>onBulkCheck(selectedUnchecked)} className="rounded-xl bg-green-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した未確認を一括確認済み</button><button disabled={!selected.length} onClick={()=>onDeleteSelected(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した報告を完全削除</button></BulkSelectionBar></div>{!unchecked.length?<div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-3 text-center font-bold text-green-700">未確認の不具合・要望はありません。</div>:<div className="mt-4 space-y-2">{unchecked.map(r=>wrapped(r,false))}</div>}{checked.length>0&&<details className="mt-4 rounded-xl border border-gray-200 bg-gray-50"><summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">✓ 確認済みの報告 ({checked.length}件)</summary><div className="space-y-2 border-t border-gray-200 p-3">{checked.map(r=>wrapped(r,true))}</div></details>}</div>;
 }
 
 function BugReportCard({
@@ -4991,13 +4997,13 @@ function BugReportCard({
 
   return (
     <details
-      className={`rounded-2xl border ${
+      className={`rounded-xl border ${
         checked
           ? "border-gray-200 bg-white/60 text-gray-600"
           : "border-[#e0c9db] bg-[#fcf9fc]"
       }`}
     >
-      <summary className="cursor-pointer select-none list-none p-4 [&::-webkit-details-marker]:hidden">
+      <summary className="cursor-pointer select-none list-none p-3 [&::-webkit-details-marker]:hidden">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -5033,7 +5039,7 @@ function BugReportCard({
         </div>
       </summary>
 
-      <div className="border-t border-[#eaddea] p-5">
+      <div className="border-t border-[#eaddea] p-3">
         <div className="flex flex-wrap items-start justify-between gap-4">
           {report.page_path && (
             <span className="rounded-full bg-[#f0dfec] px-3 py-1 text-xs font-bold text-[#6d4966]">
@@ -5048,7 +5054,7 @@ function BugReportCard({
           )}
         </div>
 
-        <div className="mt-4 rounded-xl bg-white p-4">
+        <div className="mt-4 rounded-xl bg-white p-3">
           <div className="text-sm font-bold text-gray-500">
             内容
           </div>
@@ -5087,7 +5093,7 @@ function BugReportCard({
         </div>
 
         {report.supplemental_comment && (
-          <div className="mt-4 rounded-xl bg-white p-4">
+          <div className="mt-4 rounded-xl bg-white p-3">
             <div className="text-sm font-bold text-gray-500">
               補足
             </div>
@@ -5098,7 +5104,7 @@ function BugReportCard({
         )}
 
         {paths.length > 0 && (
-          <div className="mt-5">
+          <div className="mt-3">
             <div className="mb-3 font-bold">
               📷 添付画像 ({paths.length}枚)
             </div>
@@ -5135,7 +5141,7 @@ function BugReportCard({
         )}
 
         {!checked && (
-          <div className="mt-5 border-t border-[#eaddea] pt-4">
+          <div className="mt-3 border-t border-[#eaddea] pt-4">
             <button
               type="button"
               disabled={checking}
@@ -5175,8 +5181,8 @@ function BugInfo({
 function BillboardInfoRequestsTab({ requests, stores, processingId, onApprove, onReject, onDeleteProcessed, formatDate }: { requests: BillboardInfoRequest[]; stores: Store[]; processingId: number | null; onApprove: (request: BillboardInfoRequest) => void; onReject: (request: BillboardInfoRequest) => void; onDeleteProcessed: (ids: number[]) => void; formatDate: (value: string) => string; }) {
   const [selected,setSelected]=useState<number[]>([]); const pending=requests.filter(x=>x.status==="pending"); const processed=requests.filter(x=>x.status!=="pending"); const ids=processed.map(x=>x.id); const all=ids.length>0&&ids.every(id=>selected.includes(id));
   useEffect(()=>setSelected(c=>c.filter(id=>ids.includes(id))),[requests]); const toggle=(id:number)=>setSelected(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id]); const storeName=(id:number)=>{const x=stores.find(s=>s.id===id);return x?getDisplayStoreName(x):`店舗ID ${id}`};
-  const card=(r:BillboardInfoRequest,selectable=false)=><article key={r.id} className="rounded-2xl border border-[#e5d7e6] bg-white p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex min-w-0 flex-1 items-start gap-3">{selectable&&<SelectionCheckbox checked={selected.includes(r.id)} onChange={()=>toggle(r.id)} label={`Billboard履歴 #${r.id} を選択`} />}<div className="min-w-0 flex-1"><div className="text-lg font-bold">{storeName(r.store_id)}</div><div className="mt-2"><span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-800">{r.proposed_status==="target"?"Billboard 対象":"Billboard 対象外"}</span>{r.status!=="pending"&&<span className={"ml-2 rounded-full px-3 py-1 text-xs font-bold "+(r.status==="approved"?"bg-green-100 text-green-700":"bg-red-100 text-red-700")}>{r.status==="approved"?"承認済み":"却下済み"}</span>}</div><div className="mt-3 text-sm font-bold text-gray-600">確認できるソースURL・エビデンス</div><div className="mt-1 whitespace-pre-wrap break-words rounded-xl bg-[#f8f4f7] p-3 text-sm">{r.evidence}</div><div className="mt-3 text-xs text-gray-500">受付: {formatDate(r.requested_at)}</div>{r.reviewed_at&&<div className="mt-1 text-xs text-gray-500">処理: {formatDate(r.reviewed_at)}</div>}</div></div>{r.status==="pending"&&<div className="flex gap-2"><button disabled={processingId===r.id} onClick={()=>onApprove(r)} className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white">内容確認済み・反映</button><button disabled={processingId===r.id} onClick={()=>onReject(r)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white">却下</button></div>}</div></article>;
-  return <div className="mt-6"><h2 className="text-2xl font-bold">📊 Billboard情報提供</h2><p className="mt-2 text-gray-500">以前のBillboard情報提供機能から送信された履歴です。未処理のものがある場合はこちらで確認してください。</p>{!pending.length?<div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">未処理のBillboard情報提供はありません。</div>:<div className="mt-5 space-y-4">{pending.map(r=>card(r))}</div>}<details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50"><summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">処理済みの履歴 ({processed.length}件)</summary><div className="border-t border-gray-200 p-4">{processed.length>0&&<BulkSelectionBar count={selected.length} allSelected={all} onToggleAll={()=>setSelected(all?[]:ids)}><button disabled={!selected.length} onClick={()=>onDeleteProcessed(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を完全削除</button></BulkSelectionBar>}<div className="mt-3 space-y-3">{processed.length?processed.map(r=>card(r,true)):<div className="py-3 text-center text-sm text-gray-500">処理済みの履歴はありません。</div>}</div></div></details></div>;
+  const card=(r:BillboardInfoRequest,selectable=false)=><article key={r.id} className="rounded-xl border border-[#e5d7e6] bg-white p-3"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex min-w-0 flex-1 items-start gap-3">{selectable&&<SelectionCheckbox checked={selected.includes(r.id)} onChange={()=>toggle(r.id)} label={`Billboard履歴 #${r.id} を選択`} />}<div className="min-w-0 flex-1"><div className="text-lg font-bold">{storeName(r.store_id)}</div><div className="mt-2"><span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-800">{r.proposed_status==="target"?"Billboard 対象":"Billboard 対象外"}</span>{r.status!=="pending"&&<span className={"ml-2 rounded-full px-3 py-1 text-xs font-bold "+(r.status==="approved"?"bg-green-100 text-green-700":"bg-red-100 text-red-700")}>{r.status==="approved"?"承認済み":"却下済み"}</span>}</div><div className="mt-3 text-sm font-bold text-gray-600">確認できるソースURL・エビデンス</div><div className="mt-1 whitespace-pre-wrap break-words rounded-xl bg-[#f8f4f7] p-3 text-sm">{r.evidence}</div><div className="mt-3 text-xs text-gray-500">受付: {formatDate(r.requested_at)}</div>{r.reviewed_at&&<div className="mt-1 text-xs text-gray-500">処理: {formatDate(r.reviewed_at)}</div>}</div></div>{r.status==="pending"&&<div className="flex gap-2"><button disabled={processingId===r.id} onClick={()=>onApprove(r)} className="rounded-xl bg-green-700 px-5 py-3 font-bold text-white">内容確認済み・反映</button><button disabled={processingId===r.id} onClick={()=>onReject(r)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white">却下</button></div>}</div></article>;
+  return <div className="mt-3"><h2 className="text-2xl font-bold">📊 Billboard情報提供</h2><p className="mt-2 text-gray-500">以前のBillboard情報提供機能から送信された履歴です。未処理のものがある場合はこちらで確認してください。</p>{!pending.length?<div className="mt-3 rounded-xl border border-green-200 bg-green-50 p-3 text-center font-bold text-green-700">未処理のBillboard情報提供はありません。</div>:<div className="mt-3 space-y-2">{pending.map(r=>card(r))}</div>}<details className="mt-4 rounded-xl border border-gray-200 bg-gray-50"><summary className="cursor-pointer px-5 py-4 font-bold text-gray-600">処理済みの履歴 ({processed.length}件)</summary><div className="border-t border-gray-200 p-3">{processed.length>0&&<BulkSelectionBar count={selected.length} allSelected={all} onToggleAll={()=>setSelected(all?[]:ids)}><button disabled={!selected.length} onClick={()=>onDeleteProcessed(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を完全削除</button></BulkSelectionBar>}<div className="mt-3 space-y-2">{processed.length?processed.map(r=>card(r,true)):<div className="py-3 text-center text-sm text-gray-500">処理済みの履歴はありません。</div>}</div></div></details></div>;
 }
 
 function StoreRequestsTab({
@@ -5248,7 +5254,7 @@ function StoreRequestsTab({
   const toggleProcessed = (id: number) => setSelectedProcessed((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
 
   return (
-    <div className="mt-6">
+    <div className="mt-3">
       <div className="mb-5">
         <h2 className="text-2xl font-bold">
           🏪 店舗追加リクエスト
@@ -5260,7 +5266,7 @@ function StoreRequestsTab({
       </div>
 
       {pendingRequests.length === 0 ? (
-        <div className="rounded-2xl border border-green-200 bg-green-50 p-5 text-center font-bold text-green-700">
+        <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-center font-bold text-green-700">
           未処理の店舗追加リクエストはありません。
         </div>
       ) : (
@@ -5269,7 +5275,7 @@ function StoreRequestsTab({
             (request) => (
               <article
                 key={request.id}
-                className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-5"
+                className="rounded-xl border border-[#eaddea] bg-[#fcf9fc] p-3"
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
@@ -5335,12 +5341,12 @@ function StoreRequestsTab({
 
                 {edit?.requestId ===
                   request.id && (
-                  <div className="mt-6 border-t border-[#eaddea] pt-6">
+                  <div className="mt-3 border-t border-[#eaddea] pt-6">
                     <h3 className="text-xl font-bold">
                       登録内容を確認
                     </h3>
 
-                    <div className="mt-5 grid gap-4 md:grid-cols-2">
+                    <div className="mt-3 grid gap-4 md:grid-cols-2">
                       <AdminInput
                         label="チェーン名"
                         value={edit.chainName}
@@ -5548,7 +5554,7 @@ function StoreRequestsTab({
                       </label>
                     </div>
 
-                    <div className="mt-6 flex flex-wrap gap-3">
+                    <div className="mt-3 flex flex-wrap gap-3">
                       <button
                         type="button"
                         disabled={
@@ -5583,7 +5589,7 @@ function StoreRequestsTab({
       )}
 
       {approvedStoreEdit && (
-        <div className="mt-7 rounded-2xl border-2 border-[#b98aaf] bg-white p-5">
+        <div className="mt-4 rounded-xl border-2 border-[#b98aaf] bg-white p-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="text-xl font-bold">
@@ -5602,7 +5608,7 @@ function StoreRequestsTab({
             </button>
           </div>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div className="mt-3 grid gap-4 md:grid-cols-2">
             {[
               ["店舗名", "name"],
               ["チェーン名", "chain_name"],
@@ -5666,7 +5672,7 @@ function StoreRequestsTab({
             type="button"
             disabled={approvedStoreSaving}
             onClick={onSaveApprovedStore}
-            className="mt-5 rounded-xl bg-[#211d21] px-6 py-3 font-bold text-white disabled:opacity-50"
+            className="mt-3 rounded-xl bg-[#211d21] px-6 py-3 font-bold text-white disabled:opacity-50"
           >
             {approvedStoreSaving
               ? "保存中…"
@@ -5676,21 +5682,21 @@ function StoreRequestsTab({
       )}
 
       {processedRequests.length > 0 && (
-        <details className="mt-7 rounded-2xl border border-gray-200 bg-gray-50">
+        <details className="mt-4 rounded-xl border border-gray-200 bg-gray-50">
           <summary className="cursor-pointer select-none px-5 py-4 font-bold text-gray-600">
             履歴: 承認済み・却下 ({processedRequests.length}件)
           </summary>
 
-          <div className="border-t border-gray-200 p-4">
+          <div className="border-t border-gray-200 p-3">
             <BulkSelectionBar count={selectedProcessed.length} allSelected={allProcessedSelected} onToggleAll={() => setSelectedProcessed(allProcessedSelected ? [] : processedIds)}><button disabled={!selectedProcessed.length} onClick={() => onDeleteProcessed(selectedProcessed)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を完全削除</button></BulkSelectionBar>
-            <div className="mt-3 space-y-3">
+            <div className="mt-3 space-y-2">
             {processedRequests.map(
               (request) => (
                 <details
                   key={request.id}
                   className="rounded-xl border border-gray-200 bg-white/60 text-gray-600"
                 >
-                  <summary className="cursor-pointer select-none p-4">
+                  <summary className="cursor-pointer select-none p-3">
                     <div className="inline-flex flex-wrap items-center gap-2">
                       <SelectionCheckbox checked={selectedProcessed.includes(request.id)} onChange={() => toggleProcessed(request.id)} label={`店舗リクエスト履歴 #${request.id} を選択`} />
                       <span className="font-bold">
@@ -5839,7 +5845,7 @@ function SelectionCheckbox({ checked, onChange, label }: { checked: boolean; onC
 
 function BulkSelectionBar({ count, allSelected, onToggleAll, children }: { count: number; allSelected: boolean; onToggleAll: () => void; children: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#e4d7e3] bg-[#f8f3f7] p-3">
+    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[#e4d7e3] bg-[#f8f3f7] p-3">
       <label className="inline-flex cursor-pointer items-center gap-2 font-bold text-[#6d4966]">
         <input type="checkbox" checked={allSelected} onChange={onToggleAll} className="h-5 w-5 accent-[#6f4b89]" />
         全選択
@@ -5863,7 +5869,7 @@ function AdminTabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-xl px-3 py-3 font-bold transition ${
+      className={`rounded-lg px-2 py-2 text-xs font-bold leading-tight transition ${
         active
           ? "bg-[#211d21] text-white shadow-sm"
           : "text-[#715f6e]"
@@ -5885,14 +5891,14 @@ function ReportsTab({
   const allSelected = ids.length > 0 && ids.every((id) => selected.includes(id));
   useEffect(() => { setSelected((current) => current.filter((id) => ids.includes(id))); }, [reports]);
   const toggle = (id: number) => setSelected((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
-  if (!reports.length) return <div className="mt-8 rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">在庫投稿はありません。</div>;
-  return <div className="mt-6 space-y-4">
+  if (!reports.length) return <div className="mt-4 rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500">在庫投稿はありません。</div>;
+  return <div className="mt-3 space-y-2">
     <BulkSelectionBar count={selected.length} allSelected={allSelected} onToggleAll={() => setSelected(allSelected ? [] : ids)}>
       <button type="button" disabled={!selected.length} onClick={() => onBulkDelete(selected)} className="rounded-xl bg-red-600 px-4 py-2 font-bold text-white disabled:opacity-40">選択した投稿を削除</button>
     </BulkSelectionBar>
     {reports.map((report) => {
       const store=stores.find((x)=>x.id===report.store_id); const product=products.find((x)=>x.id===report.product_id);
-      return <article key={report.id} className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"><div className="flex flex-wrap items-start justify-between gap-5"><div className="flex min-w-0 flex-1 items-start gap-3"><SelectionCheckbox checked={selected.includes(report.id)} onChange={()=>toggle(report.id)} label={`投稿 #${report.id} を選択`} /><div><div className="text-lg font-bold">{store?getDisplayStoreName(store):"店舗不明"}</div><div className="mt-3">{product?.name??"商品不明"}</div><div className="mt-1 font-bold text-[#b95489]">{formatInventoryValue(report.quantity,report.stock_status)}</div><div className="mt-1 text-sm text-gray-500">{formatDate(report.created_at)}</div>{report.comment&&<div className="mt-3 rounded-xl bg-white p-3">💬 {report.comment}</div>}</div></div><button type="button" disabled={deletingId===report.id} onClick={()=>onDelete(report)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white disabled:opacity-50">削除</button></div></article>;
+      return <article key={report.id} className="rounded-xl border border-[#eaddea] bg-[#fcf9fc] p-3"><div className="flex flex-wrap items-start justify-between gap-5"><div className="flex min-w-0 flex-1 items-start gap-3"><SelectionCheckbox checked={selected.includes(report.id)} onChange={()=>toggle(report.id)} label={`投稿 #${report.id} を選択`} /><div><div className="text-lg font-bold">{store?getDisplayStoreName(store):"店舗不明"}</div><div className="mt-3">{product?.name??"商品不明"}</div><div className="mt-1 font-bold text-[#b95489]">{formatInventoryValue(report.quantity,report.stock_status)}</div><div className="mt-1 text-sm text-gray-500">{formatDate(report.created_at)}</div>{report.comment&&<div className="mt-3 rounded-xl bg-white p-3">💬 {report.comment}</div>}</div></div><button type="button" disabled={deletingId===report.id} onClick={()=>onDelete(report)} className="rounded-xl bg-red-600 px-5 py-3 font-bold text-white disabled:opacity-50">削除</button></div></article>;
     })}
   </div>;
 }
@@ -5909,8 +5915,8 @@ function UserDeletionHistoryTab({
   formatDate: (value: string) => string;
 }) {
   return (
-    <div className="mt-6 space-y-4">
-      <div className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4">
+    <div className="mt-3 space-y-2">
+      <div className="rounded-xl border border-[#eaddea] bg-[#fcf9fc] p-3">
         <h2 className="text-xl font-bold">
           👤 ユーザー自己削除履歴
         </h2>
@@ -5921,7 +5927,7 @@ function UserDeletionHistoryTab({
       </div>
 
       {deletions.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
+        <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
           ユーザーによる自己削除履歴はまだありません。
         </div>
       ) : (
@@ -5937,7 +5943,7 @@ function UserDeletionHistoryTab({
           return (
             <article
               key={deletion.id}
-              className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"
+              className="rounded-xl border border-[#eaddea] bg-[#fcf9fc] p-3"
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -5999,7 +6005,7 @@ function DeletionHistoryTab({ deletions, stores, products, restoringId, onRestor
 }) {
   const [selected,setSelected]=useState<number[]>([]); const ids=deletions.map(d=>d.id); const all=ids.length>0&&ids.every(id=>selected.includes(id));
   useEffect(()=>setSelected(c=>c.filter(id=>ids.includes(id))),[deletions]); const toggle=(id:number)=>setSelected(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id]); const restorable=selected.filter(id=>!deletions.find(d=>d.id===id)?.restored_at);
-  return <div className="mt-6 space-y-4">{deletions.length>0&&<BulkSelectionBar count={selected.length} allSelected={all} onToggleAll={()=>setSelected(all?[]:ids)}><button disabled={!restorable.length} onClick={()=>onBulkRestore(restorable)} className="rounded-xl bg-[#6f4b89] px-4 py-2 font-bold text-white disabled:opacity-40">選択した未復元を一括復元</button><button disabled={!selected.length} onClick={()=>onDeleteHistory(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を完全削除</button></BulkSelectionBar>}{!deletions.length&&<div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">削除履歴はありません。</div>}{deletions.map(d=>{const store=stores.find(x=>x.id===d.store_id);const product=products.find(x=>x.id===d.product_id);const restored=Boolean(d.restored_at);return <article key={d.id} className="rounded-2xl border border-[#eaddea] bg-[#fcf9fc] p-4"><div className="flex flex-wrap items-start justify-between gap-5"><div className="flex items-start gap-3"><SelectionCheckbox checked={selected.includes(d.id)} onChange={()=>toggle(d.id)} label={`削除履歴 #${d.id} を選択`} /><div><div className="text-lg font-bold">{store?getDisplayStoreName(store):"店舗不明"}</div><div className="mt-2">{product?.name??"商品不明"}</div><div className="mt-1 font-bold">{formatInventoryValue(d.quantity,d.stock_status)}</div><div className="mt-2 text-sm text-gray-500">削除: {formatDate(d.deleted_at)}</div>{restored&&<div className="mt-1 text-sm font-bold text-green-700">復元済み</div>}</div></div>{!restored&&<button disabled={restoringId===d.id} onClick={()=>onRestore(d)} className="rounded-xl bg-[#6f4b89] px-5 py-3 font-bold text-white disabled:opacity-50">復元</button>}</div></article>})}</div>;
+  return <div className="mt-3 space-y-2">{deletions.length>0&&<BulkSelectionBar count={selected.length} allSelected={all} onToggleAll={()=>setSelected(all?[]:ids)}><button disabled={!restorable.length} onClick={()=>onBulkRestore(restorable)} className="rounded-xl bg-[#6f4b89] px-4 py-2 font-bold text-white disabled:opacity-40">選択した未復元を一括復元</button><button disabled={!selected.length} onClick={()=>onDeleteHistory(selected)} className="rounded-xl bg-red-700 px-4 py-2 font-bold text-white disabled:opacity-40">選択した履歴を完全削除</button></BulkSelectionBar>}{!deletions.length&&<div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500">削除履歴はありません。</div>}{deletions.map(d=>{const store=stores.find(x=>x.id===d.store_id);const product=products.find(x=>x.id===d.product_id);const restored=Boolean(d.restored_at);return <article key={d.id} className="rounded-xl border border-[#eaddea] bg-[#fcf9fc] p-3"><div className="flex flex-wrap items-start justify-between gap-5"><div className="flex items-start gap-3"><SelectionCheckbox checked={selected.includes(d.id)} onChange={()=>toggle(d.id)} label={`削除履歴 #${d.id} を選択`} /><div><div className="text-lg font-bold">{store?getDisplayStoreName(store):"店舗不明"}</div><div className="mt-2">{product?.name??"商品不明"}</div><div className="mt-1 font-bold">{formatInventoryValue(d.quantity,d.stock_status)}</div><div className="mt-2 text-sm text-gray-500">削除: {formatDate(d.deleted_at)}</div>{restored&&<div className="mt-1 text-sm font-bold text-green-700">復元済み</div>}</div></div>{!restored&&<button disabled={restoringId===d.id} onClick={()=>onRestore(d)} className="rounded-xl bg-[#6f4b89] px-5 py-3 font-bold text-white disabled:opacity-50">復元</button>}</div></article>})}</div>;
 }
 
 function SalesTab({
@@ -6069,7 +6075,7 @@ function SalesTab({
     );
 
   return (
-    <div className="mt-6 rounded-3xl border border-[#eaddea] bg-[#fcf9fc] p-5 md:p-7">
+    <div className="mt-3 rounded-3xl border border-[#eaddea] bg-[#fcf9fc] p-3 md:p-7">
       <h2 className="text-2xl font-bold">
         📈 売上情報
       </h2>
@@ -6114,10 +6120,10 @@ function SalesTab({
 
       <form
         onSubmit={onSubmit}
-        className="mt-6"
+        className="mt-3"
       >
         <div className="grid gap-5 md:grid-cols-2">
-          <label className="rounded-xl border border-[#e3d6e2] bg-white p-4">
+          <label className="rounded-xl border border-[#e3d6e2] bg-white p-3">
             <div className="font-bold">
               📅 売上対象日
             </div>
@@ -6152,7 +6158,7 @@ function SalesTab({
             allowDash
           />
 
-          <div className="rounded-xl border border-[#e3d6e2] bg-[#f5eef4] p-4">
+          <div className="rounded-xl border border-[#e3d6e2] bg-[#f5eef4] p-3">
             <div className="font-bold">
               📅 対象週(月〜日)
             </div>
@@ -6172,7 +6178,7 @@ function SalesTab({
             </div>
           </div>
 
-          <div className="rounded-xl border border-[#e3d6e2] bg-[#f5eef4] p-4">
+          <div className="rounded-xl border border-[#e3d6e2] bg-[#f5eef4] p-3">
             <div className="font-bold">
               📊 現在公開中の週売上
             </div>
@@ -6184,7 +6190,7 @@ function SalesTab({
             </div>
           </div>
 
-          <div className="rounded-xl border border-[#e3d6e2] bg-[#f5eef4] p-4">
+          <div className="rounded-xl border border-[#e3d6e2] bg-[#f5eef4] p-3">
             <div className="font-bold">
               👑 現在の累計売上
             </div>
@@ -6212,7 +6218,7 @@ function SalesTab({
           disabled={
             salesUpdating
           }
-          className="mt-6 rounded-xl bg-[#211d21] px-7 py-3.5 font-bold text-white disabled:opacity-50"
+          className="mt-3 rounded-xl bg-[#211d21] px-7 py-3.5 font-bold text-white disabled:opacity-50"
         >
           {salesUpdating
             ? "更新中…"
