@@ -3636,7 +3636,15 @@ async function handleBugReport() {
           <div className="text-[11px] font-bold text-[#5d4658] md:text-sm">更新履歴</div>
           <div className="mt-2 space-y-1.5 text-[9px] leading-4 md:text-xs md:leading-5">
             <div><span className="font-bold">v3. 2026/9/5</span>　在庫あり/なし のみの投稿に対応</div>
-            <div><span className="font-bold">v2. 2026/9/5</span>　オンライン発送予定・初週見込み・店舗ごとのコメント機能・X共有・主要オンラインショップの各形態ごとの直リンク・在庫あり/初週見込みごとのフィルター機能に対応</div>
+            <div>
+  <div><span className="font-bold">v2. 2026/9/5</span></div>
+  <div className="mt-1 space-y-0.5">
+    <div>オンラインの発送予定/初週見込みを追加</div>
+    <div>店舗状況コメント、X共有を追加</div>
+    <div>主要オンラインショップの商品別直リンクを追加</div>
+    <div>在庫あり／初週見込みの絞り込みに対応</div>
+  </div>
+</div>
             <div><span className="font-bold">v1. 2026/9/2</span>　在庫チェッカー公開</div>
           </div>
         </section>
