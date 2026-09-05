@@ -2030,55 +2030,42 @@ async function handleBugReport() {
           </div>
         </section>
 
-        {/* ===== Xで在庫情報を共有 ===== */}
+        {/* ===== X共有 + 今日の投稿状況 ===== */}
         <section
-          className={`rounded-2xl border border-[#e2d3e4] px-3 py-3 shadow-sm md:px-5 md:py-4 ${
+          className={`rounded-xl border border-[#e2d3e4] px-3 py-2 shadow-sm md:px-4 md:py-2.5 ${
             isAndroid ? "bg-white" : "bg-white/90"
           }`}
         >
-          <div className="flex flex-col items-center justify-between gap-2.5 sm:flex-row">
-            <div className="text-center sm:text-left">
-              <div className="text-[12px] font-bold text-[#3f3340] md:text-base">
-                見つけた在庫をみんなに共有
-              </div>
-              <div className="mt-0.5 text-[10px] text-[#806f7d] md:text-sm">
-                #KP在庫ここにあるよ をつけてXへ投稿できます
-              </div>
-            </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[10px] text-[#655764] md:text-xs">
+            <span className="font-bold text-[#5f3e57]">今日の投稿状況</span>
 
             <button
               type="button"
               onClick={() => setXShareOpen(true)}
-              className="w-full rounded-xl border border-[#b986b5] bg-[#f6e8f3] px-4 py-2.5 text-[12px] font-bold text-[#694260] shadow-sm transition hover:bg-[#eedbec] sm:w-auto md:px-5 md:py-3 md:text-base"
+              className="rounded-lg border border-[#b986b5] bg-[#f6e8f3] px-2.5 py-1.5 font-bold text-[#694260] transition hover:bg-[#eedbec]"
             >
-              𝕏 在庫情報を共有する
+              𝕏 共有
             </button>
-          </div>
-        </section>
 
-        {/* ===== 今日のみんなの活動 ===== */}
-        <section className="rounded-2xl border border-[#ead7e5] bg-[#fff9fc] px-3 py-3 shadow-sm md:px-5 md:py-4">
-          <div className="text-[12px] font-bold text-[#5f3e57] md:text-base">
-            🍯 今日のみんなの活動
-          </div>
-          <div className="mt-0.5 text-[9px] text-[#8b7785] md:text-xs">
-            みんなの情報共有が在庫探しにつながっています
-          </div>
-          <div className="mt-2.5 grid grid-cols-2 gap-1.5 md:grid-cols-4 md:gap-2">
-            {[
-              ["✍️", "在庫投稿", todayActivity?.inventory_posts ?? null, "件"],
-              ["🏪", "更新店舗", todayActivity?.updated_stores ?? null, "店舗"],
-              ["💬", "コメント", todayActivity?.store_comments ?? null, "件"],
-              ["👏", "応援", todayActivity?.applause ?? null, "回"],
-            ].map(([icon, label, value, unit]) => (
-              <div key={String(label)} className="rounded-xl border border-[#eedfea] bg-white px-2 py-2 text-center md:px-3 md:py-3">
-                <div className="text-[10px] font-bold text-[#816376] md:text-xs">{icon} {label}</div>
-                <div className="mt-0.5 text-lg font-bold text-[#2b2329] md:text-2xl">
-                  {value === null ? "－" : Number(value).toLocaleString()}
-                  {value !== null && <span className="ml-0.5 text-[9px] font-normal md:text-xs">{unit}</span>}
-                </div>
-              </div>
-            ))}
+            <span>
+              在庫投稿{" "}
+              <strong className="text-[#2b2329]">
+                {todayActivity?.inventory_posts == null
+                  ? "－"
+                  : todayActivity.inventory_posts.toLocaleString()}
+              </strong>
+              件
+            </span>
+
+            <span>
+              更新店舗{" "}
+              <strong className="text-[#2b2329]">
+                {todayActivity?.updated_stores == null
+                  ? "－"
+                  : todayActivity.updated_stores.toLocaleString()}
+              </strong>
+              店舗
+            </span>
           </div>
         </section>
 
