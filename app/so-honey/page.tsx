@@ -2032,40 +2032,49 @@ async function handleBugReport() {
 
         {/* ===== X共有 + 今日の投稿状況 ===== */}
         <section
-          className={`rounded-xl border border-[#e2d3e4] px-3 py-2 shadow-sm md:px-4 md:py-2.5 ${
+          className={`rounded-2xl border border-[#e2d3e4] px-3 py-3 shadow-sm md:px-5 md:py-4 ${
             isAndroid ? "bg-white" : "bg-white/90"
           }`}
         >
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[10px] text-[#655764] md:text-xs">
-            <span className="font-bold text-[#5f3e57]">今日の投稿状況</span>
+          <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-center gap-3 md:gap-5">
+            <div className="min-w-0">
+              <div className="text-[12px] font-bold text-[#3f3340] md:text-base">
+                見つけた在庫をみんなに共有
+              </div>
+              <div className="mt-0.5 text-[9px] leading-4 text-[#806f7d] md:text-sm md:leading-5">
+                #KP在庫ここにあるよ をつけてXへ投稿できます
+              </div>
 
-            <button
-              type="button"
-              onClick={() => setXShareOpen(true)}
-              className="rounded-lg border border-[#b986b5] bg-[#f6e8f3] px-2.5 py-1.5 font-bold text-[#694260] transition hover:bg-[#eedbec]"
-            >
-              𝕏 共有
-            </button>
+              <button
+                type="button"
+                onClick={() => setXShareOpen(true)}
+                className="mt-2 w-full rounded-xl border border-[#b986b5] bg-[#f6e8f3] px-3 py-2.5 text-[11px] font-bold text-[#694260] shadow-sm transition hover:bg-[#eedbec] md:px-5 md:py-3 md:text-base"
+              >
+                𝕏 在庫情報を共有する
+              </button>
+            </div>
 
-            <span>
-              在庫投稿{" "}
-              <strong className="text-[#2b2329]">
-                {todayActivity?.inventory_posts == null
-                  ? "－"
-                  : todayActivity.inventory_posts.toLocaleString()}
-              </strong>
-              件
-            </span>
-
-            <span>
-              更新店舗{" "}
-              <strong className="text-[#2b2329]">
-                {todayActivity?.updated_stores == null
-                  ? "－"
-                  : todayActivity.updated_stores.toLocaleString()}
-              </strong>
-              店舗
-            </span>
+            <div className="min-w-0 text-right text-[10px] leading-5 text-[#655764] md:text-sm md:leading-7">
+              <div className="font-bold text-[#5f3e57]">今日の投稿状況</div>
+              <div className="whitespace-nowrap">
+                在庫投稿{" "}
+                <strong className="text-sm text-[#2b2329] md:text-lg">
+                  {todayActivity?.inventory_posts == null
+                    ? "－"
+                    : todayActivity.inventory_posts.toLocaleString()}
+                </strong>
+                件
+              </div>
+              <div className="whitespace-nowrap">
+                更新店舗{" "}
+                <strong className="text-sm text-[#2b2329] md:text-lg">
+                  {todayActivity?.updated_stores == null
+                    ? "－"
+                    : todayActivity.updated_stores.toLocaleString()}
+                </strong>
+                店舗
+              </div>
+            </div>
           </div>
         </section>
 
