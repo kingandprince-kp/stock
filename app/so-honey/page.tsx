@@ -4425,13 +4425,15 @@ function StoreCard({
           className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left md:px-4 md:py-3.5"
         >
           <div>
-            <div className="text-[11px] font-bold text-[#4e424b] md:text-base">
-              💬 店舗コメント({commentCount})
-            </div>
-            <div className="mt-0.5 text-[9px] text-[#81757f] md:text-xs">
-              混雑・レジ・入荷予定・売場状況などを共有できます
-            </div>
-          </div>
+  <div className="text-[11px] font-bold text-[#4e424b] md:text-base">
+    💬 店舗コメント({commentCount})
+  </div>
+  <div className="mt-0.5 text-[9px] text-[#81757f] md:text-xs">
+    {isOnlineStore(store)
+      ? "在庫状況・再入荷・発送予定などを共有できます"
+      : "混雑・レジ・入荷予定・売場状況などを共有できます"}
+  </div>
+</div>
           <span className="shrink-0 text-[#9b6c91]">
             {commentsOpen ? "∧" : "∨"}
           </span>
