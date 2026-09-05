@@ -3695,7 +3695,7 @@ async function handleBugReport() {
   <span className="font-bold whitespace-nowrap">v3. 2026/9/5</span>
   <div className="space-y-1">
     <div>在庫あり/なし のみの投稿に対応</div>
-    <div>発送・出荷予定/お届け予定を区別した初週見込み判定に対応</div>
+    <div>発送・出荷予定/お届け予定を区別した初週見込み表示に対応</div>
   </div>
 </div>
 
