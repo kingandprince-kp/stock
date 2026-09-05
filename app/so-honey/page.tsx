@@ -1199,8 +1199,8 @@ setLoading(false);
          !Number.isInteger(maxDays) ||
          minDays < 0 ||
          maxDays < 0 ||
-         minDays > 4 ||
-         maxDays > 4
+         minDays > 2 ||
+         maxDays > 2
        ) {
          setSubmitError("発送目安の日数を選び直してください。");
          return;
@@ -2815,7 +2815,7 @@ async function handleBugReport() {
                 <div className="mt-3 space-y-3 border-t border-[#ead9a8] pt-3">
                   <div>
                     <div className="mb-1.5 text-[12px] font-bold text-[#352f34] [-webkit-text-fill-color:#352f34] md:text-base">
-                      発送・お届けのどちらの表示ですか？
+                      発送・お届けのどちらの表示ですか?
                     </div>
                     <div className="grid grid-cols-2 gap-1.5 md:gap-2">
                       {[
@@ -2876,7 +2876,7 @@ async function handleBugReport() {
 
                   {reportShippingBasis === "shipping" && reportShippingMode === "range" && (
                     <div className="rounded-xl border border-[#ead9a8] bg-white p-3">
-                      <div className="mb-2 text-[10px] leading-4 text-[#766744] md:text-xs">
+                      <div className="mb-2 text-[10px] leading-4 text-[#5f523f] md:text-xs">
                         例: 「当日発送」は「当日～当日」、「当日～2日で発送」は「当日～2日」にします。
                       </div>
                       <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
@@ -2900,9 +2900,7 @@ async function handleBugReport() {
                           >
                             <option value="0">当日</option>
                             <option value="1">1日</option>
-                            <option value="2">2日</option>
-                            <option value="3">3日</option>
-                            <option value="4">4日</option>
+                            <option value="2">2日以上</option>
                           </select>
                         </label>
 
@@ -2921,9 +2919,7 @@ async function handleBugReport() {
                           >
                             <option value="0">当日</option>
                             <option value="1">1日</option>
-                            <option value="2">2日</option>
-                            <option value="3">3日</option>
-                            <option value="4">4日</option>
+                            <option value="2">2日以上</option>
                           </select>
                         </label>
                       </div>
@@ -2962,7 +2958,7 @@ async function handleBugReport() {
                         className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] placeholder:text-[#766c74] md:rounded-xl md:p-3 md:text-sm"
                       />
                       <span className="mt-1 block text-[9px] leading-4 text-[#766744] md:text-xs">
-                        4日を超える表示や、日数で表せない案内はこちらにそのまま入力してください。
+                        日数で表せない案内はこちらにそのまま入力してください。
                       </span>
                     </label>
                   )}
@@ -2987,7 +2983,7 @@ async function handleBugReport() {
                         }
                         className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] placeholder:text-[#766c74] md:rounded-xl md:p-3 md:text-sm"
                       />
-                      <span className="mt-1 block text-[9px] leading-4 text-[#766744] md:text-xs">
+                      <span className="mt-1 block text-[9px] leading-4 text-[#5f523f] md:text-xs">
                         時刻・注文条件などが表示されている場合は、そのまま入力してください。
                       </span>
                     </label>
