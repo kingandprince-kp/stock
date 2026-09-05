@@ -3336,28 +3336,34 @@ async function handleBugReport() {
 
         {/* ===== FOOTER ===== */}
         {/* ===== 不具合報告 ===== */}
-        <section className="rounded-xl border border-[#cdbdca] bg-white p-3 shadow-sm md:rounded-2xl md:p-4">
-          <button
-            type="button"
-            onClick={() => {
-              setBugReportOpen((current) => !current);
-              setBugMessage("");
-              setBugError("");
-            }}
-            className="flex w-full items-center justify-between gap-3 text-left"
-          >
-            <span className="text-[11px] font-bold text-[#40363e] md:text-sm">
-              💡 不具合・ご要望
-              <span className="ml-2 font-normal text-[#6d5968]">使いにくい点・こんな機能がほしい、もお気軽に</span>
-            </span>
+        <section className="rounded-[28px] border-2 border-[#d45a9b] bg-[#fff7fb] p-4 shadow-sm md:p-6">
+          <div className="rounded-[24px] border border-[#eadde6] bg-white px-5 py-5 shadow-sm md:px-8 md:py-7">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-[17px] font-bold text-[#963365] md:text-2xl">
+                  💡 不具合・ご要望はこちら
+                </div>
+                <div className="mt-2 text-[13px] leading-6 text-[#655764] md:text-base">
+                  使いにくいところや、ほしい機能などもお気軽にお寄せください
+                </div>
+              </div>
 
-            <span className="text-xs font-bold text-[#6d5968]">
-              {bugReportOpen ? "∧" : "∨"}
-            </span>
-          </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setBugReportOpen((current) => !current);
+                  setBugMessage("");
+                  setBugError("");
+                }}
+                className="shrink-0 rounded-full bg-[#d94f98] px-5 py-3 text-[13px] font-bold text-white shadow-sm transition hover:bg-[#ca438b] md:px-7 md:py-3.5 md:text-base"
+              >
+                {bugReportOpen ? "フォームを閉じる ∧" : "フォームを開く ∨"}
+              </button>
+            </div>
+          </div>
 
           {bugReportOpen && (
-            <div className="mt-3 border-t border-[#d8cad6] pt-3 text-[#352f34]">
+            <div className="mt-4 rounded-[22px] border border-[#eadde6] bg-white p-4 text-[#352f34] shadow-sm md:p-5">
               <p className="text-[10px] font-medium leading-4 text-[#4f454d] md:text-xs md:leading-5">
                 不具合のご報告だけでなく、「こんな機能があるといい」「こうすると使いやすい」などのご要望もお寄せください。いただいた内容は確認し、可能な範囲で改善に努めます。
               </p>
