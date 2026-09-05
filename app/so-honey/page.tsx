@@ -1375,7 +1375,7 @@ setLoading(false);
 
  async function handleDeleteOwnReport(reportId: number) {
    const confirmed = window.confirm(
-     "この在庫投稿を削除しますか?\n削除すると在庫一覧から取り消されます。"
+     "この在庫投稿を削除しますか？\n削除すると在庫一覧から取り消されます。"
    );
 
    if (!confirmed) return;
@@ -2815,7 +2815,7 @@ async function handleBugReport() {
                 <div className="mt-3 space-y-3 border-t border-[#ead9a8] pt-3">
                   <div>
                     <div className="mb-1.5 text-[12px] font-bold text-[#352f34] [-webkit-text-fill-color:#352f34] md:text-base">
-                      発送・お届けのどちらの表示ですか?
+                      発送・お届けのどちらの表示ですか？
                     </div>
                     <div className="grid grid-cols-2 gap-1.5 md:gap-2">
                       {[
@@ -2939,7 +2939,7 @@ async function handleBugReport() {
                         type="date"
                         value={reportShippingDate}
                         onChange={(e) => setReportShippingDate(e.target.value)}
-                        className="w-full rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] md:rounded-xl md:p-3 md:text-sm"
+                        className="block w-full min-w-0 max-w-full box-border rounded-lg border border-[#d8cad7] bg-white p-2.5 text-[12px] text-[#2f292e] opacity-100 [color:#2f292e] [-webkit-text-fill-color:#2f292e] md:rounded-xl md:p-3 md:text-sm"
                       />
                     </label>
                   )}
@@ -3695,7 +3695,7 @@ async function handleBugReport() {
   <span className="font-bold whitespace-nowrap">v3. 2026/9/5</span>
   <div className="space-y-1">
     <div>在庫あり/なし のみの投稿に対応</div>
-    <div>発送・出荷予定/お届け予定を区別した初週見込み表示に対応</div>
+    <div>発送・出荷予定/お届け予定を区別した初週見込み判定に対応</div>
   </div>
 </div>
 
