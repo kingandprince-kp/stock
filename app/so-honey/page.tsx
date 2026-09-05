@@ -3635,17 +3635,27 @@ async function handleBugReport() {
         <section className="rounded-xl border border-[#eaddea] bg-white/80 px-3 py-3 text-[#655764] md:rounded-2xl md:px-5 md:py-4">
           <div className="text-[11px] font-bold text-[#5d4658] md:text-sm">更新履歴</div>
           <div className="mt-2 space-y-1.5 text-[9px] leading-4 md:text-xs md:leading-5">
-            <div><span className="font-bold">v3. 2026/9/5</span>　在庫あり/なし のみの投稿に対応</div>
-            <div>
-  <div><span className="font-bold">v2. 2026/9/5</span></div>
-  <div className="mt-1 space-y-0.5">
-    <div>オンラインの発送予定/初週見込みを追加</div>
-    <div>店舗状況コメント、X共有を追加</div>
-    <div>主要オンラインショップの商品別直リンクを追加</div>
-    <div>在庫あり／初週見込みの絞り込みに対応</div>
+            <div className="space-y-2">
+  <div className="grid grid-cols-[auto_1fr] gap-x-3">
+    <span className="font-bold whitespace-nowrap">v3. 2026/9/5</span>
+    <div>在庫あり/なし のみの投稿に対応</div>
+  </div>
+
+  <div className="grid grid-cols-[auto_1fr] gap-x-3">
+    <span className="font-bold whitespace-nowrap">v2. 2026/9/5</span>
+    <div className="space-y-0.5">
+      <div>オンラインの発送予定/初週見込みを追加</div>
+      <div>店舗状況コメント、X共有を追加</div>
+      <div>主要オンラインショップの商品別直リンクを追加</div>
+      <div>在庫あり／初週見込みの絞り込みに対応</div>
+    </div>
+  </div>
+
+  <div className="grid grid-cols-[auto_1fr] gap-x-3">
+    <span className="font-bold whitespace-nowrap">v1. 2026/9/2</span>
+    <div>在庫チェッカー公開</div>
   </div>
 </div>
-            <div><span className="font-bold">v1. 2026/9/2</span>　在庫チェッカー公開</div>
           </div>
         </section>
 
