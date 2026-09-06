@@ -4767,6 +4767,8 @@ function StoreInfoContributionForm({
   const [confirmationSource, setConfirmationSource] = useState("product_page");
   const [confirmationSourceDetail, setConfirmationSourceDetail] = useState("");
   const [detail, setDetail] = useState("");
+  const [cutoffPreset, setCutoffPreset] = useState<"close" | "17:00" | "other">("close");
+  const [cutoffTime, setCutoffTime] = useState("");
   const [evidence, setEvidence] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
@@ -4825,17 +4827,27 @@ function StoreInfoContributionForm({
     setMessage("");
     setError("");
 
-    const cleanDetail = detail.trim();
     const cleanEvidence = evidence.trim();
+    const cleanDetail =
+      requestType === "first_week_cutoff"
+        ? cutoffPreset === "close"
+          ? "閉店まで"
+          : cutoffPreset === "17:00"
+            ? "17:00まで"
+            : cutoffTime
+              ? `${cutoffTime}まで`
+              : ""
+        : detail.trim();
 
     if (requestType === "billboard" && !cleanEvidence) {
       setError("Billboard情報は確認方法・ソースを入力してください。");
       return;
     }
-    if (
-      requestType !== "billboard" &&
-      !cleanDetail
-    ) {
+    if (requestType === "first_week_cutoff" && cutoffPreset === "other" && !cutoffTime) {
+      setError("締め時間を入力してください。");
+      return;
+    }
+    if (requestType === "other" && !cleanDetail) {
       setError("提供する内容を入力してください。");
       return;
     }
@@ -4894,6 +4906,8 @@ function StoreInfoContributionForm({
 
       setMessage("店舗情報を送信しました。確認後、必要に応じてサイトへ反映します。ありがとうございます。");
       setDetail("");
+      setCutoffPreset("close");
+      setCutoffTime("");
       setEvidence("");
     } catch (submitError) {
       console.error(submitError);
@@ -4946,23 +4960,43 @@ function StoreInfoContributionForm({
         </label>
       )}
 
-      {(requestType === "first_week_cutoff" || requestType === "other") && (
+      {requestType === "first_week_cutoff" && (
+        <div className="mt-3">
+          <div className="mb-1 text-[11px] font-bold text-[#4d434c] md:text-sm">確認した締め時間</div>
+          <select
+            value={cutoffPreset}
+            onChange={(event) => setCutoffPreset(event.target.value as "close" | "17:00" | "other")}
+            className="w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] text-[#2f292e] opacity-100 [-webkit-text-fill-color:#2f292e] md:rounded-xl md:p-3 md:text-sm"
+          >
+            <option value="close">閉店まで</option>
+            <option value="17:00">17:00まで</option>
+            <option value="other">その他の時間</option>
+          </select>
+          {cutoffPreset === "other" && (
+            <input
+              type="time"
+              value={cutoffTime}
+              onChange={(event) => setCutoffTime(event.target.value)}
+              className="mt-2 w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] text-[#2f292e] opacity-100 [-webkit-text-fill-color:#2f292e] md:rounded-xl md:p-3 md:text-sm"
+            />
+          )}
+        </div>
+      )}
+
+      {requestType === "other" && (
         <label className="mt-3 block">
-          <div className="mb-1 text-[11px] font-bold text-[#4d434c] md:text-sm">
-            {requestType === "first_week_cutoff" ? "確認した締め時間" : "提供する情報"}
-          </div>
+          <div className="mb-1 text-[11px] font-bold text-[#4d434c] md:text-sm">提供する情報</div>
           <textarea
             value={detail}
             onChange={(event) => setDetail(event.target.value)}
             maxLength={1000}
             rows={3}
-            placeholder={
-              requestType === "first_week_cutoff"
-                ? "例)店舗へ電話確認。初週集計は日曜18:00までとの案内"
-                : "例)店舗の初週集計や販売に関する補足情報"
-            }
+            placeholder="例)店舗の販売に関する補足情報"
             className="w-full rounded-lg border border-[#d8cad7] bg-white p-2 text-[12px] text-[#2f292e] opacity-100 [-webkit-text-fill-color:#2f292e] md:rounded-xl md:p-3 md:text-sm"
           />
+          <div className="mt-1 text-[10px] font-bold leading-5 text-[#9a5a32] md:text-xs">
+            ※在庫あり・在庫なし・枚数などの在庫情報は、こちらではなく「在庫情報を投稿」からお願いします。
+          </div>
         </label>
       )}
 
