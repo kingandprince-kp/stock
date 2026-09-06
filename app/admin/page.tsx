@@ -1700,14 +1700,27 @@ export default function AdminPage() {
   // オンライン初週判定・店舗コメント管理
   // =========================================
 
-  async function handleApproveStoreInfoRequest(requestId: number) {
+  async function handleApproveStoreInfoRequest(
+    requestId: number,
+    cutoffNote?: string
+  ) {
     if (!window.confirm("この店舗情報を承認して反映しますか?")) return;
     setMessage("");
     setErrorMessage("");
-    const { error } = await supabase.rpc(
-      "approve_store_info_request_admin",
-      { p_request_id: requestId }
-    );
+
+    const { error } = cutoffNote
+      ? await supabase.rpc(
+          "approve_first_week_cutoff_request_admin",
+          {
+            p_request_id: requestId,
+            p_cutoff_note: cutoffNote,
+          }
+        )
+      : await supabase.rpc(
+          "approve_store_info_request_admin",
+          { p_request_id: requestId }
+        );
+
     if (error) {
       setErrorMessage(`店舗情報を承認できませんでした: ${error.message}`);
       return;
@@ -2738,7 +2751,7 @@ function StoreInfoRequestsAdminTab({
   requests: StoreInfoRequestAdmin[];
   history: StoreInfoRequestChangeHistory[];
   products: Product[];
-  onApprove: (id: number) => Promise<void>;
+  onApprove: (id: number, cutoffNote?: string) => Promise<void>;
   onReject: (id: number) => Promise<void>;
   onUpdate: (
     request: StoreInfoRequestAdmin,
@@ -2767,6 +2780,8 @@ function StoreInfoRequestsAdminTab({
   const [editShippingDate, setEditShippingDate] = useState("");
   const [editConfirmationSource, setEditConfirmationSource] = useState("product_page");
   const [editConfirmationSourceDetail, setEditConfirmationSourceDetail] = useState("");
+  const [cutoffPresetById, setCutoffPresetById] = useState<Record<number, string>>({});
+  const [customCutoffTimeById, setCustomCutoffTimeById] = useState<Record<number, string>>({});
 
   const pending = requests.filter((request) => request.status === "pending");
   const processed = requests.filter((request) => request.status !== "pending");
@@ -2792,6 +2807,17 @@ function StoreInfoRequestsAdminTab({
     if (status === "rejected") return "却下済み";
     if (status === "withdrawn") return "公開取り下げ";
     return "未処理";
+  }
+
+  function cutoffNoteFor(requestId: number) {
+    const preset = cutoffPresetById[requestId] ?? "";
+    if (preset === "closing") return "閉店まで";
+    if (preset === "17") return "17:00まで";
+    if (preset === "custom") {
+      const time = customCutoffTimeById[requestId]?.trim();
+      return time ? `${time}まで` : null;
+    }
+    return null;
   }
 
   function shippingPresetFromRequest(request: StoreInfoRequestAdmin) {
@@ -2898,6 +2924,10 @@ function StoreInfoRequestsAdminTab({
     const firstWeekLabel = statusLabel(request.proposed_first_week_status);
     const requestHistory = historyFor(request.id);
     const isEditing = editingId === request.id;
+    const cutoffPreset = cutoffPresetById[request.id] ?? "";
+    const cutoffNote = request.request_type === "first_week_cutoff"
+      ? cutoffNoteFor(request.id)
+      : null;
 
     return (
       <div key={request.id} className="rounded-xl border border-gray-200 bg-white p-3">
@@ -2989,13 +3019,57 @@ function StoreInfoRequestsAdminTab({
           </div>
         )}
 
+        {request.request_type === "first_week_cutoff" &&
+          (request.status === "pending" || request.status === "withdrawn") && (
+            <div className="mt-3 rounded-xl border border-[#d8cad7] bg-[#fbf7fa] p-3">
+              <div className="mb-2 text-sm font-bold text-[#5b486b]">公開する締め時間</div>
+              <div className="flex flex-wrap gap-2">
+                <select
+                  value={cutoffPreset}
+                  onChange={(e) =>
+                    setCutoffPresetById((current) => ({
+                      ...current,
+                      [request.id]: e.target.value,
+                    }))
+                  }
+                  className="rounded-xl border border-gray-300 bg-white p-2 text-sm text-gray-900"
+                >
+                  <option value="">選択してください</option>
+                  <option value="closing">閉店まで</option>
+                  <option value="17">17:00まで</option>
+                  <option value="custom">任意の時間</option>
+                </select>
+                {cutoffPreset === "custom" && (
+                  <input
+                    type="time"
+                    value={customCutoffTimeById[request.id] ?? ""}
+                    onChange={(e) =>
+                      setCustomCutoffTimeById((current) => ({
+                        ...current,
+                        [request.id]: e.target.value,
+                      }))
+                    }
+                    className="rounded-xl border border-gray-300 bg-white p-2 text-sm text-gray-900"
+                  />
+                )}
+              </div>
+            </div>
+          )}
+
         <div className="mt-3 flex flex-wrap gap-2">
           {request.status !== "rejected" && (
             <button type="button" onClick={() => startEdit(request)} className="rounded-xl border border-[#bba7b8] bg-white px-4 py-2 text-sm font-bold text-[#5b486b]">編集</button>
           )}
           {request.status === "pending" && (
             <>
-              <button type="button" onClick={() => void onApprove(request.id)} className="rounded-xl bg-green-700 px-4 py-2 text-sm font-bold text-white">{request.request_type === "other" ? "確認・処理済みにする" : "承認・反映"}</button>
+              <button
+                type="button"
+                disabled={request.request_type === "first_week_cutoff" && !cutoffNote}
+                onClick={() => void onApprove(request.id, cutoffNote ?? undefined)}
+                className="rounded-xl bg-green-700 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {request.request_type === "other" ? "確認・処理済みにする" : "承認・反映"}
+              </button>
               <button type="button" onClick={() => void onReject(request.id)} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white">却下</button>
             </>
           )}
@@ -3003,7 +3077,14 @@ function StoreInfoRequestsAdminTab({
             <button type="button" onClick={() => void onWithdraw(request.id)} className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white">公開を取り下げる</button>
           )}
           {request.status === "withdrawn" && (
-            <button type="button" onClick={() => void onApprove(request.id)} className="rounded-xl bg-green-700 px-4 py-2 text-sm font-bold text-white">再承認・反映</button>
+            <button
+              type="button"
+              disabled={request.request_type === "first_week_cutoff" && !cutoffNote}
+              onClick={() => void onApprove(request.id, cutoffNote ?? undefined)}
+              className="rounded-xl bg-green-700 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              再承認・反映
+            </button>
           )}
         </div>
 
