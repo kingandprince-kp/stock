@@ -394,7 +394,30 @@ type StoreCommentCount = {
 
 type SearchMode = "physical" | "online";
 
+const SITE_CLOSED = true;
+
 export default function Home() {
+  if (SITE_CLOSED) {
+    return (
+      <main className="min-h-screen bg-[#fffaf3] px-4 py-16">
+        <div className="mx-auto max-w-xl rounded-3xl border border-[#ead7a7] bg-white p-8 text-center shadow-sm">
+          <div className="text-3xl">🍯</div>
+          <h1 className="mt-4 text-xl font-bold text-[#4d434c]">
+            現在は非公開です
+          </h1>
+          <p className="mt-3 text-sm leading-7 text-[#77643c]">
+            初週期間終了のため、在庫チェッカーの公開を終了しました。<br />
+            たくさんのご利用・情報提供ありがとうございました。
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  return <InventoryChecker />;
+}
+
+function InventoryChecker() {
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [reports, setReports] = useState<InventoryReport[]>([]);
