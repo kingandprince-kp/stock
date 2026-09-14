@@ -406,9 +406,11 @@ export default function Home() {
           <h1 className="mt-4 text-xl font-bold text-[#4d434c]">
             現在は非公開です
           </h1>
-          <p className="mt-3 text-sm leading-6 text-[#766a75]">
-            So Honey 在庫チェッカーは現在公開を終了しています。
-          </p>
+          <p className="mt-3 text-center text-sm leading-6 text-[#766a75]">
+  So Honey 在庫チェッカーは初週終了に伴い現在公開を終了しています。
+  <br />
+  たくさんのご協力ありがとうございました。
+</p>
         </div>
       </main>
     );
