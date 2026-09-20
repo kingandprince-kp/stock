@@ -394,7 +394,7 @@ type StoreCommentCount = {
 
 type SearchMode = "physical" | "online";
 
-const SURVEY_READ_ONLY = true;
+const SURVEY_READ_ONLY = false;
 
 export default function Home() {
   const [stores, setStores] = useState<Store[]>([]);

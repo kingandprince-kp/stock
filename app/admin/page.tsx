@@ -2644,6 +2644,7 @@ export default function AdminPage() {
               requests={
                 storeRequests
               }
+              stores={stores}
               edit={requestEdit}
               setEdit={
                 setRequestEdit
@@ -5268,6 +5269,7 @@ function BillboardInfoRequestsTab({ requests, stores, processingId, onApprove, o
 
 function StoreRequestsTab({
   requests,
+  stores,
   edit,
   setEdit,
   startEdit,
@@ -5284,6 +5286,7 @@ function StoreRequestsTab({
   formatDate,
 }: {
   requests: StoreRequest[];
+  stores: Store[];
   edit: RequestEdit | null;
   setEdit: React.Dispatch<
     React.SetStateAction<RequestEdit | null>
@@ -5333,6 +5336,81 @@ function StoreRequestsTab({
   const allProcessedSelected = processedIds.length > 0 && processedIds.every((id) => selectedProcessed.includes(id));
   useEffect(() => { setSelectedProcessed((current) => current.filter((id) => processedIds.includes(id))); }, [requests]);
   const toggleProcessed = (id: number) => setSelectedProcessed((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
+
+  const duplicateCandidates = useMemo(() => {
+    if (!edit) return [];
+
+    const targetName = normalizeStoreText(edit.name);
+    const targetChain = normalizeStoreText(edit.chainName);
+    const targetCity = normalizeStoreText(edit.city);
+
+    if (!targetName) return [];
+
+    return stores
+      .filter((store) => {
+        const storeIsOnline =
+          store.store_type === "online" ||
+          store.prefecture === "オンライン";
+
+        if (
+          edit.storeType === "online"
+            ? !storeIsOnline
+            : storeIsOnline
+        ) {
+          return false;
+        }
+
+        if (
+          edit.storeType === "physical" &&
+          edit.prefecture.trim() !== "" &&
+          store.prefecture !== edit.prefecture
+        ) {
+          return false;
+        }
+
+        const storeName = normalizeStoreText(store.name);
+        const displayName = normalizeStoreText(
+          getDisplayStoreName(store)
+        );
+        const storeChain = normalizeStoreText(
+          store.chain_name ?? ""
+        );
+        const storeCity = normalizeStoreText(
+          store.city ?? ""
+        );
+
+        const nameMatches =
+          storeName === targetName ||
+          displayName === targetName ||
+          storeName.includes(targetName) ||
+          targetName.includes(storeName) ||
+          displayName.includes(targetName) ||
+          targetName.includes(displayName);
+
+        if (!nameMatches) return false;
+
+        if (
+          targetChain &&
+          storeChain &&
+          storeChain !== targetChain &&
+          !storeChain.includes(targetChain) &&
+          !targetChain.includes(storeChain)
+        ) {
+          return false;
+        }
+
+        if (
+          targetCity &&
+          storeCity &&
+          storeCity !== targetCity
+        ) {
+          return false;
+        }
+
+        return true;
+      })
+      .slice(0, 8);
+  }, [edit, stores]);
 
   return (
     <div className="mt-3">
@@ -5426,6 +5504,44 @@ function StoreRequestsTab({
                     <h3 className="text-xl font-bold">
                       登録内容を確認
                     </h3>
+
+                    <div className="mt-3 rounded-xl border border-[#d8cad7] bg-white p-3">
+                      <div className="font-bold text-[#5b486b]">
+                        🔎 既存店舗の重複確認
+                      </div>
+
+                      {duplicateCandidates.length === 0 ? (
+                        <div className="mt-2 rounded-lg bg-green-50 p-3 text-sm font-bold text-green-700">
+                          現在の入力内容と一致する登録済み店舗は見つかりませんでした。
+                        </div>
+                      ) : (
+                        <div className="mt-2">
+                          <div className="rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-800">
+                            登録済みの可能性がある店舗が {duplicateCandidates.length} 件あります。承認前に確認してください。
+                          </div>
+
+                          <div className="mt-2 space-y-2">
+                            {duplicateCandidates.map((store) => (
+                              <div
+                                key={store.id}
+                                className="rounded-lg border border-amber-200 bg-[#fffdf7] p-3 text-sm"
+                              >
+                                <div className="font-bold text-[#2c252b]">
+                                  {getDisplayStoreName(store)}
+                                </div>
+                                <div className="mt-1 text-gray-600">
+                                  📍 {store.prefecture}
+                                  {store.city ? ` ${store.city}` : ""}
+                                </div>
+                                <div className="mt-1 text-xs text-gray-500">
+                                  店舗ID: {store.id}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
                     <div className="mt-3 grid gap-4 md:grid-cols-2">
                       <AdminInput
