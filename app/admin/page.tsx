@@ -256,6 +256,17 @@ type RequestEdit = {
     | "not_target";
 };
 
+type StoreLookupCandidate = {
+  name: string;
+  chainName: string;
+  prefecture: string;
+  city: string;
+  address: string;
+  phone: string;
+  businessHours: string;
+  officialUrl: string;
+};
+
 function formatInventoryValue(
   quantity: number | null,
   stockStatus: "in_stock" | "low_stock" | "backorder" | "sold_out" | null
@@ -2644,6 +2655,7 @@ export default function AdminPage() {
               requests={
                 storeRequests
               }
+              stores={stores}
               edit={requestEdit}
               setEdit={
                 setRequestEdit
@@ -5268,6 +5280,7 @@ function BillboardInfoRequestsTab({ requests, stores, processingId, onApprove, o
 
 function StoreRequestsTab({
   requests,
+  stores,
   edit,
   setEdit,
   startEdit,
@@ -5284,6 +5297,7 @@ function StoreRequestsTab({
   formatDate,
 }: {
   requests: StoreRequest[];
+  stores: Store[];
   edit: RequestEdit | null;
   setEdit: React.Dispatch<
     React.SetStateAction<RequestEdit | null>
@@ -5333,6 +5347,187 @@ function StoreRequestsTab({
   const allProcessedSelected = processedIds.length > 0 && processedIds.every((id) => selectedProcessed.includes(id));
   useEffect(() => { setSelectedProcessed((current) => current.filter((id) => processedIds.includes(id))); }, [requests]);
   const toggleProcessed = (id: number) => setSelectedProcessed((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
+
+  const [lookupLoading, setLookupLoading] =
+    useState(false);
+
+  const [lookupError, setLookupError] =
+    useState("");
+
+  const [lookupCandidate, setLookupCandidate] =
+    useState<StoreLookupCandidate | null>(null);
+
+  useEffect(() => {
+    setLookupCandidate(null);
+    setLookupError("");
+  }, [edit?.requestId]);
+
+  async function handleOfficialLookup() {
+    if (!edit) return;
+
+    setLookupLoading(true);
+    setLookupError("");
+    setLookupCandidate(null);
+
+    try {
+      const response = await fetch(
+        "/api/store-lookup",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prefecture: edit.prefecture,
+            city: edit.city,
+            name: edit.name,
+            chainName: edit.chainName,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setLookupError(
+          result?.message ??
+            "公式情報を検索できませんでした。"
+        );
+        return;
+      }
+
+      if (!result?.candidate) {
+        setLookupError(
+          "対応している公式サイトから候補を見つけられませんでした。手動で確認してください。"
+        );
+        return;
+      }
+
+      setLookupCandidate(
+        result.candidate as StoreLookupCandidate
+      );
+    } catch (error) {
+      console.error(
+        "official store lookup error:",
+        error
+      );
+
+      setLookupError(
+        "公式情報を検索できませんでした。"
+      );
+    } finally {
+      setLookupLoading(false);
+    }
+  }
+
+  function applyLookupCandidate() {
+    if (!lookupCandidate || !edit) {
+      return;
+    }
+
+    setEdit({
+      ...edit,
+      name:
+        lookupCandidate.name ||
+        edit.name,
+      chainName:
+        lookupCandidate.chainName ||
+        edit.chainName,
+      prefecture:
+        lookupCandidate.prefecture ||
+        edit.prefecture,
+      city:
+        lookupCandidate.city ||
+        edit.city,
+      address:
+        lookupCandidate.address ||
+        edit.address,
+      phone:
+        lookupCandidate.phone ||
+        edit.phone,
+      businessHours:
+        lookupCandidate.businessHours ||
+        edit.businessHours,
+      officialUrl:
+        lookupCandidate.officialUrl ||
+        edit.officialUrl,
+    });
+  }
+
+  const duplicateCandidates = useMemo(() => {
+    if (!edit) return [];
+
+    const targetName = normalizeStoreText(edit.name);
+    const targetChain = normalizeStoreText(edit.chainName);
+    const targetCity = normalizeStoreText(edit.city);
+
+    if (!targetName) return [];
+
+    return stores
+      .filter((store) => {
+        const storeIsOnline =
+          store.store_type === "online" ||
+          store.prefecture === "オンライン";
+
+        if (
+          edit.storeType === "online"
+            ? !storeIsOnline
+            : storeIsOnline
+        ) {
+          return false;
+        }
+
+        if (
+          edit.storeType === "physical" &&
+          edit.prefecture.trim() !== "" &&
+          store.prefecture !== edit.prefecture
+        ) {
+          return false;
+        }
+
+        const storeName = normalizeStoreText(store.name);
+        const displayName = normalizeStoreText(
+          getDisplayStoreName(store)
+        );
+        const storeChain = normalizeStoreText(
+          store.chain_name ?? ""
+        );
+        const storeCity = normalizeStoreText(
+          store.city ?? ""
+        );
+
+        const nameMatches =
+          storeName === targetName ||
+          displayName === targetName ||
+          storeName.includes(targetName) ||
+          targetName.includes(storeName) ||
+          displayName.includes(targetName) ||
+          targetName.includes(displayName);
+
+        if (!nameMatches) return false;
+
+        if (
+          targetChain &&
+          storeChain &&
+          storeChain !== targetChain &&
+          !storeChain.includes(targetChain) &&
+          !targetChain.includes(storeChain)
+        ) {
+          return false;
+        }
+
+        if (
+          targetCity &&
+          storeCity &&
+          storeCity !== targetCity
+        ) {
+          return false;
+        }
+
+        return true;
+      })
+      .slice(0, 8);
+  }, [edit, stores]);
 
   return (
     <div className="mt-3">
@@ -5427,7 +5622,138 @@ function StoreRequestsTab({
                       登録内容を確認
                     </h3>
 
-                    <div className="mt-3 grid gap-4 md:grid-cols-2">
+                    <div className="mt-3 rounded-xl border border-[#d8cad7] bg-white p-3">
+                      <div className="font-bold text-[#5b486b]">
+                        🔎 既存店舗の重複確認
+                      </div>
+
+                      {duplicateCandidates.length === 0 ? (
+                        <div className="mt-2 rounded-lg bg-green-50 p-3 text-sm font-bold text-green-700">
+                          現在の入力内容と一致する登録済み店舗は見つかりませんでした。
+                        </div>
+                      ) : (
+                        <div className="mt-2">
+                          <div className="rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-800">
+                            登録済みの可能性がある店舗が {duplicateCandidates.length} 件あります。承認前に確認してください。
+                          </div>
+
+                          <div className="mt-2 space-y-2">
+                            {duplicateCandidates.map((store) => (
+                              <div
+                                key={store.id}
+                                className="rounded-lg border border-amber-200 bg-[#fffdf7] p-3 text-sm"
+                              >
+                                <div className="font-bold text-[#2c252b]">
+                                  {getDisplayStoreName(store)}
+                                </div>
+                                <div className="mt-1 text-gray-600">
+                                  📍 {store.prefecture}
+                                  {store.city ? ` ${store.city}` : ""}
+                                </div>
+                                <div className="mt-1 text-xs text-gray-500">
+                                  店舗ID: {store.id}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-3 rounded-xl border border-[#d8cad7] bg-white p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="font-bold text-[#5b486b]">
+                          🌐 公式店舗情報
+                        </div>
+
+                        <div className="mt-1 text-xs text-gray-500">
+                          対応済みの公式サイトから候補を取得します。自動登録はしません。
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={lookupLoading}
+                        onClick={() =>
+                          void handleOfficialLookup()
+                        }
+                        className="rounded-xl bg-[#6f4b89] px-4 py-2.5 font-bold text-white disabled:opacity-50"
+                      >
+                        {lookupLoading
+                          ? "検索中…"
+                          : "🔎 公式情報を検索"}
+                      </button>
+                    </div>
+
+                    {lookupError && (
+                      <div className="mt-3 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-800">
+                        {lookupError}
+                      </div>
+                    )}
+
+                    {lookupCandidate && (
+                      <div className="mt-3 rounded-xl border border-green-200 bg-green-50 p-3">
+                        <div className="font-bold text-green-800">
+                          公式サイト候補
+                        </div>
+
+                        <div className="mt-2 space-y-1 text-sm">
+                          <div>
+                            <b>店舗名:</b>{" "}
+                            {lookupCandidate.chainName}{" "}
+                            {lookupCandidate.name}
+                          </div>
+
+                          <div>
+                            <b>住所:</b>{" "}
+                            {lookupCandidate.address ||
+                              "取得できず"}
+                          </div>
+
+                          <div>
+                            <b>電話番号:</b>{" "}
+                            {lookupCandidate.phone ||
+                              "取得できず"}
+                          </div>
+
+                          <div>
+                            <b>営業時間:</b>{" "}
+                            {lookupCandidate.businessHours ||
+                              "取得できず"}
+                          </div>
+
+                          <div className="break-all">
+                            <b>公式URL:</b>{" "}
+                            <a
+                              href={
+                                lookupCandidate.officialUrl
+                              }
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-700 underline"
+                            >
+                              {
+                                lookupCandidate.officialUrl
+                              }
+                            </a>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={
+                            applyLookupCandidate
+                          }
+                          className="mt-3 rounded-xl bg-green-700 px-4 py-2.5 font-bold text-white"
+                        >
+                          この候補を入力欄へ反映
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-3 grid gap-4 md:grid-cols-2">
                       <AdminInput
                         label="チェーン名"
                         value={edit.chainName}
