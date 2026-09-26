@@ -5370,13 +5370,25 @@ function StoreRequestsTab({
     setLookupCandidate(null);
 
     try {
-      const response = await fetch(
-        "/api/store-lookup",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+      const {
+  data: { session },
+} = await supabase.auth.getSession();
+
+if (!session?.access_token) {
+  setLookupError(
+    "管理者ログインを確認できませんでした。再ログインしてください。"
+  );
+  return;
+}
+
+const response = await fetch(
+  "/api/store-lookup",
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
           body: JSON.stringify({
             prefecture: edit.prefecture,
             city: edit.city,

@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 type StoreLookupCandidate = {
@@ -177,6 +178,121 @@ export async function POST(
   request: Request
 ) {
   try {
+    const supabaseUrl =
+      process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabasePublishableKey =
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+if (!supabaseUrl || !supabasePublishableKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "サーバー設定に問題があります。",
+        },
+        { status: 500 }
+      );
+    }
+
+    const authorization =
+      request.headers.get("authorization");
+
+    if (
+      !authorization ||
+      !authorization.startsWith("Bearer ")
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "ログインが必要です。",
+        },
+        { status: 401 }
+      );
+    }
+
+    const accessToken =
+      authorization
+        .slice("Bearer ".length)
+        .trim();
+
+    if (!accessToken) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "ログインが必要です。",
+        },
+        { status: 401 }
+      );
+    }
+
+    const supabase = createClient(
+  supabaseUrl,
+  supabasePublishableKey,
+      {
+        global: {
+          headers: {
+            Authorization:
+              `Bearer ${accessToken}`,
+          },
+        },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
+    );
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(
+      accessToken
+    );
+
+    if (userError || !user) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "ログインが必要です。",
+        },
+        { status: 401 }
+      );
+    }
+
+    const {
+      data: isAdmin,
+      error: adminError,
+    } = await supabase.rpc(
+      "is_inventory_admin"
+    );
+
+    if (adminError) {
+      console.error(
+        "store lookup admin check error:",
+        adminError
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "管理者権限を確認できませんでした。",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (isAdmin !== true) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "管理者権限が必要です。",
+        },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
 
     const prefecture =
