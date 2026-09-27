@@ -1162,13 +1162,22 @@ export async function POST(
           );
         }
 
+        await logSecurityEvent(
+          "pending",
+          reviewReason,
+          "pending",
+          reportId
+        );
+
         /*
          * 巻き戻された各投稿をセキュリティ履歴へ残す。
          * 何が自動保留になったか report_id で追跡できる。
          */
-        for (
+                        for (
           const rollbackId of
-          rollbackIds
+          rollbackIds.filter(
+            (id) => id !== reportId
+          )
         ) {
           const original =
             sameCategoryRows.find(
