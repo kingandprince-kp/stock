@@ -5,6 +5,7 @@ import "./stock-checker.css";
 
 export const metadata: Metadata = {
   title: "SALT BOY 在庫チェッカー",
+  description: "SALT BOYの実店舗・オンラインショップの在庫情報を確認できます。",
   robots: { index: false, follow: false },
 };
 
@@ -18,7 +19,7 @@ export default async function SaltBoyPage() {
   return (
     <main className="salt-boy">
       <div className="salt-wrap">
-        <header className="salt-heading">
+        <header id="top" className="salt-heading">
           <h1>SALT BOY <span>在庫チェッカー</span></h1>
           <p>全国の実店舗・オンラインショップの在庫情報を確認できます。</p>
         </header>

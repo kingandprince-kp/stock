@@ -1,61 +1,170 @@
-@import url("https://fonts.googleapis.com/css2?family=Quicksand:wght@500&family=Zen+Maru+Gothic:wght@400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Quicksand:wght@500&family=Urbanist:wght@400;500;600;700&display=swap");
 
 .salt-boy {
   color-scheme: light;
   min-height: 100vh;
   background: #edf4f7;
   color: #243842;
-  font: 500 15px/1.55 "Zen Maru Gothic", sans-serif;
+  font: 400 14px/1.65 Urbanist, "Noto Sans JP", Arial, sans-serif;
 }
-.salt-wrap { max-width: 1024px; margin: auto; padding: 28px clamp(12px, 4vw, 32px) 24px; }
-.salt-heading { text-align: center; margin: 10px 0 23px; }
-.salt-heading h1 { font-size: clamp(24px, 4vw, 35px); font-weight: 700; line-height: 1.3; }
+.salt-wrap { width: min(100%, 1080px); margin: auto; padding: 24px clamp(12px, 4vw, 32px) 28px; }
+.salt-heading { text-align: center; margin: 10px 0 22px; }
+.salt-heading h1 { font-size: clamp(25px, 4vw, 36px); font-weight: 700; line-height: 1.35; letter-spacing: .025em; }
 .salt-heading h1 span { white-space: nowrap; }
-.salt-heading p, .salt-notice p { margin-top: 5px; color: #465f6c; }
-.salt-notice, .salt-search, .salt-store { border: 1px solid #cbdbe3; border-radius: 14px; background: #fbfdfe; }
-.salt-notice { margin-bottom: 12px; padding: 12px 16px; font-size: 13px; }
+.salt-heading p, .salt-notice p { margin-top: 6px; color: #465f6c; }
+.salt-notice { margin: 0 0 12px; padding: 14px 17px; border: 1px solid #cbdbe3; border-radius: 14px; background: #fbfdfe; font-size: 13px; }
 .salt-boy a { color: #23546c; text-decoration: underline; text-underline-offset: 2px; }
-.salt-search { padding: 12px 14px; }
-.salt-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 9px; background: #e8f0f4; }
-.salt-boy :is(button, select, input[type="search"]) { color: inherit; font: inherit; }
-.salt-boy :is(button, select, input[type="search"]) { min-height: 44px; padding: 7px 12px; border-radius: 7px; border: 1px solid #b9ced8; background: #fff; }
+.salt-boy a:hover { color: #143a4d; }
+.salt-explanations { display: grid; gap: 12px; margin: 0 0 18px; }
+.salt-explanation { overflow: hidden; border: 1px solid #cbdbe3; border-radius: 14px; background: #fbfdfe; box-shadow: 0 1px 3px #274b5c12; }
+.salt-explanation summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 58px; padding: 13px 18px; cursor: pointer; list-style: none; color: #334d59; font-size: 16px; font-weight: 700; }
+.salt-explanation summary::-webkit-details-marker { display: none; }
+.salt-chevron { flex: none; color: #557381; font-weight: 500; }
+.salt-explanation-body { display: grid; gap: 16px; padding: 16px 18px 20px; border-top: 1px solid #dce7eb; color: #334c57; }
+.salt-explanation-body h3 { margin-bottom: 7px; color: #243842; font-size: 15px; font-weight: 700; }
+.salt-explanation-body p + p { margin-top: 8px; }
+.salt-explanation-subsection { padding-top: 15px; border-top: 1px solid #dce7eb; }
+.salt-caution, .salt-muted-note { margin-top: 11px; padding: 12px 14px; border-radius: 10px; background: #f1f6f8; font-size: 12px; line-height: 1.75; }
+.salt-caution strong { color: #304d5b; }
+.salt-caution p { margin-top: 6px; }
+.salt-badge-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 9px; }
+.salt-badge { display: inline-flex; align-items: center; width: fit-content; padding: 3px 8px; border: 1px solid transparent; border-radius: 5px; color: #fff; font-size: 12px; font-weight: 700; line-height: 1.5; white-space: nowrap; }
+.salt-badge-oricon { background: #a32a65; }
+.salt-badge-billboard { background: #704693; }
+.salt-badge-serial { background: #1e739b; }
+.salt-badge-check { background: #725d34; }
+.salt-badge-not-target { border-color: #bac7cc; background: #e9eff1; color: #42545b; }
+.salt-search, .salt-results { margin-top: 16px; padding: 17px clamp(13px, 2.8vw, 24px); border: 1px solid #cbdbe3; border-radius: 18px; background: #fbfdfe; box-shadow: 0 1px 4px #274b5c12; }
+.salt-section-kicker { color: #52707e; font-size: 10px; font-weight: 700; letter-spacing: .13em; }
+.salt-search h2, .salt-results h2 { margin-top: 3px; font-size: 20px; font-weight: 700; }
+.salt-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; margin-top: 14px; padding: 5px; border-radius: 12px; background: #e4edf1; }
+.salt-boy :is(button, select, input, textarea) { color: inherit; font: inherit; }
 .salt-boy button { cursor: pointer; }
-.salt-tabs button { border-color: transparent; background: transparent; }
-.salt-tabs button[aria-pressed="true"] { background: #365566; border-color: #365566; color: white; font-weight: 700; }
-.salt-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin-top: 8px; }
-.salt-fields label { display: grid; font-size: 13px; }
-.salt-fields label:first-child { flex: 1 1 220px; min-width: 0; }
-.salt-fields input { min-width: 0; }
-.salt-serial { margin-top: 10px; font-size: 13px; }
-.salt-serial p { color: #465f6c; margin-top: 3px; }
-.salt-serial input { accent-color: #365566; }
-.salt-count { margin: 13px 0 6px; font-weight: 700; }
-.salt-store { padding: 14px 16px; margin: 0 0 10px; }
-.salt-store-head, .salt-actions, .salt-badges { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 6px 12px; }
-.salt-store-head { justify-content: space-between; }
-.salt-store h2, .salt-dialog h2 { font-size: 18px; line-height: 1.4; font-weight: 700; }
-.salt-store p { color: #465f6c; font-size: 13px; overflow-wrap: anywhere; }
-.salt-badges span { border-radius: 4px; border: 1px solid #bfd3dc; background: #f3f8fa; padding: 3px 8px; font-size: 13px; line-height: 1.4; }
-.salt-badges :is(.salt-badge-oricon, .salt-badge-billboard, .salt-badge-serial) { border-color: transparent; color: #fff; font-weight: 700; }
-.salt-badges .salt-badge-oricon { background: #a32a65; }
-.salt-badges .salt-badge-billboard { background: #704693; }
-.salt-badges .salt-badge-serial { background: #1e739b; }
-.salt-stock { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr)); gap: 6px; margin: 11px 0; }
-.salt-stock div { padding: 8px; border: 1px solid #d7e2e7; border-radius: 7px; background: #f8fbfc; }
-.salt-stock dt, .salt-stock time { font-size: 12px; color: #465f6c; }
-.salt-stock dd { font-weight: 700; }
-.salt-first-week { margin-top: 6px; }
-.salt-actions { align-items: center; }
-.salt-actions button { margin-left: auto; }
-.salt-boy footer { margin-top: 22px; text-align: center; font-size: 12px; color: #465f6c; }
+.salt-boy button:disabled { cursor: not-allowed; opacity: .55; }
+.salt-tabs button { min-height: 46px; padding: 8px 12px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: #405e6b; font-weight: 700; transition: background .15s ease, color .15s ease; }
+.salt-tabs button[aria-pressed="true"] { border-color: #365566; background: #365566; color: #fff; }
+.salt-search-label { display: grid; gap: 5px; margin-top: 12px; color: #405a66; font-size: 12px; font-weight: 600; }
+.salt-search-label input { width: 100%; min-height: 44px; padding: 9px 12px; border: 1px solid #b9ced8; border-radius: 8px; background: #fff; outline: none; }
+.salt-search-label input:focus, .salt-comment-form textarea:focus { border-color: #527b8c; box-shadow: 0 0 0 3px #dceaf0; }
+.salt-prefectures { margin-top: 14px; }
+.salt-prefecture-heading { margin-bottom: 7px; font-size: 13px; font-weight: 700; }
+.salt-prefectures section { margin-top: 10px; }
+.salt-prefectures section h3 { margin-bottom: 5px; color: #587381; font-size: 12px; font-weight: 700; }
+.salt-prefecture-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.salt-prefecture-chip { min-height: 34px; padding: 5px 11px; border: 1px solid #c1d2da; border-radius: 999px; background: #fff; color: #425b66; font-size: 12px; transition: background .15s ease, border-color .15s ease, color .15s ease; }
+.salt-prefecture-chip:hover { border-color: #7694a1; background: #f3f8fa; }
+.salt-prefecture-chip.selected { border-color: #365566; background: #365566; color: #fff; font-weight: 700; }
+.salt-all-chip { margin-bottom: 2px; }
+.salt-location-button, .salt-more-button { min-height: 42px; margin-top: 12px; padding: 8px 14px; border: 1px solid #b9ced8; border-radius: 8px; background: #fff; color: #304e5c; font-size: 13px; font-weight: 700; }
+.salt-geolocation-message, .salt-error { margin-top: 8px; color: #8b3a3a; font-size: 12px; }
+.salt-serial-filter { margin-top: 13px; padding-top: 12px; border-top: 1px solid #dce7eb; }
+.salt-serial-filter label { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.salt-serial-filter input { width: 17px; height: 17px; accent-color: #365566; }
+.salt-serial-filter p { margin-top: 5px; color: #526b76; font-size: 12px; }
+.salt-results { margin-top: 17px; }
+.salt-count { margin: 7px 0 10px; color: #405c68; font-size: 13px; font-weight: 700; }
+.salt-store { margin: 0 0 12px; padding: 15px; border: 1px solid #cbdbe3; border-radius: 14px; background: #fff; box-shadow: 0 1px 3px #274b5c0d; }
+.salt-store-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.salt-store-title { min-width: 0; }
+.salt-store h3 { font-size: 16px; font-weight: 700; line-height: 1.45; overflow-wrap: anywhere; }
+.salt-store-title p { margin-top: 4px; color: #526b76; font-size: 12px; overflow-wrap: anywhere; }
+.salt-badges { display: flex; flex: none; flex-wrap: wrap; gap: 5px; }
+.salt-first-week { margin-top: 9px; padding: 8px 10px; border-radius: 8px; background: #f1f6f8; color: #3d5966; font-size: 12px; }
+.salt-stock { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr)); gap: 7px; margin: 11px 0; }
+.salt-stock div { min-width: 0; padding: 9px 10px; border: 1px solid #d7e2e7; border-radius: 8px; background: #f8fbfc; }
+.salt-stock dt, .salt-stock time { display: block; color: #526b76; font-size: 11px; }
+.salt-stock dd { margin-top: 2px; color: #243842; font-size: 13px; font-weight: 700; }
+.salt-store-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 11px; }
+.salt-store-actions a, .salt-store-actions button, .salt-store-info a, .salt-comment-form button { display: inline-flex; align-items: center; min-height: 36px; padding: 7px 12px; border: 1px solid #b9ced8; border-radius: 999px; background: #fff; color: #345565; font-size: 12px; font-weight: 700; text-decoration: none; }
+.salt-store-actions button { margin-left: auto; border-color: #365566; background: #365566; color: white; }
+.salt-comments { margin-top: 11px; overflow: hidden; border: 1px solid #d7e2e7; border-radius: 12px; background: #f7fafb; }
+.salt-comments-toggle { display: flex; width: 100%; min-height: 58px; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 13px; border: 0; background: transparent; text-align: left; }
+.salt-comments-toggle strong, .salt-comments-toggle small { display: block; }
+.salt-comments-toggle strong { color: #334d59; font-size: 13px; }
+.salt-comments-toggle small { margin-top: 3px; color: #667d87; font-size: 10px; }
+.salt-comments-body { padding: 12px; border-top: 1px solid #dce7eb; color: #4e6874; font-size: 12px; }
+.salt-no-comments { padding: 12px; border-radius: 8px; background: white; }
+.salt-comment-list { display: grid; gap: 8px; }
+.salt-comment { padding: 11px; border: 1px solid #e1e9ec; border-radius: 9px; background: white; }
+.salt-comment > p { color: #344e5a; white-space: pre-wrap; overflow-wrap: anywhere; }
+.salt-comment > div { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 8px; }
+.salt-comment time { margin-right: auto; color: #7a8c94; font-size: 10px; }
+.salt-comment button { min-height: 30px; padding: 4px 9px; border: 1px solid #cbdbe3; border-radius: 999px; background: #fff; color: #405d69; font-size: 10px; }
+.salt-comment-form { display: grid; gap: 7px; margin-top: 12px; padding: 12px; border-radius: 9px; background: white; }
+.salt-comment-form strong { color: #334d59; }
+.salt-comment-form textarea { width: 100%; padding: 9px 10px; border: 1px solid #c5d5dc; border-radius: 8px; outline: none; resize: vertical; }
+.salt-comment-form small { color: #6e8189; font-size: 10px; }
+.salt-comment-form p { font-size: 11px; }
+.salt-comment-form [role="alert"] { color: #9c3434; }
+.salt-comment-form [role="status"] { color: #2c7048; }
+.salt-comment-form button { width: fit-content; border-color: #365566; background: #365566; color: white; }
+.salt-info-toggle { min-height: 38px; margin-top: 10px; padding: 7px 13px; border: 0; border-radius: 999px; background: #e2edf1; color: #365566; font-size: 12px; font-weight: 700; }
+.salt-store-info { margin-top: 10px; padding: 14px; border: 1px solid #d7e2e7; border-radius: 12px; background: #f8fbfc; }
+.salt-contact-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(170px, .75fr); gap: 16px; }
+.salt-contact-grid section + section { padding-left: 16px; border-left: 1px solid #d7e2e7; }
+.salt-contact-grid strong, .salt-online-info strong { display: block; color: #334d59; font-size: 13px; }
+.salt-contact-grid p, .salt-contact-grid section > a { display: inline-block; margin-top: 4px; color: #526b76; font-size: 12px; overflow-wrap: anywhere; }
+.salt-contact-grid section > a { color: #a34b80; font-weight: 700; }
+.salt-map-links { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+.salt-store-info .salt-map-links a { min-height: 32px; padding: 5px 10px; border-radius: 7px; }
+.salt-official-link { margin-top: 13px; padding-top: 12px; border-top: 1px solid #d7e2e7; }
+.salt-store-info .salt-official-link a, .salt-online-info a { border-color: #365566; background: #365566; color: white; text-decoration: none; }
+.salt-online-info { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.salt-empty { padding: 16px; color: #667d87; text-align: center; }
+.salt-back-to-top { position: fixed; z-index: 20; bottom: 20px; left: 18px; display: flex; width: 62px; height: 62px; flex-direction: column; align-items: center; justify-content: center; border: 3px solid #fff; border-radius: 50%; background: #365566; color: #fff !important; box-shadow: 0 2px 9px #1937453d; text-align: center; text-decoration: none !important; transition: transform .15s ease, background .15s ease; }
+.salt-back-to-top:hover { transform: translateY(-2px); background: #284654; }
+.salt-back-to-top span { font-size: 18px; line-height: 1; }
+.salt-back-to-top small { margin-top: 2px; font-size: 8px; font-weight: 700; line-height: 1.25; }
+.salt-boy footer { margin-top: 24px; color: #526b76; font-size: 12px; text-align: center; }
 .salt-boy footer small { color: #373d44; font: 500 12px Quicksand, sans-serif; }
-.salt-dialog { margin: auto; width: min(460px, calc(100% - 24px)); border: 1px solid #b9ced8; border-radius: 12px; padding: 17px; background: #fbfdfe; color: #243842; }
+.salt-dialog { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; width: min(500px, calc(100% - 24px)); max-height: min(85vh, 760px); margin: auto; padding: 0; border: 1px solid #b9ced8; border-radius: 14px; background: #fbfdfe; color: #243842; box-shadow: 0 12px 45px #1b39464d; }
+.salt-dialog:not([open]) { display: none; }
+.salt-dialog form { width: 100%; padding: 18px; overflow-y: auto; }
+.salt-dialog h2 { font-size: 18px; font-weight: 700; }
+.salt-dialog form > p { margin-top: 8px; color: #526b76; font-size: 12px; }
+.salt-dialog fieldset { display: grid; gap: 8px; margin: 14px 0; padding: 12px; border: 1px solid #cbdbe3; border-radius: 9px; }
+.salt-dialog legend { padding: 0 5px; font-size: 13px; font-weight: 700; }
+.salt-dialog label { display: grid; grid-template-columns: minmax(0,1fr) 145px; align-items: center; gap: 8px; color: #405a66; font-size: 12px; }
+.salt-dialog select, .salt-dialog button { min-height: 40px; padding: 7px 10px; border: 1px solid #b9ced8; border-radius: 7px; background: white; }
+.salt-dialog button { margin-top: 12px; border-color: #365566; background: #365566; color: white; font-weight: 700; }
 .salt-dialog::backdrop { background: #20354175; }
-.salt-dialog fieldset { margin: 10px 0; }
-.salt-dialog label { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 5px 0; }
-.salt-dialog button { margin-top: 9px; }
-@media (max-width: 480px) {
-  .salt-fields label:first-child { flex-basis: 100%; }
-  .salt-store { padding: 11px; }
-  .salt-actions button { margin-left: 0; }
+.salt-dialog-close { position: absolute; top: 8px; right: 10px; width: 38px; height: 38px; margin: 0 !important; padding: 0 !important; border: 0 !important; background: transparent !important; color: #526b76 !important; font-size: 26px; font-weight: 400 !important; }
+.salt-dialog .salt-section-kicker { margin-bottom: 3px; color: #66808b; font: 600 10px Urbanist, sans-serif; letter-spacing: .14em; }
+.salt-dialog .salt-report-store-name { margin-top: 4px; font-size: 14px; font-weight: 700; }
+.salt-dialog .salt-report-help { margin-top: 4px; }
+.salt-dialog .salt-report-products { display: grid; gap: 8px; }
+.salt-dialog .salt-report-product { display: grid; grid-template-columns: minmax(0,1fr) minmax(130px, 160px) auto; align-items: center; gap: 8px; }
+.salt-dialog .salt-report-product > label:first-child { display: block; color: #405a66; font-size: 12px; }
+.salt-dialog .salt-report-product select { width: 100%; min-width: 0; }
+.salt-dialog .salt-report-product .salt-report-quantity { display: flex; grid-template-columns: none; gap: 4px; white-space: nowrap; }
+.salt-dialog .salt-report-quantity input { width: 68px; min-height: 38px; padding: 5px 7px; border: 1px solid #b9ced8; border-radius: 7px; }
+.salt-dialog .salt-report-comment { display: grid; grid-template-columns: 1fr; align-items: start; gap: 6px; color: #405a66; }
+.salt-dialog .salt-report-comment textarea { width: 100%; padding: 9px 10px; border: 1px solid #c5d5dc; border-radius: 8px; resize: vertical; }
+.salt-dialog .salt-report-comment small { justify-self: end; color: #758991; font-size: 10px; }
+.salt-dialog .salt-report-caution { margin-top: 10px; padding: 10px; border-left: 3px solid #a7c2ce; background: #eef5f7; color: #526b76; font-size: 11px; line-height: 1.7; }
+.salt-dialog .salt-turnstile { display: flex; justify-content: center; margin-top: 12px; }
+.salt-dialog .salt-report-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.salt-dialog .salt-report-actions button { margin: 0; }
+.salt-dialog .salt-report-actions .salt-report-cancel { border-color: #cbdbe3; background: #fff; color: #405a66; }
+.salt-dialog .salt-report-actions .salt-report-submit { max-width: 100%; }
+.salt-dialog .salt-error { color: #9c3434; font-size: 12px; }
+.salt-dialog .salt-success { color: #2c7048; font-size: 12px; }
+@media (max-width: 620px) {
+  .salt-wrap { padding-top: 17px; }
+  .salt-explanation summary { min-height: 52px; padding: 11px 13px; font-size: 13px; }
+  .salt-explanation-body { padding: 13px; font-size: 12px; }
+  .salt-store-head { display: grid; }
+  .salt-badges { order: -1; }
+  .salt-store-actions button { margin-left: 0; }
+  .salt-contact-grid { grid-template-columns: 1fr; gap: 12px; }
+  .salt-contact-grid section + section { padding: 12px 0 0; border-top: 1px solid #d7e2e7; border-left: 0; }
+  .salt-back-to-top { bottom: 12px; left: 11px; width: 54px; height: 54px; }
+  .salt-back-to-top span { font-size: 16px; }
+  .salt-back-to-top small { font-size: 7px; }
+  .salt-dialog { max-height: 88vh; }
+  .salt-dialog form { padding: 16px 13px; }
+  .salt-dialog .salt-report-product { grid-template-columns: minmax(0,1fr) minmax(120px, 42%); }
+  .salt-dialog .salt-report-product .salt-report-quantity { grid-column: 2; justify-self: end; }
+  .salt-dialog .salt-report-actions { display: grid; grid-template-columns: 1fr; }
+  .salt-dialog .salt-report-actions button { width: 100%; }
 }
