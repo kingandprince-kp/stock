@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { inventoryDb } from "@/app/stockchecker-saltboy/data";
 
 const ALLOWED_HOSTNAME = "kingandprince-stock.vercel.app";
 const STOCK_STATUSES = new Set(["in_stock", "low_stock", "backorder", "sold_out"]);
@@ -86,9 +86,7 @@ export async function POST(request: Request) {
       return errorResponse("Bot対策の確認に失敗しました。もう一度お試しください。", 403);
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    const supabase = inventoryDb();
     const clientHash = createHash("sha256").update(clientId).digest("hex");
     const { data, error } = await supabase.rpc("salt_boy_submit_inventory", {
       p_store_id: storeId,

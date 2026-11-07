@@ -66,7 +66,18 @@ export function inventoryDb() {
   if (!url || !key) throw new Error("SALT BOYの在庫接続設定がありません。");
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(9000), cache: "no-store" }) },
+    global: {
+      fetch: async (input, init) => {
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          const response = await fetch(input, { ...init, signal: AbortSignal.timeout(9000), cache: "no-store" });
+          if (response.status !== 401) return response;
+          const body = await response.clone().json().catch(() => null) as { code?: string } | null;
+          if (body?.code !== "PGRST303" || attempt === 2) return response;
+          await new Promise((resolve) => setTimeout(resolve, 200 * (attempt + 1)));
+        }
+        throw new Error("SALT BOY Supabase request retry limit reached.");
+      },
+    },
   });
 }
 
