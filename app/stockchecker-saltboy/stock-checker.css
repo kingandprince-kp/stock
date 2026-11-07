@@ -1,0 +1,61 @@
+@import url("https://fonts.googleapis.com/css2?family=Quicksand:wght@500&family=Zen+Maru+Gothic:wght@400;500;700&display=swap");
+
+.salt-boy {
+  color-scheme: light;
+  min-height: 100vh;
+  background: #edf4f7;
+  color: #243842;
+  font: 500 15px/1.55 "Zen Maru Gothic", sans-serif;
+}
+.salt-wrap { max-width: 1024px; margin: auto; padding: 28px clamp(12px, 4vw, 32px) 24px; }
+.salt-heading { text-align: center; margin: 10px 0 23px; }
+.salt-heading h1 { font-size: clamp(24px, 4vw, 35px); font-weight: 700; line-height: 1.3; }
+.salt-heading h1 span { white-space: nowrap; }
+.salt-heading p, .salt-notice p { margin-top: 5px; color: #465f6c; }
+.salt-notice, .salt-search, .salt-store { border: 1px solid #cbdbe3; border-radius: 14px; background: #fbfdfe; }
+.salt-notice { margin-bottom: 12px; padding: 12px 16px; font-size: 13px; }
+.salt-boy a { color: #23546c; text-decoration: underline; text-underline-offset: 2px; }
+.salt-search { padding: 12px 14px; }
+.salt-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 9px; background: #e8f0f4; }
+.salt-boy :is(button, select, input[type="search"]) { color: inherit; font: inherit; }
+.salt-boy :is(button, select, input[type="search"]) { min-height: 44px; padding: 7px 12px; border-radius: 7px; border: 1px solid #b9ced8; background: #fff; }
+.salt-boy button { cursor: pointer; }
+.salt-tabs button { border-color: transparent; background: transparent; }
+.salt-tabs button[aria-pressed="true"] { background: #365566; border-color: #365566; color: white; font-weight: 700; }
+.salt-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin-top: 8px; }
+.salt-fields label { display: grid; font-size: 13px; }
+.salt-fields label:first-child { flex: 1 1 220px; min-width: 0; }
+.salt-fields input { min-width: 0; }
+.salt-serial { margin-top: 10px; font-size: 13px; }
+.salt-serial p { color: #465f6c; margin-top: 3px; }
+.salt-serial input { accent-color: #365566; }
+.salt-count { margin: 13px 0 6px; font-weight: 700; }
+.salt-store { padding: 14px 16px; margin: 0 0 10px; }
+.salt-store-head, .salt-actions, .salt-badges { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 6px 12px; }
+.salt-store-head { justify-content: space-between; }
+.salt-store h2, .salt-dialog h2 { font-size: 18px; line-height: 1.4; font-weight: 700; }
+.salt-store p { color: #465f6c; font-size: 13px; overflow-wrap: anywhere; }
+.salt-badges span { border-radius: 4px; border: 1px solid #bfd3dc; background: #f3f8fa; padding: 3px 8px; font-size: 13px; line-height: 1.4; }
+.salt-badges :is(.salt-badge-oricon, .salt-badge-billboard, .salt-badge-serial) { border-color: transparent; color: #fff; font-weight: 700; }
+.salt-badges .salt-badge-oricon { background: #a32a65; }
+.salt-badges .salt-badge-billboard { background: #704693; }
+.salt-badges .salt-badge-serial { background: #1e739b; }
+.salt-stock { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr)); gap: 6px; margin: 11px 0; }
+.salt-stock div { padding: 8px; border: 1px solid #d7e2e7; border-radius: 7px; background: #f8fbfc; }
+.salt-stock dt, .salt-stock time { font-size: 12px; color: #465f6c; }
+.salt-stock dd { font-weight: 700; }
+.salt-first-week { margin-top: 6px; }
+.salt-actions { align-items: center; }
+.salt-actions button { margin-left: auto; }
+.salt-boy footer { margin-top: 22px; text-align: center; font-size: 12px; color: #465f6c; }
+.salt-boy footer small { color: #373d44; font: 500 12px Quicksand, sans-serif; }
+.salt-dialog { margin: auto; width: min(460px, calc(100% - 24px)); border: 1px solid #b9ced8; border-radius: 12px; padding: 17px; background: #fbfdfe; color: #243842; }
+.salt-dialog::backdrop { background: #20354175; }
+.salt-dialog fieldset { margin: 10px 0; }
+.salt-dialog label { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 5px 0; }
+.salt-dialog button { margin-top: 9px; }
+@media (max-width: 480px) {
+  .salt-fields label:first-child { flex-basis: 100%; }
+  .salt-store { padding: 11px; }
+  .salt-actions button { margin-left: 0; }
+}
