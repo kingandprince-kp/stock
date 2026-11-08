@@ -1,11 +1,11 @@
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Quicksand:wght@500&family=Urbanist:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Quicksand:wght@500&family=Zen+Maru+Gothic:wght@400;500;700&display=swap");
 
 .salt-boy {
   color-scheme: light;
   min-height: 100vh;
   background: #f9f0f8;
   color: #29232a;
-  font: 400 14px/1.65 "Noto Sans JP", sans-serif;
+  font: 400 14px/1.65 "Zen Maru Gothic", sans-serif;
 }
 .salt-wrap { width: min(100%, 1080px); margin: auto; padding: 24px clamp(12px, 4vw, 32px) 28px; }
 .salt-heading { margin: 0 0 12px; padding: clamp(22px, 4vw, 38px) 18px; border: 1px solid #e7dce7; border-radius: 20px; background: #fffdfd; text-align: center; }
@@ -130,7 +130,7 @@
 .salt-dialog button { margin-top: 12px; border-color: #4f3c4b; background: #4f3c4b; color: white; font-weight: 700; }
 .salt-dialog::backdrop { background: #29202a75; }
 .salt-dialog-close { position: absolute; top: 8px; right: 10px; width: 38px; height: 38px; margin: 0 !important; padding: 0 !important; border: 0 !important; background: transparent !important; color: #6f616d !important; font-size: 26px; font-weight: 400 !important; }
-.salt-dialog .salt-section-kicker { margin-bottom: 3px; color: #7a6878; font: 600 10px Urbanist, sans-serif; letter-spacing: .14em; }
+.salt-dialog .salt-section-kicker { margin-bottom: 3px; color: #7a6878; font-size: 10px; font-weight: 700; letter-spacing: .14em; }
 .salt-dialog .salt-report-store-name { margin-top: 4px; font-size: 14px; font-weight: 700; }
 .salt-dialog .salt-report-help { margin-top: 4px; }
 .salt-dialog .salt-report-products { display: grid; gap: 8px; }
