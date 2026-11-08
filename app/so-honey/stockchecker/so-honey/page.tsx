@@ -1839,7 +1839,7 @@ async function handleBugReport() {
         page_path:
           typeof window !== "undefined"
             ? window.location.pathname
-            : "/so-honey",
+            : "/so-honey/stockchecker/so-honey",
       });
 
     if (error) {
@@ -1876,7 +1876,7 @@ async function handleBugReport() {
     if (typeof window === "undefined") return;
 
     const hashtag = "#KP在庫ここにあるよ";
-    const pageUrl = "https://kingandprince-stock.vercel.app/so-honey";
+    const pageUrl = "https://kingandprince-stock.vercel.app/so-honey/stockchecker/so-honey";
     const text = includePageLink
       ? `${hashtag}\n${pageUrl}`
       : hashtag;
