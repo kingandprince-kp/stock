@@ -19,7 +19,7 @@
 .salt-feedback-action { flex: none; padding: 5px 9px; border: 1px solid #86a9bd; border-radius: 6px; color: #203e51; background: #f8fcff; font-size: 12px; }
 #feedback[open] .salt-feedback-action--open, #feedback:not([open]) .salt-feedback-action--close { display: none; }
 #feedback .salt-support-form { margin: 0 12px 12px; padding: 12px; border: 1px solid #b7ccd9; border-radius: 8px; background: #fcfeff; color: #263d4b; font-size: 13px; }
-.salt-feedback-required { color: #933156; }
+.salt-feedback-required, .salt-form-required { color: #933156; }
 .salt-feedback-note { padding: 8px 10px; border: 1px solid #bdcfda; border-radius: 7px; background: #f0f6fa; }
 .salt-feedback-note p + p, .salt-feedback-note summary + p { margin-top: 5px; }
 .salt-feedback-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 8px; }

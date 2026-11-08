@@ -106,11 +106,13 @@ export function StoreRequest({ online, prefecture, prefectures }: {
     <details className="salt-support" id="store-request">
       <summary>店舗が見つからない場合 <small>未掲載店舗の追加をリクエストできます</small></summary>
       <SupportForm key={`${online}-${prefecture}`} send={(data) => {
+        const requestPrefecture = online ? "オンライン" : field(data, "prefecture");
         const name = field(data, "name");
+        if (!online && !prefectures.includes(requestPrefecture)) throw new Error("追加先の都道府県を選択してください。");
         if (!name) throw new Error("店舗名を入力してください。");
         const note = field(data, "note");
         return supabase.rpc("submit_store_request", {
-          p_prefecture: online ? "オンライン" : field(data, "prefecture"),
+          p_prefecture: requestPrefecture,
           p_city: online ? null : field(data, "city") || null,
           p_name: name,
           p_chain_name: field(data, "chain") || null,
@@ -119,13 +121,13 @@ export function StoreRequest({ online, prefecture, prefectures }: {
         });
       }}>
         {!online && <>
-          <label>都道府県<select name="prefecture" defaultValue={prefecture} required>
+          <label><span>追加先の都道府県 <strong className="salt-form-required">必須</strong></span><select name="prefecture" defaultValue={prefecture} required>
             <option value="">選択してください</option>
             {prefectures.map((name) => <option key={name}>{name}</option>)}
           </select></label>
           <label>市区町村 (任意)<input name="city" maxLength={80} /></label>
         </>}
-        <label>店舗名<input name="name" maxLength={100} required /></label>
+        <label><span>店舗名 <strong className="salt-form-required">必須</strong></span><input name="name" maxLength={100} required /></label>
         <label>チェーン名 (任意)<input name="chain" maxLength={100} /></label>
         <label>補足 (任意)<textarea name="note" rows={2} maxLength={400} /></label>
       </SupportForm>
