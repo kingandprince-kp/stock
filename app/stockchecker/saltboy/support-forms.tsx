@@ -100,7 +100,7 @@ export function StoreContribution({ store, online }: { store: Store; online: boo
           <option>その他</option>
         </select></label>
         <label>提供する内容<textarea name="detail" rows={2} maxLength={900} required placeholder={online ? "例: 商品ページに発売日の発送と記載" : "例: 初週集計は17時までと店舗で確認"} /></label>
-        <p className="salt-contribution-notice">※在庫あり・在庫なし・枚数などの在庫情報は、こちらではなく「在庫情報を投稿」からお願いします。</p>
+        <p className="salt-contribution-notice">※在庫あり・在庫なし・枚数などの在庫情報は、こちらではなく「在庫投稿」からお願いします。</p>
         <label>確認方法・ソース<textarea name="evidence" rows={2} maxLength={1000} placeholder={canReportBillboard ? "例: 店頭で確認。Billboard情報の場合は必須です。" : "例: 公式ページURL、電話確認、店頭確認など"} /></label>
       </SupportForm>
     </details>

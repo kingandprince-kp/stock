@@ -100,7 +100,7 @@ function InfoAccordions() {
           <section>
             <h3>オリコン</h3>
             <p><span className="salt-badge salt-badge-oricon">オリコン対象</span></p>
-            <p>掲載している実店舗は、オリコン「CD・DVD/Blu-rayランキング調査協力店」として確認できた店舗を掲載しています。</p>
+            <p>対象の確認には、オリコン公式の「CD・DVD/Blu-rayランキング調査協力店」一覧を参照しています。</p>
             <div className="salt-caution"><strong>⏰ 初週集計の購入目安</strong><p>初週集計の締め時間は店舗や購入方法によって異なります。確認できた情報のみ表示し、未確認の場合は「要確認」としています。実際の店舗にご確認ください。</p><p>オンラインショップは注文日時だけでなく発送時期などによって集計タイミングが変わります。購入前に各ショップの商品ページで発送予定をご確認ください。</p><p>※表示は目安です。店舗・ショップや購入方法、在庫・発送状況によって変わる場合があります。</p></div>
             <ExternalLink href="https://biz.oricon.co.jp/coope.asp">オリコン 調査協力店一覧を確認する</ExternalLink>
           </section>
@@ -343,6 +343,7 @@ export default function StockChecker({ physical, online, inventory }: {
   const [query, setQuery] = useState("");
   const [prefecture, setPrefecture] = useState("");
   const [stockOnly, setStockOnly] = useState(false);
+  const [billboardOnly, setBillboardOnly] = useState(false);
   const [limit, setLimit] = useState(20);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [geoMessage, setGeoMessage] = useState("");
@@ -448,12 +449,13 @@ export default function StockChecker({ physical, online, inventory }: {
     const term = normalize(query);
     const stores = (mode === "physical" ? physical : online).filter((store) =>
       (!prefecture || mode === "online" || store.prefecture === prefecture)
+      && (!billboardOnly || store.billboard_status === "target")
       && (!stockOnly || inStockStores.has(store.id))
       && (!term || normalize([displayName(store), store.prefecture, store.city, store.address].join(" ")).includes(term))
     ).map((store) => ({ store, distance: mode === "physical" && location ? distanceKm(location.lat, location.lng, store) : null }));
     if (mode === "physical" && location) stores.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
     return stores;
-  }, [mode, physical, online, prefecture, query, location, stockOnly, inStockStores]);
+  }, [mode, physical, online, prefecture, query, location, billboardOnly, stockOnly, inStockStores]);
 
   function locate() {
     if (!navigator.geolocation) return setGeoMessage("このブラウザーでは現在地を取得できません。");
@@ -548,6 +550,7 @@ export default function StockChecker({ physical, online, inventory }: {
       <section id="stores" className="salt-search" aria-label="店舗検索">
         <div className="salt-section-kicker">STOCK SEARCH</div>
         <h2>🏬 店舗を探す</h2>
+        <p className="salt-listing-note">オリコン集計対象の店舗を中心に掲載しています。</p>
         <div className="salt-tabs" role="group" aria-label="店舗の種類">
           <button type="button" aria-pressed={mode === "physical"} onClick={() => { setMode("physical"); setLimit(20); }}>🏪 実店舗</button>
           <button type="button" aria-pressed={mode === "online"} onClick={() => { setMode("online"); setLimit(20); }}>🛒 オンライン</button>
@@ -584,10 +587,16 @@ export default function StockChecker({ physical, online, inventory }: {
             <div className="salt-section-kicker">STORE RESULTS</div>
             <p className="salt-count" aria-live="polite">{matches.length.toLocaleString("ja-JP")}件{mode === "physical" && location ? " ・現在地に近い順" : ""}</p>
           </div>
-          {inventory && <label className="salt-stock-filter">
-            <input type="checkbox" checked={stockOnly} onChange={(event) => { setStockOnly(event.target.checked); setLimit(20); }} />
-            在庫あり商品のみ表示
-          </label>}
+          <div className="salt-result-filters" role="group" aria-label="店舗一覧の絞り込み">
+            <label className="salt-stock-filter">
+              <input type="checkbox" checked={billboardOnly} onChange={(event) => { setBillboardOnly(event.target.checked); setLimit(20); }} />
+              Billboard対象店のみ
+            </label>
+            {inventory && <label className="salt-stock-filter">
+              <input type="checkbox" checked={stockOnly} onChange={(event) => { setStockOnly(event.target.checked); setLimit(20); }} />
+              在庫あり商品のみ表示
+            </label>}
+          </div>
         </div>
         {!inventory && <p className="salt-error" role="alert">SALT BOYの在庫データを取得できませんでした。時間をおいて再読み込みしてください。</p>}
         {matches.slice(0, limit).map(({ store, distance }) => <StoreCard key={`${mode}-${store.id}`} store={store} mode={mode} inventory={inventory} reports={reports} stockOnly={stockOnly} firstWeek={firstWeek.get(store.id) ?? []} commentCount={commentCountMap.get(store.id) ?? 0} onCommentsChanged={loadCommentCounts} onReport={openReport} distance={distance} />)}
@@ -657,7 +666,7 @@ export default function StockChecker({ physical, online, inventory }: {
           </div>
         </form>
       </dialog>}
-      <a href="#top" aria-label="サイトトップに戻る" className="salt-back-to-top"><span>↑</span><small>サイトトップ<br />に戻る</small></a>
+      <a href="#top" aria-label="サイトトップへ" className="salt-back-to-top">サイト<br />トップへ</a>
     </>
   );
 }
