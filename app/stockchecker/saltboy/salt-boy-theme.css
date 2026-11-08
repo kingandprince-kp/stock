@@ -12,13 +12,23 @@
 .salt-art-crab { justify-self: end; }
 .salt-art-betta { width: 88%; right: 7%; top: 50%; transform: translateY(-50%); }
 .salt-boy #feedback { padding: 0; border: 1px solid #9ab9cb; border-inline-start: 3px solid #65899f; background: #eaf4f9; }
-#feedback summary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 14px; padding: 12px 14px; list-style: none; }
-#feedback summary::-webkit-details-marker { display: none; }
+#feedback > summary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 14px; padding: 12px 14px; list-style: none; }
+#feedback > summary::-webkit-details-marker { display: none; }
 .salt-feedback-copy { flex: 1 1 175px; }
 .salt-feedback-copy small { display: block; margin: 2px 0 0; color: #416072; }
 .salt-feedback-action { flex: none; padding: 5px 9px; border: 1px solid #86a9bd; border-radius: 6px; color: #203e51; background: #f8fcff; font-size: 12px; }
 #feedback[open] .salt-feedback-action--open, #feedback:not([open]) .salt-feedback-action--close { display: none; }
-#feedback .salt-support-form { margin: 0; padding: 0 14px 12px; }
+#feedback .salt-support-form { margin: 0 12px 12px; padding: 12px; border: 1px solid #b7ccd9; border-radius: 8px; background: #fcfeff; color: #263d4b; font-size: 13px; }
+.salt-feedback-required { color: #933156; }
+.salt-feedback-note { padding: 8px 10px; border: 1px solid #bdcfda; border-radius: 7px; background: #f0f6fa; }
+.salt-feedback-note p + p, .salt-feedback-note summary + p { margin-top: 5px; }
+.salt-feedback-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 8px; }
+.salt-feedback-wide { grid-column: span 2; }
+#feedback .salt-feedback-opt-in { display: flex; align-items: start; gap: 7px; margin-top: 6px; font-weight: 700; cursor: pointer; }
+#feedback .salt-feedback-opt-in input { flex: none; width: auto; margin-top: 4px; accent-color: #234b62; }
+@media (max-width: 620px) {
+  .salt-feedback-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 620px) {
   .salt-design-hero { min-height: 192px; padding: 16px 6px; }
   .salt-design-brand { font-size: 8px; letter-spacing: .09em; }
