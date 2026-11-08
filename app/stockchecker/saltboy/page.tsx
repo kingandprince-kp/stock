@@ -29,11 +29,11 @@ export default async function SaltBoyPage() {
         <div className="salt-design-copy">
           <div className="salt-design-brand">KAITO STOCK CHECKER</div>
           <h1>SALT BOY<span>在庫チェッカー</span></h1>
-          <p>全国の実店舗・オンラインショップの在庫情報を確認できます。</p>
         </div>
         <div className="salt-design-art salt-design-art-right" aria-hidden="true">
           <img className="salt-art-betta" src="/salt-boy/betta.png" alt="" />
         </div>
+        <p className="salt-design-description">全国の実店舗・オンラインショップの<br />在庫情報を確認できます。</p>
       </header>
         {directory.status === "fulfilled" ? (
           <StockChecker
