@@ -168,6 +168,13 @@
 .salt-dialog .salt-report-caution { margin-top: 10px; padding: 10px; border-left: 3px solid #b5c7d1; background: #edf4f8; color: #59666e; font-size: 11px; line-height: 1.7; }
 .salt-report-multiple { margin-top: 10px; padding: 8px 10px; border: 1px solid #d4b876; border-radius: 7px; background: #fff8e6; color: #51380e; font-size: 12px; }
 .salt-report-multiple p { margin: 3px 0 0; }
+.salt-dialog .salt-shipping-fields { display: grid; gap: 8px; margin: 12px 0; padding: 10px; border: 1px solid #d4b876; border-radius: 7px; background: #fff8e6; color: #51380e; font-size: 12px; }
+.salt-dialog .salt-shipping-fields label { display: grid; grid-template-columns: minmax(0, 1fr); gap: 3px; font-weight: 600; }
+.salt-dialog .salt-shipping-fields .salt-shipping-opt-in { grid-template-columns: auto 1fr; align-items: start; }
+.salt-shipping-opt-in input { margin-top: 3px; }
+.salt-shipping-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.salt-shipping-fields :is(select, input:not([type="checkbox"])) { width: 100%; min-width: 0; min-height: 36px; padding: 5px 7px; border: 1px solid #c6d1d8; border-radius: 6px; background: #fff; }
+.salt-stock-shipping { flex-basis: 100%; font-size: 11px; font-weight: 400; }
 .salt-dialog .salt-turnstile { display: flex; justify-content: center; margin-top: 12px; }
 .salt-dialog .salt-report-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 .salt-dialog .salt-report-actions button { margin: 0; }

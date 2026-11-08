@@ -5,6 +5,8 @@ import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
 import type { FirstWeek, Inventory, SaltInventory, Store } from "./data";
+import { readShippingEstimate, shippingEstimateText } from "./shipping-estimate";
+import ShippingEstimateFields from "./shipping-estimate-fields";
 import { FeedbackForm, StoreContribution, StoreRequest } from "./support-forms";
 
 type Mode = "physical" | "online";
@@ -269,12 +271,17 @@ function StoreCard({
           </div>
           <dl className="salt-stock">
             {stockItems.filter(({ item }) => !stockOnly || isInStock(item)).map(({ product, item }) => {
+              const shipping = online ? item?.shipping_estimate : null;
               return (
                 <div key={product.id}>
                   <dt>{product.name}</dt>
                   <dd className={isInStock(item) ? "salt-in-stock" : undefined}>
                     {item ? stockLabel(item) : "投稿なし"}
                     {item && <time dateTime={item.created_at}>{DATE_FORMAT.format(new Date(item.created_at))}</time>}
+                    {shipping && <span className="salt-stock-shipping">
+                      {shippingEstimateText(shipping)}
+                      {shipping.condition && <><br />条件: {shipping.condition}</>}
+                    </span>}
                   </dd>
                 </div>
               );
@@ -496,6 +503,13 @@ export default function StockChecker({ physical, online, inventory }: {
     if (!reportStore || !inventory) return;
     if (!turnstileToken) return setReportError("Bot対策の確認を完了してください。");
 
+    const form = new FormData(event.currentTarget);
+    const includesShipping = mode === "online" && form.has("includeShipping");
+    const shippingEstimate = includesShipping ? readShippingEstimate(form) : null;
+    if (includesShipping && !shippingEstimate) {
+      return setReportError("発送・お届け目安の日付、日数の範囲、確認場所を確認してください。");
+    }
+
     const comment = reportComment.trim();
     const items = inventory.products.flatMap((product) => {
       const selected = reportInputs[product.id];
@@ -513,7 +527,7 @@ export default function StockChecker({ physical, online, inventory }: {
     }
     if (!items.length) return setReportError("投稿する形態と在庫状況を選択してください。");
     if (items.some((item) => item.quantity >= 50) && !comment) {
-      return setReportError("50枚以上の場合は、確認した状況を店舗メモに入力してください。");
+      return setReportError("50枚以上の場合は、確認した状況をコメント欄に入力してください。");
     }
 
     setReportSubmitting(true);
@@ -521,7 +535,7 @@ export default function StockChecker({ physical, online, inventory }: {
       const response = await fetch("/api/salt-boy/inventory-report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeId: reportStore.id, items, clientId: localStorage.getItem("kp_inventory_client_id") || crypto.randomUUID(), requestId, turnstileToken }),
+        body: JSON.stringify({ storeId: reportStore.id, items, clientId: clientId(), requestId, turnstileToken, shippingEstimate }),
       });
       const result = await response.json() as { success?: boolean; message?: string; reportCount?: number };
       if (!response.ok || !result.success) {
@@ -654,6 +668,7 @@ export default function StockChecker({ physical, online, inventory }: {
               </label>}
             </div>;
           })}</fieldset>
+          {mode === "online" && <ShippingEstimateFields />}
           <label className="salt-report-comment">コメント (任意)
             <textarea value={reportComment} onChange={(event) => setReportComment(event.target.value)} maxLength={300} rows={3} placeholder="売場や入荷状況など。個人情報・URLは入力しないでください。" />
             <small>{reportComment.length}/300文字</small>

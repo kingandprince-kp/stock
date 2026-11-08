@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { inventoryDb } from "@/app/stockchecker/saltboy/data";
+import { parseShippingEstimate } from "@/app/stockchecker/saltboy/shipping-estimate";
 
 const ALLOWED_HOSTNAME = "kingandprince-stock.vercel.app";
 const STOCK_STATUSES = new Set(["in_stock", "sold_out"]);
@@ -17,6 +18,7 @@ type RequestBody = {
   clientId?: string;
   requestId?: string;
   turnstileToken?: string;
+  shippingEstimate?: unknown;
 };
 type TurnstileResponse = { success: boolean; hostname?: string; action?: string };
 
@@ -42,6 +44,10 @@ export async function POST(request: Request) {
     }
 
     const { storeId, items, clientId, requestId, turnstileToken } = body;
+    const shippingEstimate = parseShippingEstimate(body.shippingEstimate);
+    if (body.shippingEstimate != null && !shippingEstimate) {
+      return errorResponse("発送・お届け目安を確認してください。");
+    }
     if (!Number.isSafeInteger(storeId) || Number(storeId) <= 0) {
       return errorResponse("店舗を選び直してください。");
     }
@@ -102,6 +108,7 @@ export async function POST(request: Request) {
         stock_status: item.stockStatus,
         purchase_variant: null,
         comment: item.comment?.trim() || null,
+        shipping_estimate: shippingEstimate,
       })),
     });
     if (error) {
