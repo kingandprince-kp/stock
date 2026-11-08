@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { inventoryDb } from "@/app/stockchecker/saltboy/data";
 
 const ALLOWED_HOSTNAME = "kingandprince-stock.vercel.app";
-const STOCK_STATUSES = new Set(["in_stock", "low_stock", "backorder", "sold_out"]);
+const STOCK_STATUSES = new Set(["in_stock", "sold_out"]);
 
 type ReportItem = {
   productId: number;
@@ -52,9 +52,13 @@ export async function POST(request: Request) {
       !Number.isSafeInteger(item.productId) || item.productId <= 0
       || !Number.isSafeInteger(item.quantity) || item.quantity < 0 || item.quantity > 10000
       || !STOCK_STATUSES.has(item.stockStatus)
+      || (item.stockStatus === "sold_out" && item.quantity !== 0)
       || (typeof item.comment === "string" && item.comment.length > 300)
     )) {
       return errorResponse("形態ごとの在庫情報を確認してください。");
+    }
+    if (items.some((item) => item.quantity >= 50 && (typeof item.comment !== "string" || !item.comment.trim()))) {
+      return errorResponse("50枚以上の場合は、確認した状況を店舗メモに入力してください。");
     }
     if (typeof clientId !== "string" || clientId.length < 10 || clientId.length > 200
       || typeof requestId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {

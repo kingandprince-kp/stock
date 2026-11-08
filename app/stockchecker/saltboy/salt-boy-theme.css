@@ -6,8 +6,10 @@
 .salt-design-waves { position: absolute; z-index: -1; inset: auto 0 0; width: 100%; height: 64%; pointer-events: none; }
 .salt-design-art { position: relative; width: 100%; height: clamp(100px, 16vw, 170px); }
 .salt-design-art img { position: absolute; aspect-ratio: 1; object-fit: contain; mix-blend-mode: multiply; }
-.salt-art-hen { width: min(68%, 100px); top: 0; left: 8%; }
-.salt-art-crab { width: min(58%, 88px); right: 8%; bottom: 0; }
+.salt-design-art-left { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 6px; height: clamp(96px, 18vw, 174px); }
+.salt-design-art-left img { position: static; width: min(100%, 86px); height: 100%; min-height: 0; }
+.salt-art-hen { justify-self: start; }
+.salt-art-crab { justify-self: end; }
 .salt-art-betta { width: 88%; right: 7%; top: 50%; transform: translateY(-50%); }
 .salt-boy #feedback { padding: 0; border: 1px solid #9ab9cb; border-inline-start: 3px solid #65899f; background: #eaf4f9; }
 #feedback summary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 14px; padding: 12px 14px; list-style: none; }
@@ -22,8 +24,8 @@
   .salt-design-brand { font-size: 8px; letter-spacing: .09em; }
   .salt-design-hero h1 { font-size: clamp(26px, 8vw, 42px); }
   .salt-design-hero p { font-size: 11px; }
-  .salt-art-hen { width: 90%; left: 0; top: 4%; }
-  .salt-art-crab { width: 85%; right: 0; bottom: 4%; }
+  .salt-design-art-left { height: clamp(90px, 25vw, 128px); }
+  .salt-design-art-left img { width: 100%; }
   .salt-art-betta { width: 100%; right: 0; }
 }
 

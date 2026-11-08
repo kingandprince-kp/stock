@@ -59,7 +59,7 @@ function SupportForm({ children, send }: {
 export function StoreContribution({ store, online }: { store: Store; online: boolean }) {
   return (
     <details className="salt-contribution">
-      <summary className="salt-contribution-summary"><span>店舗情報を提供 <small>{online ? "集計・発送予定など" : "初週集計の締め時間など"}</small></span><span className="salt-contribution-action salt-contribution-open">投稿フォームを開く ＋</span><span className="salt-contribution-action salt-contribution-close">フォームを閉じる −</span></summary>
+      <summary className="salt-contribution-summary"><span>店舗情報を提供</span><span className="salt-contribution-action salt-contribution-open">フォーム ＋</span><span className="salt-contribution-action salt-contribution-close">閉じる −</span></summary>
       <SupportForm send={(data) => {
         const category = field(data, "category");
         const detail = field(data, "detail");

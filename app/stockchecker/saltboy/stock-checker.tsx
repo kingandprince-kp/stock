@@ -28,17 +28,28 @@ const PREFECTURE_GROUPS = [
   { region: "九州・沖縄", prefectures: ["福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"] },
 ];
 
-const STATUS_TEXT: Record<string, string> = {
+const REPORT_OPTIONS = {
   in_stock: "在庫あり",
-  low_stock: "残りわずか",
-  sold_out: "売り切れ",
-  backorder: "取り寄せ",
-};
+  sold_out: "在庫なし",
+  quantity: "枚数を入力",
+} as const;
 const DATE_FORMAT = new Intl.DateTimeFormat("ja-JP", {
   timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit",
 });
 const normalize = (value: string) => value.normalize("NFKC").toLowerCase().replace(/\s+/g, "");
 const radians = (degrees: number) => degrees * Math.PI / 180;
+
+function isInStock(item: Inventory | undefined) {
+  return !!item && (item.stock_status === "in_stock" || item.stock_status === "low_stock"
+    || (item.stock_status === null && (item.quantity ?? 0) > 0));
+}
+
+function stockLabel(item: Inventory) {
+  if (isInStock(item)) {
+    return item.quantity && item.quantity > 0 ? `${item.quantity.toLocaleString("ja-JP")}枚` : "在庫あり";
+  }
+  return item.stock_status === "sold_out" || item.stock_status === "backorder" || item.quantity === 0 ? "在庫なし" : "要確認";
+}
 
 function distanceKm(lat: number, lng: number, store: Store) {
   if (store.latitude == null || store.longitude == null) return null;
@@ -112,12 +123,13 @@ function InfoAccordions() {
 }
 
 function StoreCard({
-  store, mode, inventory, reports, firstWeek, commentCount, onCommentsChanged, onReport, distance,
+  store, mode, inventory, reports, stockOnly, firstWeek, commentCount, onCommentsChanged, onReport, distance,
 }: {
   store: Store;
   mode: Mode;
   inventory: SaltInventory | null;
   reports: Map<string, Inventory>;
+  stockOnly: boolean;
   firstWeek: FirstWeek[];
   commentCount: number;
   onCommentsChanged: () => Promise<void>;
@@ -136,6 +148,12 @@ function StoreCard({
 
   const online = mode === "online";
   const storeUrl = safeUrl(online ? store.online_url : store.official_url);
+  const stockItems = inventory?.products.map((product) => ({
+    product, item: reports.get(`${store.id}:${product.id}`),
+  })) ?? [];
+  const lastUpdated = stockItems.reduce<string | null>((latest, { item }) => (
+    item && (!latest || Date.parse(item.created_at) > Date.parse(latest)) ? item.created_at : latest
+  ), null);
 
   const loadComments = useCallback(async () => {
     setCommentsLoading(true);
@@ -205,8 +223,10 @@ function StoreCard({
       <div className="salt-store-head">
         <div className="salt-store-title">
           <h3>{displayName(store)}</h3>
-          <p>{online ? "🛒 オンラインショップ" : `📍 ${store.prefecture}${store.city ? ` ${store.city}` : ""}${distance !== null ? ` · ${distance.toFixed(1)} km` : ""}`}</p>
-          {!online && store.business_hours && <p>🕒 営業時間: {store.business_hours}</p>}
+          <div className="salt-store-meta">
+            <span>{online ? "🛒 オンラインショップ" : `📍 ${store.prefecture}${store.city ? ` ${store.city}` : ""}${distance !== null ? ` · ${distance.toFixed(1)} km` : ""}`}</span>
+            {!online && store.business_hours && <span>🕒 営業時間: {store.business_hours}</span>}
+          </div>
         </div>
         <div className="salt-badges" aria-label="集計対象">
           {store.oricon_target === true && <span className="salt-badge salt-badge-oricon">オリコン対象</span>}
@@ -216,38 +236,41 @@ function StoreCard({
         </div>
       </div>
 
-      {!online && !firstWeek.some((item) => item.cutoff_date) && (
-        <p className="salt-first-week">初週締め時間: 要確認</p>
-      )}
-      {firstWeek.map((item, index) => (
-        <p key={`${item.product_id}-${index}`} className="salt-first-week">
-          {online ? "初週情報: " : "初週締め時間: "}
-          {online
-            ? [
-                inventory?.products.find((product) => product.id === item.product_id)?.name,
-                item.estimate_basis === "shipping" ? "発送予定" : "お届け予定",
-                item.earliest_date === item.latest_date ? item.earliest_date : [item.earliest_date, item.latest_date].filter(Boolean).join("～"),
-                item.note,
-              ].filter(Boolean).join(" ")
-            : [item.cutoff_date, item.cutoff_kind === "closing" ? "閉店まで" : item.cutoff_time?.slice(0, 5), item.note].filter(Boolean).join(" ")}
-        </p>
-      ))}
-      <StoreContribution store={store} online={online} />
+      <div className="salt-store-tools">
+        {!online && !firstWeek.some((item) => item.cutoff_date) && (
+          <p className="salt-first-week">初週締め時間: 要確認</p>
+        )}
+        {firstWeek.map((item, index) => (
+          <p key={`${item.product_id}-${index}`} className="salt-first-week">
+            {online ? "初週情報: " : "初週締め時間: "}
+            {online
+              ? [
+                  inventory?.products.find((product) => product.id === item.product_id)?.name,
+                  item.estimate_basis === "shipping" ? "発送予定" : "お届け予定",
+                  item.earliest_date === item.latest_date ? item.earliest_date : [item.earliest_date, item.latest_date].filter(Boolean).join("～"),
+                  item.note,
+                ].filter(Boolean).join(" ")
+              : [item.cutoff_date, item.cutoff_kind === "closing" ? "閉店まで" : item.cutoff_time?.slice(0, 5), item.note].filter(Boolean).join(" ")}
+          </p>
+        ))}
+        <StoreContribution store={store} online={online} />
+      </div>
 
       {inventory && (
         <section className="salt-stock-panel" aria-label="在庫状況">
-          <h4>STOCK</h4>
+          <div className="salt-stock-heading">
+            <h4>STOCK</h4>
+            <p>最終更新 {lastUpdated ? <time dateTime={lastUpdated}>{DATE_FORMAT.format(new Date(lastUpdated))}</time> : "—"}</p>
+          </div>
           <dl className="salt-stock">
-            {inventory.products.map((product) => {
-              const item = reports.get(`${store.id}:${product.id}`);
-              const status = item
-                ? (item.stock_status && STATUS_TEXT[item.stock_status]) || (item.quantity == null ? "要確認" : `在庫 ${item.quantity.toLocaleString("ja-JP")}枚`)
-                : "報告なし";
+            {stockItems.filter(({ item }) => !stockOnly || isInStock(item)).map(({ product, item }) => {
               return (
                 <div key={product.id}>
                   <dt>{product.name}</dt>
-                  <dd>{status}</dd>
-                  {item && <time dateTime={item.created_at}>{DATE_FORMAT.format(new Date(item.created_at))} 更新</time>}
+                  <dd className={isInStock(item) ? "salt-in-stock" : undefined}>
+                    {item ? stockLabel(item) : "投稿なし"}
+                    {item && <time dateTime={item.created_at}>{DATE_FORMAT.format(new Date(item.created_at))}</time>}
+                  </dd>
                 </div>
               );
             })}
@@ -258,7 +281,18 @@ function StoreCard({
       <div className="salt-store-actions">
         {online && storeUrl && <ExternalLink href={storeUrl}>商品ページを見る</ExternalLink>}
         {inventory?.products.length ? <button type="button" onClick={() => onReport(store)}>在庫投稿</button> : null}
+        {!online && <button type="button" className="salt-info-toggle" aria-expanded={infoOpen} onClick={() => setInfoOpen((value) => !value)}>{infoOpen ? "店舗情報を閉じる ∧" : "店舗情報を見る ∨"}</button>}
       </div>
+
+      {(online || infoOpen) && <div className="salt-store-info">
+        {online ? <div className="salt-online-info"><strong>🛒 オンラインショップ</strong>{store.online_url && <ExternalLink href={store.online_url}>商品ページを見る</ExternalLink>}</div> : <>
+          <div className="salt-contact-grid">
+            <section><strong>📍 住所</strong><p>{store.address || "情報なし"}</p>{store.address && <div className="salt-map-links"><ExternalLink href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.address)}`}>Googleマップ</ExternalLink><ExternalLink href={`https://maps.apple.com/?q=${encodeURIComponent(store.address)}`}>Appleマップ</ExternalLink></div>}</section>
+            <section><strong>☎️ 電話番号</strong>{store.phone ? <a href={`tel:${store.phone.replace(/[^\d+]/g, "")}`}>{store.phone}</a> : <p>情報なし</p>}</section>
+          </div>
+          {storeUrl && <div className="salt-official-link"><ExternalLink href={storeUrl}>公式ページを見る</ExternalLink></div>}
+        </>}
+      </div>}
 
       <div className="salt-comments">
         <button type="button" className="salt-comments-toggle" aria-expanded={commentsOpen} onClick={() => void toggleComments()}>
@@ -289,17 +323,6 @@ function StoreCard({
           </div>
         )}
       </div>
-
-      {!online && <button type="button" className="salt-info-toggle" aria-expanded={infoOpen} onClick={() => setInfoOpen((value) => !value)}>{infoOpen ? "店舗情報を閉じる ∧" : "店舗情報を見る ∨"}</button>}
-      {(online || infoOpen) && <div className="salt-store-info">
-        {online ? <div className="salt-online-info"><strong>🛒 オンラインショップ</strong>{store.online_url && <ExternalLink href={store.online_url}>商品ページを見る</ExternalLink>}</div> : <>
-          <div className="salt-contact-grid">
-            <section><strong>📍 住所</strong><p>{store.address || "情報なし"}</p>{store.address && <div className="salt-map-links"><ExternalLink href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.address)}`}>Googleマップ</ExternalLink><ExternalLink href={`https://maps.apple.com/?q=${encodeURIComponent(store.address)}`}>Appleマップ</ExternalLink></div>}</section>
-            <section><strong>☎️ 電話番号</strong>{store.phone ? <a href={`tel:${store.phone.replace(/[^\d+]/g, "")}`}>{store.phone}</a> : <p>情報なし</p>}</section>
-          </div>
-          {storeUrl && <div className="salt-official-link"><ExternalLink href={storeUrl}>公式ページを見る</ExternalLink></div>}
-        </>}
-      </div>}
     </article>
   );
 }
@@ -312,6 +335,7 @@ export default function StockChecker({ physical, online, inventory }: {
   const [mode, setMode] = useState<Mode>("physical");
   const [query, setQuery] = useState("");
   const [prefecture, setPrefecture] = useState("");
+  const [stockOnly, setStockOnly] = useState(false);
   const [limit, setLimit] = useState(20);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [geoMessage, setGeoMessage] = useState("");
@@ -331,6 +355,10 @@ export default function StockChecker({ physical, online, inventory }: {
   const router = useRouter();
   const [commentCounts, setCommentCounts] = useState<CommentCount[]>([]);
   const reports = useMemo(() => new Map(inventory?.reports.map((item) => [`${item.store_id}:${item.product_id}`, item])), [inventory]);
+  const inStockStores = useMemo(() => {
+    const activeProducts = new Set(inventory?.products.map((product) => product.id));
+    return new Set(inventory?.reports.filter((item) => activeProducts.has(item.product_id) && isInStock(item)).map((item) => item.store_id));
+  }, [inventory]);
   const storesById = useMemo(() => new Map([...physical, ...online].map((store) => [store.id, store])), [physical, online]);
   const productsById = useMemo(() => new Map(inventory?.products.map((product) => [product.id, product])), [inventory]);
   const firstWeek = useMemo(() => {
@@ -413,11 +441,12 @@ export default function StockChecker({ physical, online, inventory }: {
     const term = normalize(query);
     const stores = (mode === "physical" ? physical : online).filter((store) =>
       (!prefecture || mode === "online" || store.prefecture === prefecture)
+      && (!stockOnly || inStockStores.has(store.id))
       && (!term || normalize([displayName(store), store.prefecture, store.city, store.address].join(" ")).includes(term))
     ).map((store) => ({ store, distance: mode === "physical" && location ? distanceKm(location.lat, location.lng, store) : null }));
     if (mode === "physical" && location) stores.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
     return stores;
-  }, [mode, physical, online, prefecture, query, location]);
+  }, [mode, physical, online, prefecture, query, location, stockOnly, inStockStores]);
 
   function locate() {
     if (!navigator.geolocation) return setGeoMessage("このブラウザーでは現在地を取得できません。");
@@ -458,19 +487,24 @@ export default function StockChecker({ physical, online, inventory }: {
     if (!reportStore || !inventory) return;
     if (!turnstileToken) return setReportError("Bot対策の確認を完了してください。");
 
+    const comment = reportComment.trim();
     const items = inventory.products.flatMap((product) => {
       const selected = reportInputs[product.id];
       if (!selected?.status) return [];
-      if (selected.status === "in_stock" || selected.status === "low_stock") {
+      if (selected.status === "quantity") {
         const quantity = Number(selected.quantity);
         if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10000) return [];
-        return [{ productId: product.id, quantity, stockStatus: selected.status, comment: reportComment.trim() }];
+        return [{ productId: product.id, quantity, stockStatus: "in_stock", comment }];
       }
-      return [{ productId: product.id, quantity: selected.status === "sold_out" ? 0 : 1, stockStatus: selected.status, comment: reportComment.trim() }];
+      // With in_stock, zero represents an available item whose count was not provided.
+      return [{ productId: product.id, quantity: 0, stockStatus: selected.status, comment }];
     });
-    if (!items.length) return setReportError("報告する形態と在庫状況を選択してください。");
     if (items.length !== Object.values(reportInputs).filter((item) => item.status).length) {
       return setReportError("枚数を入力する形態は、1～10,000の整数で入力してください。");
+    }
+    if (!items.length) return setReportError("投稿する形態と在庫状況を選択してください。");
+    if (items.some((item) => item.quantity >= 50) && !comment) {
+      return setReportError("50枚以上の場合は、確認した状況を店舗メモに入力してください。");
     }
 
     setReportSubmitting(true);
@@ -497,22 +531,10 @@ export default function StockChecker({ physical, online, inventory }: {
 
   return (
     <>
-      <details className="salt-explanation salt-page-links">
-        <summary>
-          <span>
-            <strong>在庫情報・お問い合わせ</strong>
-            <small>最新の在庫投稿・店舗追加・不具合やご要望</small>
-          </span>
-          <span className="salt-chevron" aria-hidden="true">∨</span>
-        </summary>
-        <nav aria-label="在庫情報・お問い合わせ">
-          <ul>
-            <li><a href="#latest-reports">最新の在庫投稿を見る</a></li>
-            <li><a href="#store-request">店舗の追加をリクエストする</a></li>
-            <li><a href="#feedback">不具合・ご要望を送る</a></li>
-          </ul>
-        </nav>
-      </details>
+      <a className="salt-page-links" href="#salt-page-bottom">
+        <span>最新の在庫情報・店舗リクエスト・不具合やご要望はページ下部へ</span>
+        <span aria-hidden="true">↓</span>
+      </a>
       <InfoAccordions />
       <section id="stores" className="salt-search" aria-label="店舗検索">
         <div className="salt-section-kicker">STOCK SEARCH</div>
@@ -548,53 +570,63 @@ export default function StockChecker({ physical, online, inventory }: {
       </section>
 
       <section className="salt-results" aria-label="店舗一覧">
-        <div className="salt-section-kicker">STORE RESULTS</div>
-        <p className="salt-count" aria-live="polite">{matches.length.toLocaleString("ja-JP")}件{mode === "physical" && location ? " ・現在地に近い順" : ""}</p>
+        <div className="salt-results-head">
+          <div>
+            <div className="salt-section-kicker">STORE RESULTS</div>
+            <p className="salt-count" aria-live="polite">{matches.length.toLocaleString("ja-JP")}件{mode === "physical" && location ? " ・現在地に近い順" : ""}</p>
+          </div>
+          {inventory && <label className="salt-stock-filter">
+            <input type="checkbox" checked={stockOnly} onChange={(event) => { setStockOnly(event.target.checked); setLimit(20); }} />
+            在庫あり商品のみ表示
+          </label>}
+        </div>
         {!inventory && <p className="salt-error" role="alert">SALT BOYの在庫データを取得できませんでした。時間をおいて再読み込みしてください。</p>}
-        {matches.slice(0, limit).map(({ store, distance }) => <StoreCard key={`${mode}-${store.id}`} store={store} mode={mode} inventory={inventory} reports={reports} firstWeek={firstWeek.get(store.id) ?? []} commentCount={commentCountMap.get(store.id) ?? 0} onCommentsChanged={loadCommentCounts} onReport={openReport} distance={distance} />)}
-        {!matches.length && <p className="salt-empty">条件に一致する店舗が見つかりませんでした。</p>}
+        {matches.slice(0, limit).map(({ store, distance }) => <StoreCard key={`${mode}-${store.id}`} store={store} mode={mode} inventory={inventory} reports={reports} stockOnly={stockOnly} firstWeek={firstWeek.get(store.id) ?? []} commentCount={commentCountMap.get(store.id) ?? 0} onCommentsChanged={loadCommentCounts} onReport={openReport} distance={distance} />)}
+        {!matches.length && <p className="salt-empty">{stockOnly ? "条件に一致する在庫ありの投稿はありません。" : "条件に一致する店舗が見つかりませんでした。"}</p>}
         {matches.length > limit && <button type="button" className="salt-more-button" onClick={() => setLimit((value) => value + 20)}>さらに20件表示</button>}
       </section>
 
-      <StoreRequest online={mode === "online"} prefecture={prefecture} prefectures={PREFECTURE_GROUPS.flatMap((group) => group.prefectures)} />
-      <section className="salt-support salt-recent" id="latest-reports" aria-labelledby="salt-latest-title">
-        <div className="salt-section-kicker">LATEST REPORTS</div>
-        <h2 id="salt-latest-title">最新の在庫投稿</h2>
-        {reportMessage && <p role="status">{reportMessage}</p>}
-        {!inventory ? <p>在庫投稿を取得できませんでした。</p> : !inventory.recentReports.length ? <p>公開済みの在庫投稿はまだありません。</p> : (
-          <ol>{inventory.recentReports.map((item) => {
-            const store = storesById.get(item.store_id);
-            return (
-              <li key={item.id}>
-                <div><strong>{store ? displayName(store) : "掲載終了店舗"}</strong><span>{productsById.get(item.product_id)?.name ?? "掲載終了商品"}</span></div>
-                <div><strong>{(item.stock_status && STATUS_TEXT[item.stock_status]) || (item.quantity === null ? "要確認" : `${item.quantity.toLocaleString("ja-JP")}枚`)}</strong><time dateTime={item.created_at}>{DATE_FORMAT.format(new Date(item.created_at))}</time></div>
-                {item.comment && <p>{item.comment}</p>}
-              </li>
-            );
-          })}</ol>
-        )}
+      <section id="salt-page-bottom" aria-label="最新の在庫情報・お問い合わせ">
+        <section className="salt-support salt-recent" id="latest-reports" aria-labelledby="salt-latest-title">
+          <div className="salt-section-kicker">LATEST REPORTS</div>
+          <h2 id="salt-latest-title">最新の在庫投稿</h2>
+          {reportMessage && <p role="status">{reportMessage}</p>}
+          {!inventory ? <p>在庫投稿を取得できませんでした。</p> : !inventory.recentReports.length ? <p>公開済みの在庫投稿はまだありません。</p> : (
+            <ol>{inventory.recentReports.map((item) => {
+              const store = storesById.get(item.store_id);
+              return (
+                <li key={item.id}>
+                  <div><strong>{store ? displayName(store) : "掲載終了店舗"}</strong><span>{productsById.get(item.product_id)?.name ?? "掲載終了商品"}</span></div>
+                  <div><strong>{stockLabel(item)}</strong><time dateTime={item.created_at}>{DATE_FORMAT.format(new Date(item.created_at))}</time></div>
+                  {item.comment && <p>{item.comment}</p>}
+                </li>
+              );
+            })}</ol>
+          )}
+        </section>
+        <StoreRequest online={mode === "online"} prefecture={prefecture} prefectures={PREFECTURE_GROUPS.flatMap((group) => group.prefectures)} />
+        <FeedbackForm />
       </section>
-      <FeedbackForm />
 
       {reportStore && <dialog ref={reportDialog} className="salt-dialog" aria-labelledby="salt-report-title" onCancel={(event) => { event.preventDefault(); closeReport(); }}>
         <form onSubmit={(event) => void submitReport(event)}>
           <button type="button" className="salt-dialog-close" aria-label="閉じる" onClick={closeReport} disabled={reportSubmitting}>×</button>
           <div className="salt-section-kicker">INVENTORY REPORT</div>
-          <h2 id="salt-report-title">在庫をまとめて報告</h2>
+          <h2 id="salt-report-title">在庫投稿</h2>
           <p className="salt-report-store-name">{displayName(reportStore)}</p>
-          <p className="salt-report-help">報告する形態だけ選択してください。複数形態を一度に送信できます。</p>
+          <p className="salt-report-help">投稿する形態だけ選択してください。複数形態を一度に送信できます。</p>
           <fieldset className="salt-report-products"><legend>形態ごとの在庫状況</legend>{inventory?.products.map((product) => {
             const selected = reportInputs[product.id] ?? { status: "", quantity: "" };
             return <div className="salt-report-product" key={product.id}>
               <label htmlFor={`salt-status-${product.id}`}>{product.name}</label>
               <select id={`salt-status-${product.id}`} value={selected.status} onChange={(event) => setReportInputs((current) => ({
                 ...current,
-                [product.id]: { status: event.target.value, quantity: event.target.value && event.target.value !== "sold_out" && event.target.value !== "backorder" ? (Number(current[product.id]?.quantity) > 0 ? current[product.id].quantity : "1") : "0" },
+                [product.id]: { status: event.target.value, quantity: current[product.id]?.quantity ?? "" },
               }))}>
-                <option value="">報告しない</option>
-                {Object.entries(STATUS_TEXT).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                <option value="">投稿しない</option>
+                {Object.entries(REPORT_OPTIONS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
-              {selected.status && selected.status !== "sold_out" && selected.status !== "backorder" && <label className="salt-report-quantity">数量
+              {selected.status === "quantity" && <label className="salt-report-quantity">
                 <input type="number" min="1" max="10000" step="1" inputMode="numeric" value={selected.quantity} onChange={(event) => setReportInputs((current) => ({ ...current, [product.id]: { ...selected, quantity: event.target.value } }))} required aria-label={`${product.name}の在庫数`} />
                 <span>枚</span>
               </label>}
@@ -611,7 +643,7 @@ export default function StockChecker({ physical, online, inventory }: {
           <div className="salt-report-actions">
             <button type="button" className="salt-report-cancel" onClick={closeReport} disabled={reportSubmitting}>キャンセル</button>
             <button type="submit" className="salt-report-submit" disabled={reportSubmitting || !turnstileReady || !turnstileToken}>
-              {reportSubmitting ? "送信中…" : "選択した形態をまとめて報告"}
+              {reportSubmitting ? "送信中…" : "投稿する"}
             </button>
           </div>
         </form>
