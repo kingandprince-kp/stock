@@ -497,14 +497,22 @@ export default function StockChecker({ physical, online, inventory }: {
 
   return (
     <>
-      <nav className="salt-page-links" aria-label="ページ内のご案内">
-        <p>ページ下部のご案内</p>
-        <ul>
-          <li><a href="#store-request">店舗の追加リクエスト</a></li>
-          <li><a href="#latest-reports">最新の在庫投稿</a></li>
-          <li><a href="#feedback">不具合・ご要望</a></li>
-        </ul>
-      </nav>
+      <details className="salt-explanation salt-page-links">
+        <summary>
+          <span>
+            <strong>在庫情報・お問い合わせ</strong>
+            <small>最新の在庫投稿・店舗追加・不具合やご要望</small>
+          </span>
+          <span className="salt-chevron" aria-hidden="true">∨</span>
+        </summary>
+        <nav aria-label="在庫情報・お問い合わせ">
+          <ul>
+            <li><a href="#latest-reports">最新の在庫投稿を見る</a></li>
+            <li><a href="#store-request">店舗の追加をリクエストする</a></li>
+            <li><a href="#feedback">不具合・ご要望を送る</a></li>
+          </ul>
+        </nav>
+      </details>
       <InfoAccordions />
       <section id="stores" className="salt-search" aria-label="店舗検索">
         <div className="salt-section-kicker">STOCK SEARCH</div>

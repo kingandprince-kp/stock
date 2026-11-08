@@ -35,10 +35,6 @@ export default async function SaltBoyPage() {
           <img className="salt-art-betta" src="/salt-boy/betta.png" alt="" />
         </div>
       </header>
-        <aside className="salt-notice">
-          <strong>予約・購入前にご確認ください</strong>
-          <p>最新の在庫状況は、各店舗・ショップでご確認ください。</p>
-        </aside>
         {directory.status === "fulfilled" ? (
           <StockChecker
             physical={directory.value.stores}

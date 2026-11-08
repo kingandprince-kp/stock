@@ -8,14 +8,14 @@
   font: 400 14px/1.65 "Zen Maru Gothic", sans-serif;
 }
 .salt-wrap { width: min(100%, 1080px); margin: auto; padding: 24px clamp(12px, 4vw, 32px) 28px; }
-.salt-notice p { margin-top: 6px; color: #535e64; }
-.salt-notice { margin: 0 0 12px; padding: 14px 17px; border: 1px solid #d5e0e6; border-radius: 14px; background: #fcfeff; font-size: 13px; }
 .salt-boy a { color: #18567b; text-decoration: underline; text-underline-offset: 2px; }
 .salt-boy a:hover { color: #0a3753; }
-.salt-page-links { margin: 0 0 14px; padding: 0 4px; font-size: 12px; }
-.salt-page-links p { color: #535e64; }
-.salt-page-links ul { display: flex; flex-wrap: wrap; gap: 0 14px; }
-.salt-page-links a { display: inline-flex; align-items: center; min-height: 28px; }
+.salt-page-links { margin: 0 0 12px; }
+.salt-page-links[open] .salt-chevron { transform: rotate(180deg); }
+.salt-page-links strong, .salt-page-links small { display: block; }
+.salt-page-links small { color: #535e64; font-size: 12px; font-weight: 400; }
+.salt-page-links ul { display: flex; flex-wrap: wrap; gap: 0 18px; padding: 0 14px; border-top: 1px solid #e0e8ee; }
+.salt-page-links a { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; }
 .salt-support[id] { scroll-margin-block-start: 16px; }
 .salt-explanations { display: grid; gap: 7px; margin: 0 0 18px; }
 .salt-explanation { overflow: hidden; border: 1px solid #d5e0e6; border-radius: 10px; background: #fcfeff; }
