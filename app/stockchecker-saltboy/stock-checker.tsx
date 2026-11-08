@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
-import type { Directory, FirstWeek, Inventory, Product, Store } from "./data";
+import type { Directory, FirstWeek, Inventory, SaltInventory, Store } from "./data";
+import { FeedbackForm, StoreContribution, StoreRequest } from "./support-forms";
 
 type Mode = "physical" | "online";
 type Comment = {
@@ -115,7 +116,7 @@ function StoreCard({
 }: {
   store: Store;
   mode: Mode;
-  inventory: { products: Product[]; reports: Inventory[]; firstWeek: FirstWeek[] } | null;
+  inventory: SaltInventory | null;
   reports: Map<string, Inventory>;
   firstWeek: FirstWeek[];
   serialStatus?: string;
@@ -217,11 +218,23 @@ function StoreCard({
         </div>
       </div>
 
+      {!online && !firstWeek.some((item) => item.cutoff_date) && (
+        <p className="salt-first-week">初週締め時間: 要確認</p>
+      )}
       {firstWeek.map((item, index) => (
         <p key={`${item.product_id}-${index}`} className="salt-first-week">
-          初週情報: {inventory?.products.find((product) => product.id === item.product_id)?.name} {[item.cutoff_date, item.cutoff_time, item.note].filter(Boolean).join(" ")}
+          {online ? "初週情報: " : "初週締め時間: "}
+          {online
+            ? [
+                inventory?.products.find((product) => product.id === item.product_id)?.name,
+                item.estimate_basis === "shipping" ? "発送予定" : "お届け予定",
+                item.earliest_date === item.latest_date ? item.earliest_date : [item.earliest_date, item.latest_date].filter(Boolean).join("～"),
+                item.note,
+              ].filter(Boolean).join(" ")
+            : [item.cutoff_date, item.cutoff_kind === "closing" ? "閉店まで" : item.cutoff_time?.slice(0, 5), item.note].filter(Boolean).join(" ")}
         </p>
       ))}
+      <StoreContribution store={store} online={online} />
 
       {inventory && (
         <section className="salt-stock-panel" aria-label="在庫状況">
@@ -297,7 +310,7 @@ export default function StockChecker({ physical, online, campaign, inventory }: 
   physical: Store[];
   online: Store[];
   campaign?: Directory["campaigns"][number];
-  inventory: { products: Product[]; reports: Inventory[]; firstWeek: FirstWeek[] } | null;
+  inventory: SaltInventory | null;
 }) {
   const [mode, setMode] = useState<Mode>("physical");
   const [query, setQuery] = useState("");
@@ -317,10 +330,13 @@ export default function StockChecker({ physical, online, campaign, inventory }: 
   const [turnstileReady, setTurnstileReady] = useState(false);
   const [turnstileError, setTurnstileError] = useState("");
   const [requestId, setRequestId] = useState("");
+  const reportDialog = useRef<HTMLDialogElement>(null);
   const turnstileWidgetId = useRef<string | null>(null);
   const router = useRouter();
   const [commentCounts, setCommentCounts] = useState<CommentCount[]>([]);
   const reports = useMemo(() => new Map(inventory?.reports.map((item) => [`${item.store_id}:${item.product_id}`, item])), [inventory]);
+  const storesById = useMemo(() => new Map([...physical, ...online].map((store) => [store.id, store])), [physical, online]);
+  const productsById = useMemo(() => new Map(inventory?.products.map((product) => [product.id, product])), [inventory]);
   const serial = useMemo(() => new Map(campaign?.matches.map((match) => [match.id, match.status])), [campaign]);
   const firstWeek = useMemo(() => {
     const map = new Map<number, FirstWeek[]>();
@@ -334,6 +350,12 @@ export default function StockChecker({ physical, online, campaign, inventory }: 
     if (!error) setCommentCounts((data ?? []) as CommentCount[]);
   }, []);
   useEffect(() => { void loadCommentCounts(); }, [loadCommentCounts]);
+
+  useEffect(() => {
+    if (reportStore && reportDialog.current && !reportDialog.current.open) {
+      reportDialog.current.showModal();
+    }
+  }, [reportStore]);
 
   useEffect(() => {
     if (!reportStore) return;
@@ -445,16 +467,16 @@ export default function StockChecker({ physical, online, campaign, inventory }: 
     const items = inventory.products.flatMap((product) => {
       const selected = reportInputs[product.id];
       if (!selected?.status) return [];
-      if (selected.status === "quantity") {
+      if (selected.status === "in_stock" || selected.status === "low_stock") {
         const quantity = Number(selected.quantity);
-        if (!Number.isInteger(quantity) || quantity < 0 || quantity > 10000) return [];
-        return [{ productId: product.id, quantity, stockStatus: quantity === 0 ? "sold_out" : "in_stock", comment: reportComment.trim() }];
+        if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10000) return [];
+        return [{ productId: product.id, quantity, stockStatus: selected.status, comment: reportComment.trim() }];
       }
       return [{ productId: product.id, quantity: selected.status === "sold_out" ? 0 : 1, stockStatus: selected.status, comment: reportComment.trim() }];
     });
     if (!items.length) return setReportError("報告する形態と在庫状況を選択してください。");
     if (items.length !== Object.values(reportInputs).filter((item) => item.status).length) {
-      return setReportError("枚数を入力する形態は、0～10,000の整数で入力してください。");
+      return setReportError("枚数を入力する形態は、1～10,000の整数で入力してください。");
     }
 
     setReportSubmitting(true);
@@ -516,7 +538,31 @@ export default function StockChecker({ physical, online, campaign, inventory }: 
         {matches.length > limit && <button type="button" className="salt-more-button" onClick={() => setLimit((value) => value + 20)}>さらに20件表示</button>}
       </section>
 
-      {reportStore && <dialog className="salt-dialog" open aria-modal="true" aria-labelledby="salt-report-title" onClick={(event) => { if (event.target === event.currentTarget) closeReport(); }}>
+      <StoreRequest online={mode === "online"} prefecture={prefecture} prefectures={PREFECTURE_GROUPS.flatMap((group) => group.prefectures)} />
+      <section className="salt-support salt-recent" id="latest-reports" aria-labelledby="salt-latest-title">
+        <div className="salt-section-kicker">LATEST REPORTS</div>
+        <h2 id="salt-latest-title">最新の在庫投稿</h2>
+        {reportMessage && <p role="status">{reportMessage}</p>}
+        {!inventory ? <p>在庫投稿を取得できませんでした。</p> : !inventory.recentReports.length ? <p>公開済みの在庫投稿はまだありません。</p> : (
+          <ol>{inventory.recentReports.map((item) => {
+            const store = storesById.get(item.store_id);
+            return (
+              <li key={item.id}>
+                <div><strong>{store ? displayName(store) : "掲載終了店舗"}</strong><span>{productsById.get(item.product_id)?.name ?? "掲載終了商品"}</span></div>
+                <div><strong>{(item.stock_status && STATUS_TEXT[item.stock_status]) || (item.quantity === null ? "要確認" : `${item.quantity.toLocaleString("ja-JP")}枚`)}</strong><time dateTime={item.created_at}>{DATE_FORMAT.format(new Date(item.created_at))}</time></div>
+                {item.comment && <p>{item.comment}</p>}
+              </li>
+            );
+          })}</ol>
+        )}
+      </section>
+      <FeedbackForm />
+      <details className="salt-support">
+        <summary>更新履歴</summary>
+        <p>スマホの在庫一覧を2列に整理。店舗情報の提供、初週締め時間、最新の在庫投稿、不具合・ご要望のフォームを追加。</p>
+      </details>
+
+      {reportStore && <dialog ref={reportDialog} className="salt-dialog" aria-labelledby="salt-report-title" onCancel={(event) => { event.preventDefault(); closeReport(); }}>
         <form onSubmit={(event) => void submitReport(event)}>
           <button type="button" className="salt-dialog-close" aria-label="閉じる" onClick={closeReport} disabled={reportSubmitting}>×</button>
           <div className="salt-section-kicker">INVENTORY REPORT</div>
@@ -548,7 +594,6 @@ export default function StockChecker({ physical, online, campaign, inventory }: 
           <div id="salt-inventory-turnstile" className="salt-turnstile" />
           {turnstileError && <p className="salt-error" role="alert">{turnstileError}</p>}
           {reportError && <p className="salt-error" role="alert">{reportError}</p>}
-          {reportMessage && <p className="salt-success" role="status">{reportMessage}</p>}
           <div className="salt-report-actions">
             <button type="button" className="salt-report-cancel" onClick={closeReport} disabled={reportSubmitting}>キャンセル</button>
             <button type="submit" className="salt-report-submit" disabled={reportSubmitting || !turnstileReady || !turnstileToken}>

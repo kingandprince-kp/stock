@@ -25,13 +25,19 @@ export type Inventory = {
   stock_status: string | null;
   created_at: string;
 };
+export type RecentReport = Inventory & { id: number; comment: string | null };
 export type FirstWeek = {
   store_id: number;
   product_id: number | null;
   note: string | null;
   cutoff_date: string | null;
   cutoff_time: string | null;
+  cutoff_kind: string | null;
+  estimate_basis: string | null;
+  earliest_date: string | null;
+  latest_date: string | null;
 };
+export type SaltInventory = { products: Product[]; reports: Inventory[]; recentReports: RecentReport[]; firstWeek: FirstWeek[] };
 export type Directory = {
   stores: Store[];
   online_stores: Store[];
@@ -81,28 +87,33 @@ export function inventoryDb() {
   });
 }
 
-export async function loadInventory() {
+export async function loadInventory(): Promise<SaltInventory> {
   const db = inventoryDb();
   const [products, firstWeek] = await Promise.all([
     db.from("salt_boy_products").select("id,name,catalog_number").eq("is_active", true).order("sort_order"),
-    db.from("salt_boy_first_week_info").select("store_id,product_id,note,cutoff_date,cutoff_time"),
+    db.from("salt_boy_first_week_info").select("store_id,product_id,note,cutoff_date,cutoff_time,cutoff_kind,estimate_basis,earliest_date,latest_date"),
   ]);
   if (products.error || firstWeek.error) throw new Error("SALT BOYの商品・初週情報を取得できませんでした。");
 
   const latest = new Map<string, Inventory>();
+  const recentReports: RecentReport[] = [];
   const pageSize = 1000;
   for (let offset = 0; ; offset += pageSize) {
     const result = await db.from("salt_boy_inventory_reports")
-      .select("store_id,product_id,quantity,stock_status,created_at")
+      .select("id,store_id,product_id,quantity,stock_status,created_at,comment")
       .eq("review_status", "approved").is("deleted_at", null)
       .order("created_at", { ascending: false }).order("id", { ascending: false })
       .range(offset, offset + pageSize - 1);
     if (result.error) throw new Error("SALT BOYの在庫情報を取得できませんでした。");
     for (const report of result.data) {
+      if (recentReports.length < 5) recentReports.push(report);
       const key = `${report.store_id}:${report.product_id}`;
-      if (!latest.has(key)) latest.set(key, report);
+      if (!latest.has(key)) {
+        const { store_id, product_id, quantity, stock_status, created_at } = report;
+        latest.set(key, { store_id, product_id, quantity, stock_status, created_at });
+      }
     }
     if (result.data.length < pageSize) break;
   }
-  return { products: products.data as Product[], reports: [...latest.values()], firstWeek: firstWeek.data as FirstWeek[] };
+  return { products: products.data as Product[], reports: [...latest.values()], recentReports, firstWeek: firstWeek.data as FirstWeek[] };
 }

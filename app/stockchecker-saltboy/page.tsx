@@ -38,7 +38,12 @@ export default async function SaltBoyPage() {
         ) : (
           <p role="alert">CD取扱店舗ページの店舗データを取得できませんでした。再読み込みしてください。</p>
         )}
-        <footer><p>非公式の在庫情報ツールです。</p><small>© 2026 KP Music Data</small></footer>
+        <footer>
+          <p>当サイトはファンによる非公式の在庫情報共有サイトです。<br />所属事務所・レコード会社・各販売店等とは無関係です。</p>
+          <p>King &amp; Prince 在庫チェッカー</p>
+          <p><a href="/privacy">プライバシーについて</a></p>
+          <small>© 2026 KP Music Data</small>
+        </footer>
       </div>
     </main>
   );
