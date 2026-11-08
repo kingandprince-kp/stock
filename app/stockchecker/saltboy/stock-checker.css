@@ -122,8 +122,8 @@
 .salt-store-info .salt-official-link a { padding-inline: 8px; }
 .salt-online-info { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .salt-empty { padding: 16px; color: #657077; text-align: center; }
-.salt-boy .salt-back-to-top { position: fixed; z-index: 20; inset-inline-end: 14px; bottom: max(20px, env(safe-area-inset-bottom)); display: grid; place-content: center; width: 62px; height: 62px; border: 1px solid #a34c76; border-radius: 50%; background: #faeef4; color: #762446; box-shadow: 0 2px 8px #7624461a; text-align: center; text-decoration: none; font-size: 11px; font-weight: 700; line-height: 1.45; transition: background .15s ease; }
-.salt-boy .salt-back-to-top:hover { background: #f4dfeb; }
+.salt-boy .salt-back-to-top { position: fixed; z-index: 20; inset-inline-end: 14px; bottom: max(20px, env(safe-area-inset-bottom)); display: grid; place-content: center; width: 62px; height: 62px; border: 1px solid #8faabb; border-radius: 50%; background: #edf5fa; color: #234b62; box-shadow: 0 2px 8px #234b621a; text-align: center; text-decoration: none; font-size: 11px; font-weight: 700; line-height: 1.45; transition: background .15s ease; }
+.salt-boy .salt-back-to-top:hover { background: #dcebf4; }
 .salt-boy footer { display: grid; gap: 6px; margin-top: 24px; color: #59666e; font-size: 12px; text-align: center; }
 .salt-boy footer small { color: #373d44; font: 500 12px Quicksand, sans-serif; }
 .salt-support { margin-top: 12px; padding: 12px; border: 1px solid #d5e0e6; border-radius: 10px; background: #fcfeff; }
@@ -166,6 +166,8 @@
 .salt-dialog .salt-report-comment textarea { width: 100%; padding: 9px 10px; border: 1px solid #cbd6dc; border-radius: 8px; resize: vertical; }
 .salt-dialog .salt-report-comment small { justify-self: end; color: #43525c; font-size: 11px; }
 .salt-dialog .salt-report-caution { margin-top: 10px; padding: 10px; border-left: 3px solid #b5c7d1; background: #edf4f8; color: #59666e; font-size: 11px; line-height: 1.7; }
+.salt-report-multiple { margin-top: 10px; padding: 8px 10px; border: 1px solid #d4b876; border-radius: 7px; background: #fff8e6; color: #51380e; font-size: 12px; }
+.salt-report-multiple p { margin: 3px 0 0; }
 .salt-dialog .salt-turnstile { display: flex; justify-content: center; margin-top: 12px; }
 .salt-dialog .salt-report-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 .salt-dialog .salt-report-actions button { margin: 0; }

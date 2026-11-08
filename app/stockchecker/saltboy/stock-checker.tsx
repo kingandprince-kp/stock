@@ -550,7 +550,7 @@ export default function StockChecker({ physical, online, inventory }: {
       <section id="stores" className="salt-search" aria-label="店舗検索">
         <div className="salt-section-kicker">STOCK SEARCH</div>
         <h2>🏬 店舗を探す</h2>
-        <p className="salt-listing-note">オリコン集計対象の店舗を中心に掲載しています。</p>
+        <p className="salt-listing-note">オリコン集計対象の店舗を掲載しています。<br />※ヴィレッジヴァンガードのアウトレット店は、オリコン集計対象か要確認です。</p>
         <div className="salt-tabs" role="group" aria-label="店舗の種類">
           <button type="button" aria-pressed={mode === "physical"} onClick={() => { setMode("physical"); setLimit(20); }}>🏪 実店舗</button>
           <button type="button" aria-pressed={mode === "online"} onClick={() => { setMode("online"); setLimit(20); }}>🛒 オンライン</button>
@@ -633,6 +633,10 @@ export default function StockChecker({ physical, online, inventory }: {
           <h2 id="salt-report-title">在庫投稿</h2>
           <p className="salt-report-store-name">{displayName(reportStore)}</p>
           <p className="salt-report-help">投稿する形態だけ選択してください。複数形態を一度に送信できます。</p>
+          {mode === "physical" && <aside className="salt-report-multiple">
+            <strong>複数店舗をまとめて確認・投稿される方へ</strong>
+            <p>電話確認などで複数店舗の情報を確認した場合は、各店舗の投稿のコメント欄に「電話確認」「複数店舗をまとめて確認」など、確認方法を一言添えてください。</p>
+          </aside>}
           <fieldset className="salt-report-products"><legend>形態ごとの在庫状況</legend>{inventory?.products.map((product) => {
             const selected = reportInputs[product.id] ?? { status: "", quantity: "" };
             return <div className="salt-report-product" key={product.id}>
@@ -650,7 +654,7 @@ export default function StockChecker({ physical, online, inventory }: {
               </label>}
             </div>;
           })}</fieldset>
-          <label className="salt-report-comment">店舗メモ (任意)
+          <label className="salt-report-comment">コメント (任意)
             <textarea value={reportComment} onChange={(event) => setReportComment(event.target.value)} maxLength={300} rows={3} placeholder="売場や入荷状況など。個人情報・URLは入力しないでください。" />
             <small>{reportComment.length}/300文字</small>
           </label>
