@@ -29,9 +29,8 @@
 .salt-caution p { margin-top: 6px; }
 .salt-badge-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 9px; }
 .salt-badge { display: inline-flex; align-items: center; width: fit-content; padding: 3px 8px; border: 1px solid transparent; border-radius: 5px; color: #fff; font-size: 12px; font-weight: 700; line-height: 1.5; white-space: nowrap; }
-.salt-badge-oricon { background-color: #a32a65; }
-.salt-badge-billboard { background-color: #7d5298; }
-.salt-badge-oricon, .salt-badge-billboard { border-radius: 999px; border-color: #0002; background-image: linear-gradient(180deg, #fff5 0%, #fff1 34%, transparent 60%, #0003 100%); box-shadow: inset 0 1px 1px #fff6, 0 1px 2px #0002; text-shadow: 0 1px 1px #0004; }
+.salt-badge-oricon { background: #a32a65; }
+.salt-badge-billboard { background: #7d5298; }
 .salt-badge-check { border-color: #c9a7d2; background: #f5edf7; color: #68447a; }
 .salt-badge-not-target { border-color: #b7abbc; background: #fff; color: #4e4654; }
 .salt-search, .salt-results { margin-top: 16px; padding: 17px clamp(13px, 2.8vw, 24px); border: 1px solid #d5e0e6; border-radius: 12px; background: #fcfeff; }
