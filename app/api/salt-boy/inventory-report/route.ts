@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { inventoryDb } from "@/app/so-honey/stockchecker/saltboy/data";
+import { inventoryDb } from "@/app/stockchecker/saltboy/data";
 
 const ALLOWED_HOSTNAME = "kingandprince-stock.vercel.app";
 const STOCK_STATUSES = new Set(["in_stock", "low_stock", "backorder", "sold_out"]);

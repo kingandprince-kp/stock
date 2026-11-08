@@ -157,7 +157,7 @@ export function FeedbackForm() {
           browser: field(data, "browser") || null,
           image_url: paths[0] ?? null,
           image_urls: paths.length ? paths : null,
-          page_path: "/so-honey/stockchecker/saltboy",
+          page_path: "/stockchecker/saltboy",
         });
       }}>
         <label>内容の種類<select name="type"><option>不具合</option><option>要望</option></select></label>

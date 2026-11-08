@@ -17,7 +17,7 @@ export default function Home() {
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             <a
-              href="/so-honey/stockchecker/so-honey"
+              href="/stockchecker/so-honey"
               className="block rounded-2xl border border-[#e4cfe0] bg-[#fffafd] p-5 text-left transition hover:-translate-y-0.5 hover:shadow-md md:p-6"
             >
               <div className="text-xs font-bold tracking-[0.12em] text-[#a26796]">
