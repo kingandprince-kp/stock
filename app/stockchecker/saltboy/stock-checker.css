@@ -71,7 +71,8 @@
 .salt-store-meta { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 3px; color: #34454f; font-size: 12px; overflow-wrap: anywhere; }
 .salt-badges { display: flex; flex: none; flex-wrap: wrap; gap: 5px; }
 .salt-store-tools { display: flex; align-items: start; flex-wrap: wrap; gap: 5px 8px; margin-top: 8px; }
-.salt-first-week { align-self: center; padding: 3px 8px; border: 1px solid #ba9e59; border-radius: 6px; background: #fff4d7; color: #51380e; font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
+.salt-first-week, .salt-contribution-summary { padding: 3px 8px; border: 1px solid; border-radius: 6px; font-size: 12px; font-weight: 700; line-height: 1.65; }
+.salt-first-week { align-self: center; border-color: #ba9e59; background: #fff4d7; color: #51380e; overflow-wrap: anywhere; }
 .salt-stock-panel { margin-top: 10px; padding: 9px; border-radius: 8px; background: #edf2f5; }
 .salt-stock-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 3px 8px; margin-bottom: 6px; color: #34454f; font-size: 11px; font-weight: 700; }
 .salt-stock-heading h4 { letter-spacing: .1em; }
@@ -193,7 +194,8 @@
   .salt-dialog form { padding: 16px 13px; }
 }
 
-.salt-contribution-summary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 8px; padding: 6px 8px; border: 1px solid #bfd5e3; border-radius: 7px; list-style: none; }
+.salt-contribution-summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-color: #bfd5e3; list-style: none; }
 .salt-contribution-summary::-webkit-details-marker { display: none; }
-.salt-contribution-action { padding: 2px 5px; color: #274e66; }
+.salt-contribution-action { color: #274e66; }
+.salt-contribution-notice { color: #72430e; font-size: 12px; font-weight: 700; }
 .salt-contribution[open] .salt-contribution-open, .salt-contribution:not([open]) .salt-contribution-close { display: none; }

@@ -230,7 +230,7 @@ function StoreCard({
           <h3>{displayName(store)}</h3>
           <div className="salt-store-meta">
             <span>{online ? "🛒 オンラインショップ" : `📍 ${store.prefecture}${store.city ? ` ${store.city}` : ""}${distance !== null ? ` · ${distance.toFixed(1)} km` : ""}`}</span>
-            {!online && store.business_hours && <span>🕒 営業時間: {store.business_hours}</span>}
+            {!online && store.business_hours && <strong>🕒 営業時間: {store.business_hours}</strong>}
           </div>
         </div>
         <div className="salt-badges" aria-label="集計対象">

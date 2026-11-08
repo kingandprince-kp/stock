@@ -60,6 +60,7 @@ function SupportForm({ children, send, onReset, submitLabel = "送信する" }: 
 }
 
 export function StoreContribution({ store, online }: { store: Store; online: boolean }) {
+  const canReportBillboard = store.billboard_status !== "target" && store.billboard_status !== "not_target";
   return (
     <details className="salt-contribution">
       <summary className="salt-contribution-summary">
@@ -71,6 +72,9 @@ export function StoreContribution({ store, online }: { store: Store; online: boo
         const category = field(data, "category");
         const detail = field(data, "detail");
         const evidence = field(data, "evidence");
+        if (category === "Billboard集計" && !canReportBillboard) {
+          throw new Error("この店舗のBillboard集計は確認済みです。");
+        }
         if (!detail || (category === "Billboard集計" && !evidence)) {
           throw new Error("提供する内容と、必要な確認方法を入力してください。");
         }
@@ -92,10 +96,12 @@ export function StoreContribution({ store, online }: { store: Store; online: boo
       }}>
         <label>情報の種類<select name="category">
           {online ? <option>発送予定</option> : <option>初週集計の締め時間</option>}
-          <option>Billboard集計</option><option>その他</option>
+          {canReportBillboard && <option>Billboard集計</option>}
+          <option>その他</option>
         </select></label>
         <label>提供する内容<textarea name="detail" rows={2} maxLength={900} required placeholder={online ? "例: 商品ページに発売日の発送と記載" : "例: 初週集計は17時までと店舗で確認"} /></label>
-        <label>確認方法・ソース<textarea name="evidence" rows={2} maxLength={1000} placeholder="例: 店頭で確認。Billboard情報の場合は必須です。" /></label>
+        <p className="salt-contribution-notice">※在庫あり・在庫なし・枚数などの在庫情報は、こちらではなく「在庫情報を投稿」からお願いします。</p>
+        <label>確認方法・ソース<textarea name="evidence" rows={2} maxLength={1000} placeholder={canReportBillboard ? "例: 店頭で確認。Billboard情報の場合は必須です。" : "例: 公式ページURL、電話確認、店頭確認など"} /></label>
       </SupportForm>
     </details>
   );
