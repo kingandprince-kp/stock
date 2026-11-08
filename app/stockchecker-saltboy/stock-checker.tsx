@@ -224,20 +224,28 @@ function StoreCard({
       ))}
 
       {inventory && (
-        <dl className="salt-stock">
-          {inventory.products.map((product) => {
-            const item = reports.get(`${store.id}:${product.id}`);
-            const status = item
-              ? (item.stock_status && STATUS_TEXT[item.stock_status]) || (item.quantity == null ? "要確認" : `在庫 ${item.quantity.toLocaleString("ja-JP")}枚`)
-              : "報告なし";
-            return <div key={product.id}><dt>{product.name}</dt><dd>{status}</dd>{item && <time dateTime={item.created_at}>{DATE_FORMAT.format(new Date(item.created_at))} 更新</time>}</div>;
-          })}
-        </dl>
+        <section className="salt-stock-panel" aria-label="在庫状況">
+          <h4>STOCK</h4>
+          <dl className="salt-stock">
+            {inventory.products.map((product) => {
+              const item = reports.get(`${store.id}:${product.id}`);
+              const status = item
+                ? (item.stock_status && STATUS_TEXT[item.stock_status]) || (item.quantity == null ? "要確認" : `在庫 ${item.quantity.toLocaleString("ja-JP")}枚`)
+                : "報告なし";
+              return (
+                <div key={product.id}>
+                  <dt>{product.name}</dt>
+                  <dd>{status}</dd>
+                  {item && <time dateTime={item.created_at}>{DATE_FORMAT.format(new Date(item.created_at))} 更新</time>}
+                </div>
+              );
+            })}
+          </dl>
+        </section>
       )}
 
       <div className="salt-store-actions">
-        {storeUrl && <ExternalLink href={storeUrl}>{online ? "商品ページを見る" : "店舗公式ページを見る"}</ExternalLink>}
-        {store.phone && <a href={`tel:${store.phone.replace(/[^\d+]/g, "")}`}>☎ {store.phone}</a>}
+        {online && storeUrl && <ExternalLink href={storeUrl}>商品ページを見る</ExternalLink>}
         {inventory?.products.length ? <button type="button" onClick={() => onReport(store)}>形態をまとめて在庫報告</button> : null}
       </div>
 
