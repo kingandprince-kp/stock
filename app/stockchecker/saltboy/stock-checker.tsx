@@ -293,9 +293,11 @@ function StoreCard({
         {online ? <div className="salt-online-info"><strong>🛒 オンラインショップ</strong>{store.online_url && <ExternalLink href={store.online_url}>商品ページを見る</ExternalLink>}</div> : <>
           <div className="salt-contact-grid">
             <section><strong>📍 住所</strong><p>{store.address || "情報なし"}</p>{store.address && <div className="salt-map-links"><ExternalLink href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.address)}`}>Googleマップ</ExternalLink><ExternalLink href={`https://maps.apple.com/?q=${encodeURIComponent(store.address)}`}>Appleマップ</ExternalLink></div>}</section>
-            <section className="salt-contact-phone"><strong>☎️ 電話番号</strong>{store.phone ? <a href={`tel:${store.phone.replace(/[^\d+]/g, "")}`}>{store.phone}</a> : <p>情報なし</p>}</section>
+            <div className="salt-contact-actions">
+              <section className="salt-contact-phone"><strong>☎️ 電話番号</strong>{store.phone ? <a href={`tel:${store.phone.replace(/[^\d+]/g, "")}`}>{store.phone}</a> : <p>情報なし</p>}</section>
+              {storeUrl && <div className="salt-official-link"><ExternalLink href={storeUrl}>公式ページを見る</ExternalLink></div>}
+            </div>
           </div>
-          {storeUrl && <div className="salt-official-link"><ExternalLink href={storeUrl}>公式ページを見る</ExternalLink></div>}
         </>}
       </div>}
 
@@ -537,8 +539,10 @@ export default function StockChecker({ physical, online, inventory }: {
   return (
     <>
       <a className="salt-page-links" href="#salt-page-bottom">
-        <span>最新の在庫情報・店舗リクエスト・不具合やご要望はページ下部へ</span>
-        <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v10m-4-4 4 4 4-4" /></svg>
+        <span>
+          <span className="salt-page-links-text">最新の在庫情報・店舗リクエスト・不具合やご要望はページ下部へ</span>{" "}
+          <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v10m-4-4 4 4 4-4" /></svg>
+        </span>
       </a>
       <InfoAccordions />
       <section id="stores" className="salt-search" aria-label="店舗検索">

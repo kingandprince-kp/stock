@@ -7,8 +7,8 @@
 .salt-design-art { position: relative; width: 100%; height: clamp(100px, 16vw, 170px); }
 .salt-design-art img { position: absolute; aspect-ratio: 1; object-fit: contain; mix-blend-mode: multiply; }
 .salt-design-art-left { height: clamp(90px, 15vw, 155px); }
-.salt-art-hen { width: min(70%, 83px); height: 43%; top: 1%; left: 1%; transform: rotate(-10deg); }
-.salt-art-crab { width: min(62%, 72px); height: 43%; bottom: 0; right: -4%; transform: rotate(12deg); }
+.salt-art-hen { width: min(77%, 92px); height: 48%; top: 1%; left: 1%; transform: rotate(-10deg); }
+.salt-art-crab { width: min(69%, 80px); height: 48%; bottom: 0; right: -4%; transform: rotate(12deg); }
 .salt-art-betta { width: 88%; right: 7%; top: 50%; transform: translateY(-50%); }
 .salt-boy #feedback { padding: 0; border: 1px solid #9ab9cb; border-inline-start: 3px solid #65899f; background: #eaf4f9; }
 #feedback > summary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 14px; padding: 12px 14px; list-style: none; }
