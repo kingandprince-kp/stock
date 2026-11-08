@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
-import type { Directory, FirstWeek, Inventory, SaltInventory, Store } from "./data";
+import type { FirstWeek, Inventory, SaltInventory, Store } from "./data";
 import { FeedbackForm, StoreContribution, StoreRequest } from "./support-forms";
 
 type Mode = "physical" | "online";
@@ -112,14 +112,13 @@ function InfoAccordions() {
 }
 
 function StoreCard({
-  store, mode, inventory, reports, firstWeek, serialStatus, commentCount, onCommentsChanged, onReport, distance,
+  store, mode, inventory, reports, firstWeek, commentCount, onCommentsChanged, onReport, distance,
 }: {
   store: Store;
   mode: Mode;
   inventory: SaltInventory | null;
   reports: Map<string, Inventory>;
   firstWeek: FirstWeek[];
-  serialStatus?: string;
   commentCount: number;
   onCommentsChanged: () => Promise<void>;
   onReport: (store: Store) => void;
@@ -209,12 +208,11 @@ function StoreCard({
           <p>{online ? "🛒 オンラインショップ" : `📍 ${store.prefecture}${store.city ? ` ${store.city}` : ""}${distance !== null ? ` · ${distance.toFixed(1)} km` : ""}`}</p>
           {!online && store.business_hours && <p>🕒 営業時間: {store.business_hours}</p>}
         </div>
-        <div className="salt-badges" aria-label="集計・シリアル対象">
+        <div className="salt-badges" aria-label="集計対象">
           {store.oricon_target === true && <span className="salt-badge salt-badge-oricon">オリコン対象</span>}
           {store.billboard_status === "target" && <span className="salt-badge salt-badge-billboard">Billboard対象</span>}
           {store.billboard_status === "check_store" && <span className="salt-badge salt-badge-check">Billboard要確認</span>}
           {store.billboard_status === "not_target" && <span className="salt-badge salt-badge-not-target">Billboard対象外</span>}
-          {serialStatus === "target" && <span className="salt-badge salt-badge-serial">シリアル対象</span>}
         </div>
       </div>
 
@@ -259,7 +257,7 @@ function StoreCard({
 
       <div className="salt-store-actions">
         {online && storeUrl && <ExternalLink href={storeUrl}>商品ページを見る</ExternalLink>}
-        {inventory?.products.length ? <button type="button" onClick={() => onReport(store)}>形態をまとめて在庫報告</button> : null}
+        {inventory?.products.length ? <button type="button" onClick={() => onReport(store)}>在庫投稿</button> : null}
       </div>
 
       <div className="salt-comments">
@@ -306,16 +304,14 @@ function StoreCard({
   );
 }
 
-export default function StockChecker({ physical, online, campaign, inventory }: {
+export default function StockChecker({ physical, online, inventory }: {
   physical: Store[];
   online: Store[];
-  campaign?: Directory["campaigns"][number];
   inventory: SaltInventory | null;
 }) {
   const [mode, setMode] = useState<Mode>("physical");
   const [query, setQuery] = useState("");
   const [prefecture, setPrefecture] = useState("");
-  const [serialOnly, setSerialOnly] = useState(false);
   const [limit, setLimit] = useState(20);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [geoMessage, setGeoMessage] = useState("");
@@ -337,7 +333,6 @@ export default function StockChecker({ physical, online, campaign, inventory }: 
   const reports = useMemo(() => new Map(inventory?.reports.map((item) => [`${item.store_id}:${item.product_id}`, item])), [inventory]);
   const storesById = useMemo(() => new Map([...physical, ...online].map((store) => [store.id, store])), [physical, online]);
   const productsById = useMemo(() => new Map(inventory?.products.map((product) => [product.id, product])), [inventory]);
-  const serial = useMemo(() => new Map(campaign?.matches.map((match) => [match.id, match.status])), [campaign]);
   const firstWeek = useMemo(() => {
     const map = new Map<number, FirstWeek[]>();
     for (const item of inventory?.firstWeek ?? []) map.set(item.store_id, [...(map.get(item.store_id) ?? []), item]);
@@ -418,12 +413,11 @@ export default function StockChecker({ physical, online, campaign, inventory }: 
     const term = normalize(query);
     const stores = (mode === "physical" ? physical : online).filter((store) =>
       (!prefecture || mode === "online" || store.prefecture === prefecture)
-      && (!serialOnly || serial.get(store.id) === "target")
       && (!term || normalize([displayName(store), store.prefecture, store.city, store.address].join(" ")).includes(term))
     ).map((store) => ({ store, distance: mode === "physical" && location ? distanceKm(location.lat, location.lng, store) : null }));
     if (mode === "physical" && location) stores.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
     return stores;
-  }, [mode, physical, online, prefecture, serialOnly, serial, query, location]);
+  }, [mode, physical, online, prefecture, query, location]);
 
   function locate() {
     if (!navigator.geolocation) return setGeoMessage("このブラウザーでは現在地を取得できません。");
@@ -534,14 +528,13 @@ export default function StockChecker({ physical, online, campaign, inventory }: 
           <button type="button" className="salt-location-button" onClick={location ? () => setLocation(null) : locate} disabled={locating}>{locating ? "現在地を取得中…" : location ? "現在地検索を解除" : "現在地から探す"}</button>
           {geoMessage && <p className="salt-geolocation-message" role="status">{geoMessage}</p>}
         </>}
-        {campaign && <div className="salt-serial-filter"><label><input type="checkbox" checked={serialOnly} onChange={(event) => { setSerialOnly(event.target.checked); setLimit(20); }} /> シリアル対象店舗のみ</label><p>{campaign.notice} {safeUrl(campaign.conditions_url) && <ExternalLink href={safeUrl(campaign.conditions_url)!}>配布条件</ExternalLink>}</p></div>}
       </section>
 
       <section className="salt-results" aria-label="店舗一覧">
         <div className="salt-section-kicker">STORE RESULTS</div>
         <p className="salt-count" aria-live="polite">{matches.length.toLocaleString("ja-JP")}件{mode === "physical" && location ? " ・現在地に近い順" : ""}</p>
         {!inventory && <p className="salt-error" role="alert">SALT BOYの在庫データを取得できませんでした。時間をおいて再読み込みしてください。</p>}
-        {matches.slice(0, limit).map(({ store, distance }) => <StoreCard key={`${mode}-${store.id}`} store={store} mode={mode} inventory={inventory} reports={reports} firstWeek={firstWeek.get(store.id) ?? []} serialStatus={serial.get(store.id)} commentCount={commentCountMap.get(store.id) ?? 0} onCommentsChanged={loadCommentCounts} onReport={openReport} distance={distance} />)}
+        {matches.slice(0, limit).map(({ store, distance }) => <StoreCard key={`${mode}-${store.id}`} store={store} mode={mode} inventory={inventory} reports={reports} firstWeek={firstWeek.get(store.id) ?? []} commentCount={commentCountMap.get(store.id) ?? 0} onCommentsChanged={loadCommentCounts} onReport={openReport} distance={distance} />)}
         {!matches.length && <p className="salt-empty">条件に一致する店舗が見つかりませんでした。</p>}
         {matches.length > limit && <button type="button" className="salt-more-button" onClick={() => setLimit((value) => value + 20)}>さらに20件表示</button>}
       </section>

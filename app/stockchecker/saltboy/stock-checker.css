@@ -36,7 +36,6 @@
 .salt-badge { display: inline-flex; align-items: center; width: fit-content; padding: 3px 8px; border: 1px solid transparent; border-radius: 5px; color: #fff; font-size: 12px; font-weight: 700; line-height: 1.5; white-space: nowrap; }
 .salt-badge-oricon { background: #a32a65; }
 .salt-badge-billboard { background: #7d5298; }
-.salt-badge-serial { background: #1e739b; }
 .salt-badge-check { border-color: #c9a7d2; background: #f5edf7; color: #68447a; }
 .salt-badge-not-target { border-color: #b7abbc; background: #fff; color: #4e4654; }
 .salt-search, .salt-results { margin-top: 16px; padding: 17px clamp(13px, 2.8vw, 24px); border: 1px solid #e7dce7; border-radius: 12px; background: #fffdfd; }
@@ -62,10 +61,6 @@
 .salt-all-chip { margin-bottom: 2px; }
 .salt-location-button, .salt-more-button { min-height: 42px; margin-top: 12px; padding: 8px 14px; border: 1px solid #d9cdd9; border-radius: 8px; background: #fff; color: #4b3949; font-size: 13px; font-weight: 700; }
 .salt-geolocation-message, .salt-error { margin-top: 8px; color: #8b3a50; font-size: 12px; }
-.salt-serial-filter { margin-top: 13px; padding-top: 12px; border-top: 1px solid #eee5ee; }
-.salt-serial-filter label { display: flex; align-items: center; gap: 8px; font-weight: 700; }
-.salt-serial-filter input { width: 17px; height: 17px; accent-color: #4f3c4b; }
-.salt-serial-filter p { margin-top: 5px; color: #6f616d; font-size: 12px; }
 .salt-results { margin-top: 17px; }
 .salt-count { margin: 7px 0 10px; color: #574855; font-size: 13px; font-weight: 700; }
 .salt-store { margin: 0 0 12px; padding: 15px; border: 1px solid #e7dce7; border-radius: 10px; background: #fff; }
@@ -199,3 +194,8 @@
   .salt-dialog .salt-report-actions { display: grid; grid-template-columns: 1fr; }
   .salt-dialog .salt-report-actions button { width: 100%; }
 }
+
+.salt-contribution-summary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 8px; padding: 6px 8px; border: 1px solid #d9cdd9; border-radius: 7px; list-style: none; }
+.salt-contribution-summary::-webkit-details-marker { display: none; }
+.salt-contribution-action { padding: 2px 5px; color: #634659; text-decoration: underline; text-underline-offset: 2px; }
+.salt-contribution[open] .salt-contribution-open, .salt-contribution:not([open]) .salt-contribution-close { display: none; }

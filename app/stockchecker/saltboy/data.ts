@@ -41,17 +41,9 @@ export type SaltInventory = { products: Product[]; reports: Inventory[]; recentR
 export type Directory = {
   stores: Store[];
   online_stores: Store[];
-  campaigns: {
-    id: string;
-    title: string;
-    notice: string;
-    conditions_url: string;
-    matches: { id: number; status: string }[];
-  }[];
 };
 
 export const directoryUrl = "https://studio.kp-music-data.workers.dev/stores/data.json";
-export const serialSearchUrl = "https://studio.kp-music-data.workers.dev/stores/serial/?campaign=salt-boy-2026-serial&serial=target";
 
 export async function loadDirectory() {
   const response = await fetch(directoryUrl, {
