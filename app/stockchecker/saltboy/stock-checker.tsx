@@ -513,9 +513,20 @@ export default function StockChecker({ physical, online, inventory }: {
           <button type="button" aria-pressed={mode === "physical"} onClick={() => { setMode("physical"); setLimit(20); }}>🏪 実店舗</button>
           <button type="button" aria-pressed={mode === "online"} onClick={() => { setMode("online"); setLimit(20); }}>🛒 オンライン</button>
         </div>
-        <label className="salt-search-label">{mode === "physical" ? "店舗名・チェーン名・市区町村で検索" : "オンラインショップ名で検索"}
-          <input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setLimit(20); }} placeholder="店舗名・チェーン名を入力" />
-        </label>
+        <div className="salt-search-tools">
+          <label className="salt-search-label">{mode === "physical" ? "店舗名・チェーン名・市区町村で検索" : "オンラインショップ名で検索"}
+            <input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setLimit(20); }} placeholder="店舗名・チェーン名を入力" />
+          </label>
+          {mode === "physical" && (
+            <button type="button" className="salt-location-button" aria-pressed={location !== null} onClick={location ? () => setLocation(null) : locate} disabled={locating}>
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+                <circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2" /><path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
+              </svg>
+              {locating ? "現在地を取得中…" : location ? "現在地検索を解除" : "現在地から探す"}
+            </button>
+          )}
+        </div>
+        {mode === "physical" && geoMessage && <p className="salt-geolocation-message" role="status">{geoMessage}</p>}
         {mode === "physical" && <>
           <div className="salt-prefectures">
             <div className="salt-prefecture-heading">📍 都道府県を選択</div>
@@ -525,8 +536,6 @@ export default function StockChecker({ physical, online, inventory }: {
               <div className="salt-prefecture-list">{group.prefectures.map((item) => <button key={item} type="button" className={`salt-prefecture-chip ${prefecture === item ? "selected" : ""}`} aria-pressed={prefecture === item} onClick={() => { setPrefecture(item); setLimit(20); }}>{item}</button>)}</div>
             </section>)}
           </div>
-          <button type="button" className="salt-location-button" onClick={location ? () => setLocation(null) : locate} disabled={locating}>{locating ? "現在地を取得中…" : location ? "現在地検索を解除" : "現在地から探す"}</button>
-          {geoMessage && <p className="salt-geolocation-message" role="status">{geoMessage}</p>}
         </>}
       </section>
 

@@ -1,0 +1,37 @@
+.salt-design-hero { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(44px, 19%) minmax(0, 1fr) minmax(44px, 19%); align-items: center; min-height: 245px; margin: 0 0 12px; padding: 25px 14px; overflow: hidden; text-align: center; background: #e7f3fa; border: 1px solid #cfdfeb; border-radius: 16px; }
+.salt-design-brand { color: #466375; font-size: 10px; font-weight: 700; letter-spacing: .16em; }
+.salt-design-hero h1 { margin: 12px 0 8px; font-size: clamp(36px, 7vw, 64px); font-weight: 700; line-height: 1.05; letter-spacing: .035em; color: #17374d; }
+.salt-design-hero h1 span { display: block; margin: 8px 0 0; font-size: clamp(17px, 3vw, 25px); letter-spacing: .04em; }
+.salt-design-hero p { color: #3d5b6c; font-size: 13px; line-height: 1.55; text-wrap: balance; }
+.salt-design-waves { position: absolute; z-index: -1; inset: auto 0 0; width: 100%; height: 64%; pointer-events: none; }
+.salt-design-art { position: relative; width: 100%; height: clamp(100px, 16vw, 170px); }
+.salt-design-art img { position: absolute; aspect-ratio: 1; object-fit: contain; mix-blend-mode: multiply; }
+.salt-art-hen { width: min(68%, 100px); top: 0; left: 8%; }
+.salt-art-crab { width: min(58%, 88px); right: 8%; bottom: 0; }
+.salt-art-betta { width: 88%; right: 7%; top: 50%; transform: translateY(-50%); }
+.salt-boy #feedback { padding: 0; border: 1px solid #9ab9cb; border-inline-start: 3px solid #65899f; background: #eaf4f9; }
+#feedback summary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 14px; padding: 12px 14px; list-style: none; }
+#feedback summary::-webkit-details-marker { display: none; }
+.salt-feedback-copy { flex: 1 1 175px; }
+.salt-feedback-copy small { display: block; margin: 2px 0 0; color: #416072; }
+.salt-feedback-action { flex: none; padding: 5px 9px; border: 1px solid #86a9bd; border-radius: 6px; color: #203e51; background: #f8fcff; font-size: 12px; }
+#feedback[open] .salt-feedback-action--open, #feedback:not([open]) .salt-feedback-action--close { display: none; }
+#feedback .salt-support-form { margin: 0; padding: 0 14px 12px; }
+@media (max-width: 620px) {
+  .salt-design-hero { min-height: 192px; padding: 16px 6px; }
+  .salt-design-brand { font-size: 8px; letter-spacing: .09em; }
+  .salt-design-hero h1 { font-size: clamp(26px, 8vw, 42px); }
+  .salt-design-hero p { font-size: 11px; }
+  .salt-art-hen { width: 90%; left: 0; top: 4%; }
+  .salt-art-crab { width: 85%; right: 0; bottom: 4%; }
+  .salt-art-betta { width: 100%; right: 0; }
+}
+
+.salt-search-tools { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin-top: 12px; }
+.salt-search-tools .salt-search-label { flex: 1 1 220px; min-width: 0; }
+.salt-location-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 7px 12px; border: 1px solid #8eafc3; border-radius: 8px; background: #e5f1f8; color: #234b62; font-size: 13px; font-weight: 700; }
+.salt-location-button:hover, .salt-location-button[aria-pressed="true"] { background: #cfe5f3; }
+@media (max-width: 620px) {
+  .salt-search-tools .salt-search-label { flex-basis: 100%; }
+  .salt-location-button { min-height: 40px; }
+}
