@@ -100,7 +100,7 @@ export function StoreRequest({ online, prefecture, prefectures }: {
   prefectures: string[];
 }) {
   return (
-    <details className="salt-support">
+    <details className="salt-support" id="store-request">
       <summary>店舗が見つからない場合 <small>未掲載店舗の追加をリクエストできます</small></summary>
       <SupportForm key={`${online}-${prefecture}`} send={(data) => {
         const name = field(data, "name");
@@ -132,7 +132,7 @@ export function StoreRequest({ online, prefecture, prefectures }: {
 
 export function FeedbackForm() {
   return (
-    <details className="salt-support">
+    <details className="salt-support" id="feedback">
       <summary>不具合・ご要望はこちら <small>フォームを開く</small></summary>
       <SupportForm send={async (data) => {
         const description = field(data, "description");

@@ -15,6 +15,11 @@
 .salt-notice { margin: 0 0 12px; padding: 14px 17px; border: 1px solid #e7dce7; border-radius: 14px; background: #fffdfd; font-size: 13px; }
 .salt-boy a { color: #7e3e6c; text-decoration: underline; text-underline-offset: 2px; }
 .salt-boy a:hover { color: #552648; }
+.salt-page-links { margin: 0 0 14px; padding: 0 4px; font-size: 12px; }
+.salt-page-links p { color: #655a65; }
+.salt-page-links ul { display: flex; flex-wrap: wrap; gap: 0 14px; }
+.salt-page-links a { display: inline-flex; align-items: center; min-height: 28px; }
+.salt-support[id] { scroll-margin-block-start: 16px; }
 .salt-explanations { display: grid; gap: 12px; margin: 0 0 18px; }
 .salt-explanation { overflow: hidden; border: 1px solid #e7dce7; border-radius: 10px; background: #fffdfd; }
 .salt-explanation summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 58px; padding: 13px 18px; cursor: pointer; list-style: none; color: #3e3540; font-size: 16px; font-weight: 700; }

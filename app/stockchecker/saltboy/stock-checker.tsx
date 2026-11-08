@@ -503,6 +503,14 @@ export default function StockChecker({ physical, online, campaign, inventory }: 
 
   return (
     <>
+      <nav className="salt-page-links" aria-label="ページ内のご案内">
+        <p>ページ下部のご案内</p>
+        <ul>
+          <li><a href="#store-request">店舗の追加リクエスト</a></li>
+          <li><a href="#latest-reports">最新の在庫投稿</a></li>
+          <li><a href="#feedback">不具合・ご要望</a></li>
+        </ul>
+      </nav>
       <InfoAccordions />
       <section id="stores" className="salt-search" aria-label="店舗検索">
         <div className="salt-section-kicker">STOCK SEARCH</div>
@@ -557,10 +565,6 @@ export default function StockChecker({ physical, online, campaign, inventory }: 
         )}
       </section>
       <FeedbackForm />
-      <details className="salt-support">
-        <summary>更新履歴</summary>
-        <p>スマホの在庫一覧を2列に整理。店舗情報の提供、初週締め時間、最新の在庫投稿、不具合・ご要望のフォームを追加。</p>
-      </details>
 
       {reportStore && <dialog ref={reportDialog} className="salt-dialog" aria-labelledby="salt-report-title" onCancel={(event) => { event.preventDefault(); closeReport(); }}>
         <form onSubmit={(event) => void submitReport(event)}>
