@@ -82,11 +82,11 @@ function clientId() {
   return id;
 }
 
-function ExternalLink({ href, children }: { href: string; children: ReactNode }) {
+function ExternalLink({ href, children, showArrow = true }: { href: string; children: ReactNode; showArrow?: boolean }) {
   return (
     <a className="salt-external-link" href={href} target="_blank" rel="noopener noreferrer">
       {children}
-      <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12 12 4m-6 0h6v6" /></svg>
+      {showArrow && <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12 12 4m-6 0h6v6" /></svg>}
     </a>
   );
 }
@@ -292,10 +292,10 @@ function StoreCard({
       {(online || infoOpen) && <div className="salt-store-info">
         {online ? <div className="salt-online-info"><strong>🛒 オンラインショップ</strong>{store.online_url && <ExternalLink href={store.online_url}>商品ページを見る</ExternalLink>}</div> : <>
           <div className="salt-contact-grid">
-            <section><strong>📍 住所</strong><p>{store.address || "情報なし"}</p>{store.address && <div className="salt-map-links"><ExternalLink href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.address)}`}>Googleマップ</ExternalLink><ExternalLink href={`https://maps.apple.com/?q=${encodeURIComponent(store.address)}`}>Appleマップ</ExternalLink></div>}</section>
+            <section><strong>📍 住所</strong><p>{store.address || "情報なし"}</p>{store.address && <div className="salt-map-links"><ExternalLink href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.address)}`} showArrow={false}>Googleマップ</ExternalLink><ExternalLink href={`https://maps.apple.com/?q=${encodeURIComponent(store.address)}`} showArrow={false}>Appleマップ</ExternalLink></div>}</section>
             <div className="salt-contact-actions">
               <section className="salt-contact-phone"><strong>☎️ 電話番号</strong>{store.phone ? <a href={`tel:${store.phone.replace(/[^\d+]/g, "")}`}>{store.phone}</a> : <p>情報なし</p>}</section>
-              {storeUrl && <div className="salt-official-link"><ExternalLink href={storeUrl}>公式ページを見る</ExternalLink></div>}
+              {storeUrl && <div className="salt-official-link"><ExternalLink href={storeUrl} showArrow={false}>公式ページへ</ExternalLink></div>}
             </div>
           </div>
         </>}
