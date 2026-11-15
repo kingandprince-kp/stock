@@ -84,7 +84,9 @@
 .salt-stock dt { font-size: 11px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
 .salt-stock time { color: #3e4f5a; font-size: 11px; font-weight: 500; }
 .salt-stock dd { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 7px; margin-top: 3px; color: #394851; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
-.salt-stock dd.salt-in-stock { color: #186044; font-weight: 700; }
+.salt-stock-status { display: inline-block; padding: 2px 7px; border: 1px solid #bbc5ce; border-radius: 5px; background: #eff2f5; color: #26333d; font-size: 13px; font-weight: 700; }
+.salt-stock-status[data-status="available"] { border-color: #82b399; background: #e6f4ea; color: #145238; }
+.salt-stock-status[data-status="unavailable"] { border-color: #35434d; background: #35434d; color: #fff; }
 .salt-store-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 11px; }
 .salt-store-actions a, .salt-store-actions button, .salt-map-links a, .salt-official-link a, .salt-online-info a, .salt-comment-form button { display: inline-flex; align-items: center; min-height: 36px; padding: 7px 12px; border: 1px solid #c6d1d8; border-radius: 7px; background: #fff; color: #355162; font-size: 12px; font-weight: 700; text-decoration: none; }
 .salt-store-actions button { border-color: #31434e; background: #31434e; color: white; }

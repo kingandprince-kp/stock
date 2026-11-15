@@ -331,11 +331,12 @@ function StoreCard({
           <dl className="salt-stock">
             {stockItems.filter(({ item }) => !stockOnly || isInStock(item)).map(({ product, variant, item, key, url }) => {
               const shipping = online ? item?.shipping_estimate : null;
+              const label = item ? stockLabel(item) : null;
               return (
                 <div key={key}>
                   <dt>{url ? <ExternalLink href={url} showArrow={false}>{purchaseLabel(product.name, variant)}</ExternalLink> : purchaseLabel(product.name, variant)}</dt>
-                  <dd className={isInStock(item) ? "salt-in-stock" : undefined}>
-                    {item ? stockLabel(item) : "投稿なし"}
+                  <dd>
+                    {label ? <strong className="salt-stock-status" data-status={isInStock(item) ? "available" : label === "在庫なし" ? "unavailable" : "unknown"}>{label}</strong> : "投稿なし"}
                     {item && <time dateTime={item.created_at}>{DATE_FORMAT.format(new Date(item.created_at))}</time>}
                     {shipping && <span className="salt-stock-shipping">
                       {shippingEstimateText(shipping)}
