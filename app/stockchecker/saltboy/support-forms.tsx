@@ -95,13 +95,15 @@ export function StoreContribution({ store, online }: { store: Store; online: boo
         });
       }}>
         <label>情報の種類<select name="category">
-          {online ? <option>発送予定</option> : <option>初週集計の締め時間</option>}
+          {!online && <option>初週集計の締め時間</option>}
           {canReportBillboard && <option>Billboard集計</option>}
           <option>その他</option>
         </select></label>
-        <label>提供する内容<textarea name="detail" rows={2} maxLength={900} required placeholder={online ? "例: 商品ページに発売日の発送と記載" : "例: 初週集計は17時までと店舗で確認"} /></label>
-        <p className="salt-contribution-notice">※在庫あり・在庫なし・枚数などの在庫情報は、こちらではなく「在庫投稿」からお願いします。</p>
-        <label>確認方法・ソース<textarea name="evidence" rows={2} maxLength={1000} placeholder={canReportBillboard ? "例: 店頭で確認。Billboard情報の場合は必須です。" : "例: 公式ページURL、電話確認、店頭確認など"} /></label>
+        <label>提供する内容<textarea name="detail" rows={2} maxLength={900} required placeholder={online ? "例: ショップの公式サイトのURLが変更されています" : "例: 初週集計は17時までと店舗で確認"} /></label>
+        <p className="salt-contribution-notice">※在庫あり・在庫なし・枚数などの在庫情報は、こちらではなく「在庫投稿」からお願いします。{online && "発送・お届け目安も商品ごとに「在庫投稿」から入力できます。"}</p>
+        <label>確認方法・ソース<textarea name="evidence" rows={2} maxLength={1000} placeholder={online
+          ? (canReportBillboard ? "例: 公式案内のURL。Billboard情報の場合は確認方法・ソースが必須です。" : "例: 公式サイトのお知らせのURL")
+          : (canReportBillboard ? "例: 店頭で確認。Billboard情報の場合は必須です。" : "例: 公式ページURL、電話確認、店頭確認など")} /></label>
       </SupportForm>
     </details>
   );
