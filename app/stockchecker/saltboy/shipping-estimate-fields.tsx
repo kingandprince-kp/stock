@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { MAX_SHIPPING_DAYS } from "./shipping-estimate";
 
-const DAYS = Array.from({ length: 31 }, (_, index) => index);
+const DAYS = Array.from({ length: MAX_SHIPPING_DAYS + 1 }, (_, index) => index);
 
 export default function ShippingEstimateFields() {
   const [enabled, setEnabled] = useState(false);
@@ -45,6 +46,9 @@ export default function ShippingEstimateFields() {
             {DAYS.map((day) => <option key={day} value={day}>{day ? `${day}日` : "当日"}</option>)}
           </select></label>
         </div>}
+        {kind === "range" && <p>
+          ショップに表示されている日数を入力してください。たとえば日曜発送までが対象なら、水曜注文では4日後、金曜注文では2日後が日曜です。営業日表記や7日を超える案内は「その他」に入力してください。
+        </p>}
         {kind === "date" && <label>{basis === "shipping" ? "発送・出荷予定日" : "お届け・到着予定日"}
           <input name="shippingDate" type="date" required />
         </label>}

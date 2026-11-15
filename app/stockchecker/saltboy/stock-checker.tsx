@@ -10,6 +10,14 @@ import ShippingEstimateFields from "./shipping-estimate-fields";
 import { FeedbackForm, StoreContribution, StoreRequest } from "./support-forms";
 
 type Mode = "physical" | "online";
+const AMAZON_JAPAN_STORE_ID = 308;
+const AMAZON_PRODUCTS: Partial<Record<string, { standard: string; bonus?: string }>> = {
+  "UPCH-7909": { standard: "B0HMHZRS92" },
+  "UPCH-7910": { standard: "B0HMHNY2K4" },
+  "UPCH-7911": { standard: "B0HMHNLR3L" },
+  "UPCH-7912": { standard: "B0HMJB4MT1", bonus: "B0HMHT46H4" },
+  "UPCH-7913": { standard: "B0HMHVYQZF" },
+};
 type Comment = {
   id: number;
   body: string;
@@ -154,7 +162,7 @@ function StoreCard({
   const [busyComment, setBusyComment] = useState<number | null>(null);
 
   const online = mode === "online";
-  const storeUrl = safeUrl(online ? store.online_url : store.official_url);
+  const storeUrl = safeUrl(store.official_url);
   const stockItems = inventory?.products.map((product) => ({
     product, item: reports.get(`${store.id}:${product.id}`),
   })) ?? [];
@@ -272,6 +280,8 @@ function StoreCard({
           <dl className="salt-stock">
             {stockItems.filter(({ item }) => !stockOnly || isInStock(item)).map(({ product, item }) => {
               const shipping = online ? item?.shipping_estimate : null;
+              const amazon = online && store.id === AMAZON_JAPAN_STORE_ID
+                ? AMAZON_PRODUCTS[product.catalog_number] : undefined;
               return (
                 <div key={product.id}>
                   <dt>{product.name}</dt>
@@ -283,6 +293,14 @@ function StoreCard({
                       {shipping.condition && <><br />条件: {shipping.condition}</>}
                     </span>}
                   </dd>
+                  {amazon && <dd className="salt-amazon-links">
+                    <ExternalLink href={`https://www.amazon.co.jp/dp/${amazon.standard}`} showArrow={false}>
+                      Amazon
+                    </ExternalLink>
+                    {amazon.bonus && <ExternalLink href={`https://www.amazon.co.jp/dp/${amazon.bonus}`} showArrow={false}>
+                      Amazon限定特典付き
+                    </ExternalLink>}
+                  </dd>}
                 </div>
               );
             })}
@@ -291,13 +309,11 @@ function StoreCard({
       )}
 
       <div className="salt-store-actions">
-        {online && storeUrl && <ExternalLink href={storeUrl}>商品ページを見る</ExternalLink>}
         {inventory?.products.length ? <button type="button" onClick={() => onReport(store)}>在庫投稿</button> : null}
         {!online && <button type="button" className="salt-info-toggle" aria-expanded={infoOpen} onClick={() => setInfoOpen((value) => !value)}>{infoOpen ? "店舗情報を閉じる ∧" : "店舗情報を見る ∨"}</button>}
       </div>
 
-      {(online || infoOpen) && <div className="salt-store-info">
-        {online ? <div className="salt-online-info"><strong>🛒 オンラインショップ</strong>{store.online_url && <ExternalLink href={store.online_url}>商品ページを見る</ExternalLink>}</div> : <>
+      {!online && infoOpen && <div className="salt-store-info">
           <div className="salt-contact-grid">
             <section><strong>📍 住所</strong><p>{store.address || "情報なし"}</p>{store.address && <div className="salt-map-links"><ExternalLink href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.address)}`} showArrow={false}>Googleマップ</ExternalLink><ExternalLink href={`https://maps.apple.com/?q=${encodeURIComponent(store.address)}`} showArrow={false}>Appleマップ</ExternalLink></div>}</section>
             <div className="salt-contact-actions">
@@ -305,7 +321,6 @@ function StoreCard({
               {storeUrl && <div className="salt-official-link"><ExternalLink href={storeUrl} showArrow={false}>公式ページへ</ExternalLink></div>}
             </div>
           </div>
-        </>}
       </div>}
 
       <div className="salt-comments">

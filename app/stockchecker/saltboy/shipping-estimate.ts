@@ -1,4 +1,5 @@
 type ShippingBasis = "shipping" | "delivery";
+export const MAX_SHIPPING_DAYS = 7;
 type ShippingSource = "product_page" | "cart_order" | "email" | "other";
 
 const SOURCE_LABELS: Record<ShippingSource, string> = {
@@ -19,7 +20,7 @@ export type ShippingEstimate = {
   | { kind: "other"; wording: string }
 );
 
-export function parseShippingEstimate(value: unknown): ShippingEstimate | null {
+export function parseShippingEstimate(value: unknown, maxRangeDays = MAX_SHIPPING_DAYS): ShippingEstimate | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const input = value as Record<string, unknown>;
   const { basis, kind, source, minDays, maxDays, date } = input;
@@ -35,7 +36,7 @@ export function parseShippingEstimate(value: unknown): ShippingEstimate | null {
   const common = { basis: basis as ShippingBasis, condition, source: source as ShippingSource, sourceDetail };
   if (kind === "range" && basis === "shipping"
     && typeof minDays === "number" && Number.isInteger(minDays) && minDays >= 0
-    && typeof maxDays === "number" && Number.isInteger(maxDays) && maxDays >= minDays && maxDays <= 30) {
+    && typeof maxDays === "number" && Number.isInteger(maxDays) && maxDays >= minDays && maxDays <= maxRangeDays) {
     return { ...common, kind, minDays, maxDays };
   }
   if (kind === "date" && typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {

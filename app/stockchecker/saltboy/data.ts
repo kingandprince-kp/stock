@@ -100,7 +100,8 @@ export async function loadInventory(): Promise<SaltInventory> {
       .range(offset, offset + pageSize - 1);
     if (result.error) throw new Error("SALT BOYの在庫情報を取得できませんでした。");
     for (const row of result.data) {
-      const report = { ...row, shipping_estimate: parseShippingEstimate(row.shipping_estimate) };
+      // Preserve previously accepted shipping ranges when reading existing reports.
+      const report = { ...row, shipping_estimate: parseShippingEstimate(row.shipping_estimate, 30) };
       if (recentReports.length < 5) recentReports.push(report);
       const key = `${report.store_id}:${report.product_id}`;
       if (!latest.has(key)) {
