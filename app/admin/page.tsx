@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { supabase } from "@/app/lib/supabase";
+import SaltBoyReports from "./salt-boy-reports";
 
 type InventoryReport = {
   id: number;
@@ -225,6 +226,7 @@ type AccessDaily = {
 
 type AdminTab =
   | "reports"
+  | "salt-boy"
   | "review"
   | "security"
   | "deletions"
@@ -2390,8 +2392,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* 12タブ */}
-          <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-3 lg:grid-cols-12">
+          <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-3 lg:grid-cols-7">
             <AdminTabButton
               active={
                 activeTab === "reports"
@@ -2401,6 +2402,10 @@ export default function AdminPage() {
               }
             >
               📋 投稿一覧
+            </AdminTabButton>
+
+            <AdminTabButton active={activeTab === "salt-boy"} onClick={() => setActiveTab("salt-boy")}>
+              SALT BOY
             </AdminTabButton>
 
             <AdminTabButton
@@ -2573,6 +2578,8 @@ export default function AdminPage() {
             <div className="mt-4">
               読み込み中…
             </div>
+          ) : activeTab === "salt-boy" ? (
+            <SaltBoyReports />
           ) : activeTab ===
             "reports" ? (
             <ReportsTab

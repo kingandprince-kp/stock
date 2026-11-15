@@ -109,6 +109,7 @@ export async function POST(request: Request) {
         purchase_variant: null,
         comment: item.comment?.trim() || null,
         shipping_estimate: shippingEstimate,
+        auto_publish: true,
       })),
     });
     if (error) {
@@ -116,7 +117,10 @@ export async function POST(request: Request) {
       return errorResponse("在庫を送信できませんでした。内容を確認して再度お試しください。", 400);
     }
 
-    return NextResponse.json({ success: true, reportCount: data?.length ?? items.length });
+    const reports = await supabase.from("salt_boy_inventory_reports")
+      .select("review_status").eq("client_hash", clientHash).eq("request_id", requestId).eq("store_id", storeId);
+    const pendingCount = reports.error ? null : reports.data.filter((report) => report.review_status === "pending").length;
+    return NextResponse.json({ success: true, reportCount: data?.length ?? items.length, pendingCount });
   } catch (error) {
     console.error("SALT BOY inventory report unexpected error:", error);
     return errorResponse("在庫報告中にエラーが発生しました。時間をおいて再度お試しください。", 500);

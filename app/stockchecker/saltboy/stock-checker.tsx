@@ -376,6 +376,11 @@ export default function StockChecker({ physical, online, inventory }: {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportError, setReportError] = useState("");
   const [reportMessage, setReportMessage] = useState("");
+  useEffect(() => {
+    if (!reportMessage) return;
+    const timeout = window.setTimeout(() => setReportMessage(""), 10000);
+    return () => window.clearTimeout(timeout);
+  }, [reportMessage]);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileReady, setTurnstileReady] = useState(false);
   const [turnstileError, setTurnstileError] = useState("");
@@ -552,12 +557,15 @@ export default function StockChecker({ physical, online, inventory }: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ storeId: reportStore.id, items, clientId: clientId(), requestId, turnstileToken, shippingEstimate }),
       });
-      const result = await response.json() as { success?: boolean; message?: string; reportCount?: number };
+      const result = await response.json() as { success?: boolean; message?: string; pendingCount?: number | null };
       if (!response.ok || !result.success) {
         setReportError(result.message || "在庫を送信できませんでした。内容を確認して再度お試しください。");
         return;
       }
-      setReportMessage("在庫情報を送信しました。承認後に一覧へ反映されます。");
+      const resultMessage = result.pendingCount === 0 ? "在庫情報を投稿しました。"
+        : result.pendingCount ? `在庫情報を受け付けました。うち${result.pendingCount}件は承認待ちです。`
+        : "在庫情報を受け付けました。";
+      setReportMessage(`${displayName(reportStore)}: ${resultMessage}`);
       setReportStore(null);
       router.refresh();
     } catch {
@@ -637,7 +645,6 @@ export default function StockChecker({ physical, online, inventory }: {
         <section className="salt-support salt-recent" id="latest-reports" aria-labelledby="salt-latest-title">
           <div className="salt-section-kicker">LATEST REPORTS</div>
           <h2 id="salt-latest-title">最新の在庫投稿</h2>
-          {reportMessage && <p role="status">{reportMessage}</p>}
           {!inventory ? <p>在庫投稿を取得できませんでした。</p> : !inventory.recentReports.length ? <p>公開済みの在庫投稿はまだありません。</p> : (
             <ol>{inventory.recentReports.map((item) => {
               const store = storesById.get(item.store_id);
@@ -700,6 +707,7 @@ export default function StockChecker({ physical, online, inventory }: {
           </div>
         </form>
       </dialog>}
+      {reportMessage && <p className="salt-report-result" role="status">{reportMessage}</p>}
       <a href="#top" aria-label="サイトトップへ" className="salt-back-to-top">サイト<br />トップへ</a>
     </>
   );

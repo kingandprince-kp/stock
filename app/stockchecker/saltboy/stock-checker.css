@@ -168,6 +168,7 @@
 .salt-dialog .salt-report-caution { margin-top: 10px; padding: 10px; border-left: 3px solid #b5c7d1; background: #edf4f8; color: #59666e; font-size: 11px; line-height: 1.7; }
 .salt-report-multiple { margin-top: 10px; padding: 8px 10px; border: 1px solid #d4b876; border-radius: 7px; background: #fff8e6; color: #51380e; font-size: 12px; }
 .salt-report-multiple p { margin: 3px 0 0; }
+.salt-report-result { position: fixed; z-index: 21; inset-inline: 14px 86px; bottom: max(20px, env(safe-area-inset-bottom)); width: fit-content; max-width: calc(100% - 100px); margin-inline: auto; padding: 8px 12px; border: 1px solid #8faabb; border-radius: 8px; background: #edf5fa; color: #234b62; font-size: 13px; font-weight: 700; }
 .salt-dialog .salt-shipping-fields { display: grid; gap: 8px; margin: 12px 0; padding: 10px; border: 1px solid #d4b876; border-radius: 7px; background: #fff8e6; color: #51380e; font-size: 12px; }
 .salt-dialog .salt-shipping-fields label { display: grid; grid-template-columns: minmax(0, 1fr); gap: 3px; font-weight: 600; }
 .salt-dialog .salt-shipping-fields .salt-shipping-opt-in { grid-template-columns: auto 1fr; align-items: start; }
