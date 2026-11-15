@@ -384,7 +384,7 @@ function StoreCard({
             )}
             <div className="salt-comment-form">
               <strong>コメントを追加</strong>
-              <textarea value={commentBody} onChange={(event) => setCommentBody(event.target.value)} maxLength={300} rows={3} placeholder="例) レジの混雑、入荷予定、売場の状況など" />
+              <textarea value={commentBody} onChange={(event) => setCommentBody(event.target.value)} maxLength={300} rows={3} placeholder={online ? "例) 再入荷予定、発送・お届け予定など" : "例) レジの混雑、入荷予定、売場の状況など"} />
               <small>個人情報・URLの投稿はお控えください。店舗状況は時間とともに変わるため、参考情報としてご利用ください。</small>
               {commentError && <p role="alert">{commentError}</p>}
               {commentMessage && <p role="status">{commentMessage}</p>}
