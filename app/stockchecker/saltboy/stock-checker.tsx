@@ -12,11 +12,34 @@ import { FeedbackForm, StoreContribution, StoreRequest } from "./support-forms";
 type Mode = "physical" | "online";
 const AMAZON_JAPAN_STORE_ID = 308;
 const AMAZON_PRODUCTS: Partial<Record<string, { standard: string; bonus?: string }>> = {
-  "UPCH-7909": { standard: "B0HMHZRS92" },
-  "UPCH-7910": { standard: "B0HMHNY2K4" },
-  "UPCH-7911": { standard: "B0HMHNLR3L" },
+  "UPCH-7909": { standard: "B0HMHZRS92", bonus: "B0HMHM67MR" },
+  "UPCH-7910": { standard: "B0HMHNY2K4", bonus: "B0HMHKQVHJ" },
+  "UPCH-7911": { standard: "B0HMHNLR3L", bonus: "B0HMHMBQHW" },
   "UPCH-7912": { standard: "B0HMJB4MT1", bonus: "B0HMHT46H4" },
-  "UPCH-7913": { standard: "B0HMHVYQZF" },
+  "UPCH-7913": { standard: "B0HMHVYQZF", bonus: "B0HMHJD92X" },
+};
+const HMV_PRODUCT_BASE = "https://www.hmv.co.jp/artist_KAITO_000000001041831/item_SALT-BOY";
+const HMV_PRODUCTS: Partial<Record<string, string>> = {
+  "UPCH-7909": `${encodeURIComponent("【初回限定盤A】")}-CD-Blu-ray_17348057`,
+  "UPCH-7910": `${encodeURIComponent("【初回限定盤A】")}-CD-DVD_17348058`,
+  "UPCH-7911": `${encodeURIComponent("【初回限定盤B】")}-CD-Blu-ray_17348059`,
+  "UPCH-7912": `${encodeURIComponent("【初回限定盤B】")}-CD-DVD_17348060`,
+  "UPCH-7913": `${encodeURIComponent("【通常盤＜初回プレス＞】")}_17348061`,
+};
+const RAKUTEN_BOOKS_PRODUCT_BASE = "https://books.rakuten.co.jp/rb/";
+const RAKUTEN_BOOKS_PRODUCTS: Partial<Record<string, { standard: string; bonus: string }>> = {
+  "UPCH-7909": { standard: "18854626", bonus: "18854635" },
+  "UPCH-7910": { standard: "18854627", bonus: "18854637" },
+  "UPCH-7911": { standard: "18854628", bonus: "18854639" },
+  "UPCH-7912": { standard: "18854629", bonus: "18854641" },
+  "UPCH-7913": { standard: "18854630", bonus: "18854643" },
+};
+const TOWER_PRODUCTS: Partial<Record<string, string>> = {
+  "UPCH-7909": "8186655",
+  "UPCH-7910": "8186658",
+  "UPCH-7911": "8186659",
+  "UPCH-7912": "8186660",
+  "UPCH-7913": "8186661",
 };
 type Comment = {
   id: number;
@@ -163,6 +186,8 @@ function StoreCard({
 
   const online = mode === "online";
   const storeUrl = safeUrl(store.official_url);
+  const isRakutenBooks = online && /楽天|rakuten/i.test(`${store.name} ${store.chain_name ?? ""}`);
+  const isTower = online && /タワーレコード|tower/i.test(`${store.name} ${store.chain_name ?? ""}`);
   const stockItems = inventory?.products.map((product) => ({
     product, item: reports.get(`${store.id}:${product.id}`),
   })) ?? [];
@@ -282,6 +307,10 @@ function StoreCard({
               const shipping = online ? item?.shipping_estimate : null;
               const amazon = online && store.id === AMAZON_JAPAN_STORE_ID
                 ? AMAZON_PRODUCTS[product.catalog_number] : undefined;
+              const hmv = online && /hmv/i.test(`${store.name} ${store.chain_name ?? ""}`)
+                ? HMV_PRODUCTS[product.catalog_number] : undefined;
+              const rakuten = isRakutenBooks ? RAKUTEN_BOOKS_PRODUCTS[product.catalog_number] : undefined;
+              const tower = isTower ? TOWER_PRODUCTS[product.catalog_number] : undefined;
               return (
                 <div key={product.id}>
                   <dt>{product.name}</dt>
@@ -301,10 +330,27 @@ function StoreCard({
                       Amazon限定特典付き
                     </ExternalLink>}
                   </dd>}
+                  {hmv && <dd>
+                    <ExternalLink href={`${HMV_PRODUCT_BASE}${hmv}`} showArrow={false}>HMV</ExternalLink>
+                  </dd>}
+                  {rakuten && <dd className="salt-product-links">
+                    <ExternalLink href={`${RAKUTEN_BOOKS_PRODUCT_BASE}${rakuten.standard}/`} showArrow={false}>楽天ブックス</ExternalLink>
+                    <ExternalLink href={`${RAKUTEN_BOOKS_PRODUCT_BASE}${rakuten.bonus}/`} showArrow={false}>限定特典付き</ExternalLink>
+                  </dd>}
+                  {tower && <dd>
+                    <ExternalLink href={`https://tower.jp/item/${tower}`} showArrow={false}>タワーレコード</ExternalLink>
+                  </dd>}
                 </div>
               );
             })}
           </dl>
+          {isRakutenBooks && <div className="salt-bundle-links">
+            <strong>まとめ買い (3形態)</strong>
+            <ExternalLink href={`${RAKUTEN_BOOKS_PRODUCT_BASE}18854631/`} showArrow={false}>Blu-rayセット</ExternalLink>
+            <ExternalLink href={`${RAKUTEN_BOOKS_PRODUCT_BASE}18854632/`} showArrow={false}>Blu-rayセット (限定特典付き)</ExternalLink>
+            <ExternalLink href={`${RAKUTEN_BOOKS_PRODUCT_BASE}18854633/`} showArrow={false}>DVDセット</ExternalLink>
+            <ExternalLink href={`${RAKUTEN_BOOKS_PRODUCT_BASE}18854634/`} showArrow={false}>DVDセット (限定特典付き)</ExternalLink>
+          </div>}
         </section>
       )}
 
@@ -671,7 +717,7 @@ export default function StockChecker({ physical, online, inventory }: {
           <p className="salt-report-help">投稿する形態だけ選択してください。複数形態を一度に送信できます。</p>
           {mode === "physical" && <aside className="salt-report-multiple">
             <strong>複数店舗をまとめて確認・投稿される方へ</strong>
-            <p>電話確認などで複数店舗の情報を確認した場合は、各店舗の投稿のコメント欄に「電話確認」「複数店舗をまとめて確認」など、確認方法を一言添えてください。</p>
+            <p>帰宅後などに複数店舗の在庫情報をまとめて投稿する場合は、各店舗のコメント欄に「店頭で確認」「電話で確認」など、確認方法を一言添えてください。</p>
           </aside>}
           <fieldset className="salt-report-products"><legend>形態ごとの在庫状況</legend>{inventory?.products.map((product) => {
             const selected = reportInputs[product.id] ?? { status: "", quantity: "" };
