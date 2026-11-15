@@ -446,7 +446,7 @@ export default function AdminPage() {
     useState("300000");
 
   const [activeTab, setActiveTab] =
-    useState<AdminTab>("reports");
+    useState<AdminTab>("salt-boy");
   const [storeInfoSubTab, setStoreInfoSubTab] =
     useState<"store-info" | "billboard">("store-info");
 
@@ -2393,35 +2393,8 @@ export default function AdminPage() {
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-[#f5edf4] p-2 md:grid-cols-3 lg:grid-cols-7">
-            <AdminTabButton
-              active={
-                activeTab === "reports"
-              }
-              onClick={() =>
-                setActiveTab("reports")
-              }
-            >
-              📋 投稿一覧
-            </AdminTabButton>
-
             <AdminTabButton active={activeTab === "salt-boy"} onClick={() => setActiveTab("salt-boy")}>
-              SALT BOY
-            </AdminTabButton>
-
-            <AdminTabButton
-              active={
-                activeTab === "review"
-              }
-              onClick={() =>
-                setActiveTab("review")
-              }
-            >
-              🔎 要確認
-              {pendingReviewCount > 0 && (
-                <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
-                  {pendingReviewCount}
-                </span>
-              )}
+              📋 投稿一覧
             </AdminTabButton>
 
             <AdminTabButton
@@ -2433,34 +2406,6 @@ export default function AdminPage() {
               }
             >
               🛡️ セキュリティ
-            </AdminTabButton>
-
-            <AdminTabButton
-              active={
-                activeTab ===
-                "deletions"
-              }
-              onClick={() =>
-                setActiveTab(
-                  "deletions"
-                )
-              }
-            >
-              🗑️ 削除履歴
-            </AdminTabButton>
-
-            <AdminTabButton
-              active={
-                activeTab ===
-                "user-deletions"
-              }
-              onClick={() =>
-                setActiveTab(
-                  "user-deletions"
-                )
-              }
-            >
-              👤 自己削除履歴
             </AdminTabButton>
 
             <AdminTabButton
