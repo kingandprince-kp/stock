@@ -724,9 +724,10 @@ export default function StockChecker({ physical, online, inventory }: {
                 ...current, [key]: { status: event.target.value, quantity: current[key]?.quantity ?? "" },
               }))}>
                 <option value="">投稿しない</option>
-                {Object.entries(REPORT_OPTIONS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                {Object.entries(REPORT_OPTIONS).filter(([value]) => mode === "physical" || value !== "quantity")
+                  .map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
-              {selected.status === "quantity" && <label className="salt-report-quantity">
+              {mode === "physical" && selected.status === "quantity" && <label className="salt-report-quantity">
                 <input type="number" min="1" max="10000" step="1" inputMode="numeric" value={selected.quantity} onChange={(event) => setReportInputs((current) => ({ ...current, [key]: { ...selected, quantity: event.target.value } }))} required aria-label={title + "の在庫数"} />
                 <span>枚</span>
               </label>}
@@ -734,7 +735,9 @@ export default function StockChecker({ physical, online, inventory }: {
             </div>;
           })}</fieldset>
           <label className="salt-report-comment">コメント (任意)
-            <textarea value={reportComment} onChange={(event) => setReportComment(event.target.value)} maxLength={300} rows={3} placeholder="売場や入荷状況など。個人情報・URLは入力しないでください。" />
+            <textarea value={reportComment} onChange={(event) => setReportComment(event.target.value)} maxLength={300} rows={3} placeholder={mode === "online"
+              ? "再入荷や発送・お届け予定など。個人情報・URLは入力しないでください。"
+              : "売場や入荷状況など。個人情報・URLは入力しないでください。"} />
             <small>{reportComment.length}/300文字</small>
           </label>
           <div className="salt-report-caution">在庫状況は投稿後に変わる場合があります。表示された在庫を保証するものではありません。来店・購入前に店舗やショップへ最新情報をご確認ください。</div>
