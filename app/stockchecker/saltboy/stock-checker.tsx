@@ -338,7 +338,7 @@ function StoreCard({
                 <div key={key}>
                   <dt>{url ? <ExternalLink href={url} showArrow={false}>{purchaseLabel(product.name, variant)}</ExternalLink> : purchaseLabel(product.name, variant)}</dt>
                   <dd>
-                    {label ? <strong className="salt-stock-status" data-status={isInStock(item) ? "available" : label === "在庫なし" ? "unavailable" : "unknown"}>{label}</strong> : "投稿なし"}
+                    {label ? <strong className="salt-stock-status" data-status={isInStock(item) ? "available" : label === "在庫なし" ? "unavailable" : "unknown"}>{label === "在庫あり" ? "○ " : label === "在庫なし" ? "× " : ""}{label}</strong> : "投稿なし"}
                     {item && <time dateTime={item.created_at}>{DATE_FORMAT.format(new Date(item.created_at))}</time>}
                     {shipping && <span className="salt-stock-shipping">
                       {shippingEstimateText(shipping)}
@@ -413,6 +413,7 @@ export default function StockChecker({ physical, online, inventory }: {
   const [query, setQuery] = useState("");
   const [prefecture, setPrefecture] = useState("");
   const [stockOnly, setStockOnly] = useState(false);
+  const [firstWeekSort, setFirstWeekSort] = useState(false);
   const [billboardOnly, setBillboardOnly] = useState(false);
   const [limit, setLimit] = useState(20);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -531,8 +532,19 @@ export default function StockChecker({ physical, online, inventory }: {
       && (!term || normalize([displayName(store), store.prefecture, store.city, store.address].join(" ")).includes(term))
     ).map((store) => ({ store, distance: mode === "physical" && location ? distanceKm(location.lat, location.lng, store) : null }));
     if (mode === "physical" && location) stores.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+    if (mode === "online" && firstWeekSort) {
+      const rank = { likely: 0, check: 1, unlikely: 2 };
+      const ranked = stores.map((entry) => ({
+        entry,
+        priority: getListings(entry.store, inventory?.products ?? [], true).reduce((best, { product, variant }) => {
+          const item = reports.get(stockKey(entry.store.id, product.id, variant));
+          return isInStock(item) ? Math.min(best, rank[firstWeekEstimate(item?.shipping_estimate ?? null).status]) : best;
+        }, 3),
+      }));
+      return ranked.sort((a, b) => a.priority - b.priority).map(({ entry }) => entry);
+    }
     return stores;
-  }, [mode, physical, online, prefecture, query, location, billboardOnly, stockOnly, inStockStores]);
+  }, [mode, physical, online, prefecture, query, location, billboardOnly, stockOnly, inStockStores, firstWeekSort, inventory, reports]);
 
   function locate() {
     if (!navigator.geolocation) return setGeoMessage("このブラウザーでは現在地を取得できません。");
@@ -679,8 +691,12 @@ export default function StockChecker({ physical, online, inventory }: {
             </label>
             {inventory && <label className="salt-stock-filter">
               <input type="checkbox" checked={stockOnly} onChange={(event) => { setStockOnly(event.target.checked); setLimit(20); }} />
-              在庫あり商品のみ表示
+              在庫あり商品のみ
             </label>}
+            {mode === "online" && inventory && <button type="button" className="salt-stock-filter" aria-pressed={firstWeekSort}
+              onClick={() => { setFirstWeekSort((current) => !current); setLimit(20); }}>
+              初週判定順
+            </button>}
           </div>
         </div>
         {!inventory && <p className="salt-error" role="alert">SALT BOYの在庫データを取得できませんでした。時間をおいて再読み込みしてください。</p>}
