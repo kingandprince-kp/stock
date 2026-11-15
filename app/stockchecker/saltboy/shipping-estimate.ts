@@ -58,16 +58,16 @@ export function shippingEstimateText(estimate: ShippingEstimate) {
   return `${basis}: ${timing} (確認場所: ${estimate.sourceDetail || SOURCE_LABELS[estimate.source]})`;
 }
 
-export function readShippingEstimate(form: FormData) {
+export function readShippingEstimate(form: FormData, prefix = "") {
   return parseShippingEstimate({
-    basis: form.get("shippingBasis"),
-    kind: form.get("shippingKind"),
-    minDays: form.get("shippingMinDays") ? Number(form.get("shippingMinDays")) : null,
-    maxDays: form.get("shippingMaxDays") ? Number(form.get("shippingMaxDays")) : null,
-    date: form.get("shippingDate"),
-    condition: form.get("shippingCondition"),
-    wording: form.get("shippingWording"),
-    source: form.get("shippingSource"),
-    sourceDetail: form.get("shippingSourceDetail"),
+    basis: form.get(prefix + "shippingBasis"),
+    kind: form.get(prefix + "shippingKind"),
+    minDays: form.get(prefix + "shippingMinDays") ? Number(form.get(prefix + "shippingMinDays")) : null,
+    maxDays: form.get(prefix + "shippingMaxDays") ? Number(form.get(prefix + "shippingMaxDays")) : null,
+    date: form.get(prefix + "shippingDate"),
+    condition: form.get(prefix + "shippingCondition"),
+    wording: form.get(prefix + "shippingWording"),
+    source: form.get(prefix + "shippingSource"),
+    sourceDetail: form.get(prefix + "shippingSourceDetail"),
   });
 }

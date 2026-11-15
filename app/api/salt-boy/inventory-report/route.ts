@@ -11,7 +11,8 @@ type ReportItem = {
   quantity: number;
   stockStatus: string;
   comment?: string;
-  purchaseVariant?: string;
+  purchaseVariant?: string | null;
+  shippingEstimate?: unknown;
 };
 type RequestBody = {
   storeId?: number;
@@ -52,11 +53,12 @@ export async function POST(request: Request) {
     if (!Number.isSafeInteger(storeId) || Number(storeId) <= 0) {
       return errorResponse("店舗を選び直してください。");
     }
-    if (!Array.isArray(items) || items.length < 1 || items.length > 7) {
-      return errorResponse("在庫状況を1～7形態選択してください。");
+    if (!Array.isArray(items) || items.length < 1 || items.length > 14) {
+      return errorResponse("投稿する商品を1〜14件選択してください。");
     }
-    if (new Set(items.map((item) => item.productId)).size !== items.length || items.some((item) =>
-      !Number.isSafeInteger(item.productId) || item.productId <= 0
+    if (items.some((item) =>
+      !item || !Number.isSafeInteger(item.productId) || item.productId <= 0
+      || (item.purchaseVariant != null && typeof item.purchaseVariant !== "string")
       || !Number.isSafeInteger(item.quantity) || item.quantity < 0 || item.quantity > 10000
       || !STOCK_STATUSES.has(item.stockStatus)
       || (item.stockStatus === "sold_out" && item.quantity !== 0)
@@ -99,17 +101,24 @@ export async function POST(request: Request) {
 
     const supabase = inventoryDb();
     const clientHash = createHash("sha256").update(clientId).digest("hex");
+    const listings = items.map((item) => ({
+      ...item,
+      estimate: item.shippingEstimate === undefined ? shippingEstimate : parseShippingEstimate(item.shippingEstimate),
+    }));
+    if (listings.some((item) => item.shippingEstimate != null && !item.estimate)) {
+      return errorResponse("商品ごとの発送・お届け目安を確認してください。");
+    }
     const { data, error } = await supabase.rpc("salt_boy_submit_inventory", {
       p_store_id: storeId,
       p_client_hash: clientHash,
       p_request_id: requestId,
-      p_items: items.map((item) => ({
+      p_items: listings.map((item) => ({
         product_id: item.productId,
         quantity: item.quantity,
         stock_status: item.stockStatus,
         purchase_variant: item.purchaseVariant ?? null,
         comment: item.comment?.trim() || null,
-        shipping_estimate: shippingEstimate,
+        shipping_estimate: item.estimate,
         auto_publish: true,
       })),
     });

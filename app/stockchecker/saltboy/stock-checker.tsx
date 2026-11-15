@@ -41,7 +41,7 @@ const TOWER_PRODUCTS: Partial<Record<string, string>> = {
   "UPCH-7912": "8186660",
   "UPCH-7913": "8186661",
 };
-type Listing = { product: Product; variant: PurchaseVariant | null; url?: string; linkLabel?: string };
+type Listing = { product: Product; variant: PurchaseVariant | null; url?: string };
 
 function getListings(store: Store, products: Product[], online: boolean): Listing[] {
   const retailer = `${store.name} ${store.chain_name ?? ""}`;
@@ -53,18 +53,18 @@ function getListings(store: Store, products: Product[], online: boolean): Listin
     const sku = amazon ?? rakuten;
     if (sku) {
       const base = amazon ? "https://www.amazon.co.jp/dp/" : RAKUTEN_BOOKS_PRODUCT_BASE;
-      const entry = (variant: PurchaseVariant, id: string): Listing => ({ product, variant, url: base + id + (amazon ? "" : "/"), linkLabel: amazon ? "Amazon" : "楽天ブックス" });
+      const entry = (variant: PurchaseVariant, id: string): Listing => ({ product, variant, url: base + id + (amazon ? "" : "/") });
       return [entry("no_special", sku.standard), ...(sku.bonus ? [entry("special", sku.bonus)] : [])];
     }
-    if (/hmv/i.test(retailer) && HMV_PRODUCTS[code]) return [{ product, variant: null, url: HMV_PRODUCT_BASE + HMV_PRODUCTS[code], linkLabel: "HMV" }];
-    if (/タワーレコード|tower/i.test(retailer) && TOWER_PRODUCTS[code]) return [{ product, variant: null, url: `https://tower.jp/item/${TOWER_PRODUCTS[code]}`, linkLabel: "タワーレコード" }];
-    if (store.id === 307 && /^UPCH-79(?:09|1[0-3])$/.test(code)) return [{ product, variant: null, url: `https://store.universal-music.co.jp/collections/kaito/products/${code.toLowerCase().replace("-", "")}`, linkLabel: "UNIVERSAL MUSIC STORE" }];
+    if (/hmv/i.test(retailer) && HMV_PRODUCTS[code]) return [{ product, variant: null, url: HMV_PRODUCT_BASE + HMV_PRODUCTS[code] }];
+    if (/タワーレコード|tower/i.test(retailer) && TOWER_PRODUCTS[code]) return [{ product, variant: null, url: `https://tower.jp/item/${TOWER_PRODUCTS[code]}` }];
+    if (store.id === 307 && /^UPCH-79(?:09|1[0-3])$/.test(code)) return [{ product, variant: null, url: `https://store.universal-music.co.jp/collections/kaito/products/${code.toLowerCase().replace("-", "")}` }];
     return [{ product, variant: null }];
   }).concat(online && store.id === RAKUTEN_BOOKS_STORE_ID ? products.filter((p) => p.catalog_number === "UPCH-7913").flatMap((product): Listing[] => [
-    { product, variant: "bluray_set", url: RAKUTEN_BOOKS_PRODUCT_BASE + "18854631/", linkLabel: "楽天ブックス" },
-    { product, variant: "bluray_set_special", url: RAKUTEN_BOOKS_PRODUCT_BASE + "18854632/", linkLabel: "楽天ブックス" },
-    { product, variant: "dvd_set", url: RAKUTEN_BOOKS_PRODUCT_BASE + "18854633/", linkLabel: "楽天ブックス" },
-    { product, variant: "dvd_set_special", url: RAKUTEN_BOOKS_PRODUCT_BASE + "18854634/", linkLabel: "楽天ブックス" },
+    { product, variant: "bluray_set", url: RAKUTEN_BOOKS_PRODUCT_BASE + "18854631/" },
+    { product, variant: "bluray_set_special", url: RAKUTEN_BOOKS_PRODUCT_BASE + "18854632/" },
+    { product, variant: "dvd_set", url: RAKUTEN_BOOKS_PRODUCT_BASE + "18854633/" },
+    { product, variant: "dvd_set_special", url: RAKUTEN_BOOKS_PRODUCT_BASE + "18854634/" },
   ]) : []);
 }
 type Comment = {
@@ -197,7 +197,7 @@ function StoreCard({
   firstWeek: FirstWeek[];
   commentCount: number;
   onCommentsChanged: () => Promise<void>;
-  onReport: (store: Store, listing?: Listing) => void;
+  onReport: (store: Store) => void;
   distance: number | null;
 }) {
   const [infoOpen, setInfoOpen] = useState(false);
@@ -329,11 +329,11 @@ function StoreCard({
             <p>最終更新 {lastUpdated ? <time dateTime={lastUpdated}>{DATE_FORMAT.format(new Date(lastUpdated))}</time> : "—"}</p>
           </div>
           <dl className="salt-stock">
-            {stockItems.filter(({ item }) => !stockOnly || isInStock(item)).map(({ product, variant, item, key, url, linkLabel }) => {
+            {stockItems.filter(({ item }) => !stockOnly || isInStock(item)).map(({ product, variant, item, key, url }) => {
               const shipping = online ? item?.shipping_estimate : null;
               return (
                 <div key={key}>
-                  <dt>{purchaseLabel(product.name, variant)}</dt>
+                  <dt>{url ? <ExternalLink href={url} showArrow={false}>{purchaseLabel(product.name, variant)}</ExternalLink> : purchaseLabel(product.name, variant)}</dt>
                   <dd className={isInStock(item) ? "salt-in-stock" : undefined}>
                     {item ? stockLabel(item) : "投稿なし"}
                     {item && <time dateTime={item.created_at}>{DATE_FORMAT.format(new Date(item.created_at))}</time>}
@@ -342,8 +342,6 @@ function StoreCard({
                       {shipping.condition && <><br />条件: {shipping.condition}</>}
                     </span>}
                   </dd>
-                  {url && <dd><ExternalLink href={url} showArrow={false}>{linkLabel}</ExternalLink></dd>}
-                  {online && <dd><button type="button" className="salt-listing-report" onClick={() => onReport(store, { product, variant })}>在庫投稿</button></dd>}
                 </div>
               );
             })}
@@ -352,7 +350,7 @@ function StoreCard({
       )}
 
       <div className="salt-store-actions">
-        {!online && inventory?.products.length ? <button type="button" onClick={() => onReport(store)}>在庫投稿</button> : null}
+        {inventory?.products.length ? <button type="button" onClick={() => onReport(store)}>在庫投稿</button> : null}
         {!online && <button type="button" className="salt-info-toggle" aria-expanded={infoOpen} onClick={() => setInfoOpen((value) => !value)}>{infoOpen ? "店舗情報を閉じる ∧" : "店舗情報を見る ∨"}</button>}
       </div>
 
@@ -414,8 +412,8 @@ export default function StockChecker({ physical, online, inventory }: {
   const [geoMessage, setGeoMessage] = useState("");
   const [locating, setLocating] = useState(false);
   const [reportStore, setReportStore] = useState<Store | null>(null);
-  const [reportInputs, setReportInputs] = useState<Record<number, { status: string; quantity: string }>>({});
-  const [reportListing, setReportListing] = useState<Listing>();
+  const [reportInputs, setReportInputs] = useState<Record<string, { status: string; quantity: string }>>({});
+  const reportListings = reportStore ? getListings(reportStore, inventory?.products ?? [], mode === "online") : [];
   const [reportComment, setReportComment] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportError, setReportError] = useState("");
@@ -544,9 +542,8 @@ export default function StockChecker({ physical, online, inventory }: {
     }, { timeout: 10000, maximumAge: 60000 });
   }
 
-  function openReport(store: Store, listing?: Listing) {
+  function openReport(store: Store) {
     setReportStore(store);
-    setReportListing(listing);
     setReportInputs({});
     setReportComment("");
     setReportError("");
@@ -570,26 +567,24 @@ export default function StockChecker({ physical, online, inventory }: {
     if (!turnstileToken) return setReportError("Bot対策の確認を完了してください。");
 
     const form = new FormData(event.currentTarget);
-    const includesShipping = mode === "online" && form.has("includeShipping");
-    const shippingEstimate = includesShipping ? readShippingEstimate(form) : null;
-    if (includesShipping && !shippingEstimate) {
-      return setReportError("発送・お届け目安の日付、日数の範囲、確認場所を確認してください。");
-    }
-
     const comment = reportComment.trim();
-    const items = (reportListing ? [reportListing.product] : inventory.products).flatMap((product) => {
-      const selected = reportInputs[product.id];
-      if (!selected?.status) return [];
-      if (selected.status === "quantity") {
-        const quantity = Number(selected.quantity);
-        if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10000) return [];
-        return [{ productId: product.id, quantity, stockStatus: "in_stock", comment, purchaseVariant: reportListing?.variant }];
+    const items = [];
+    for (const { product, variant } of reportListings) {
+      const key = stockKey(reportStore.id, product.id, variant);
+      const selected = reportInputs[key];
+      if (!selected?.status) continue;
+      const isQuantity = selected.status === "quantity";
+      const quantity = isQuantity ? Number(selected.quantity) : 0;
+      if (isQuantity && (!Number.isInteger(quantity) || quantity < 1 || quantity > 10000)) {
+        return setReportError("枚数は1〜10,000の整数で入力してください。");
       }
-      // With in_stock, zero represents an available item whose count was not provided.
-      return [{ productId: product.id, quantity: 0, stockStatus: selected.status, comment, purchaseVariant: reportListing?.variant }];
-    });
-    if (items.length !== Object.values(reportInputs).filter((item) => item.status).length) {
-      return setReportError("枚数を入力する形態は、1～10,000の整数で入力してください。");
+      const prefix = key + ":";
+      const includesShipping = mode === "online" && form.has(prefix + "includeShipping");
+      const shippingEstimate = includesShipping ? readShippingEstimate(form, prefix) : null;
+      if (includesShipping && !shippingEstimate) {
+        return setReportError(purchaseLabel(product.name, variant) + "の発送・お届け目安を確認してください。");
+      }
+      items.push({ productId: product.id, purchaseVariant: variant, quantity, stockStatus: isQuantity ? "in_stock" : selected.status, comment, shippingEstimate });
     }
     if (!items.length) return setReportError("投稿する形態と在庫状況を選択してください。");
     if (items.some((item) => item.quantity >= 50) && !comment) {
@@ -601,7 +596,7 @@ export default function StockChecker({ physical, online, inventory }: {
       const response = await fetch("/api/salt-boy/inventory-report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeId: reportStore.id, items, clientId: clientId(), requestId, turnstileToken, shippingEstimate }),
+        body: JSON.stringify({ storeId: reportStore.id, items, clientId: clientId(), requestId, turnstileToken }),
       });
       const result = await response.json() as { success?: boolean; message?: string; pendingCount?: number | null };
       if (!response.ok || !result.success) {
@@ -714,29 +709,30 @@ export default function StockChecker({ physical, online, inventory }: {
           <div className="salt-section-kicker">INVENTORY REPORT</div>
           <h2 id="salt-report-title">在庫投稿</h2>
           <p className="salt-report-store-name">{displayName(reportStore)}</p>
-          {!reportListing && <p className="salt-report-help">投稿する形態だけ選択してください。複数形態を一度に送信できます。</p>}
+          <p className="salt-report-help">投稿する商品を選んでください。複数の商品を一度に送信できます。</p>
           {mode === "physical" && <aside className="salt-report-multiple">
             <strong>複数店舗をまとめて確認・投稿される方へ</strong>
             <p>帰宅後などに複数店舗の在庫情報をまとめて投稿する場合は、各店舗のコメント欄に「店頭で確認」「電話で確認」など、確認方法を一言添えてください。</p>
           </aside>}
-          <fieldset className="salt-report-products"><legend>在庫状況</legend>{(reportListing ? [reportListing.product] : inventory?.products)?.map((product) => {
-            const selected = reportInputs[product.id] ?? { status: "", quantity: "" };
-            return <div className="salt-report-product" key={product.id}>
-              <label htmlFor={`salt-status-${product.id}`}>{reportListing ? purchaseLabel(product.name, reportListing.variant) : product.name}</label>
-              <select id={`salt-status-${product.id}`} value={selected.status} onChange={(event) => setReportInputs((current) => ({
-                ...current,
-                [product.id]: { status: event.target.value, quantity: current[product.id]?.quantity ?? "" },
+          <fieldset className="salt-report-products"><legend>在庫状況</legend>{reportListings.map(({ product, variant }) => {
+            const key = stockKey(reportStore.id, product.id, variant);
+            const title = purchaseLabel(product.name, variant);
+            const selected = reportInputs[key] ?? { status: "", quantity: "" };
+            return <div className="salt-report-product" key={key}>
+              <label htmlFor={"salt-status-" + key}>{title}</label>
+              <select id={"salt-status-" + key} value={selected.status} onChange={(event) => setReportInputs((current) => ({
+                ...current, [key]: { status: event.target.value, quantity: current[key]?.quantity ?? "" },
               }))}>
                 <option value="">投稿しない</option>
                 {Object.entries(REPORT_OPTIONS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
               {selected.status === "quantity" && <label className="salt-report-quantity">
-                <input type="number" min="1" max="10000" step="1" inputMode="numeric" value={selected.quantity} onChange={(event) => setReportInputs((current) => ({ ...current, [product.id]: { ...selected, quantity: event.target.value } }))} required aria-label={`${product.name}の在庫数`} />
+                <input type="number" min="1" max="10000" step="1" inputMode="numeric" value={selected.quantity} onChange={(event) => setReportInputs((current) => ({ ...current, [key]: { ...selected, quantity: event.target.value } }))} required aria-label={title + "の在庫数"} />
                 <span>枚</span>
               </label>}
+              {mode === "online" && selected.status && <ShippingEstimateFields prefix={key + ":"} />}
             </div>;
           })}</fieldset>
-          {mode === "online" && <ShippingEstimateFields />}
           <label className="salt-report-comment">コメント (任意)
             <textarea value={reportComment} onChange={(event) => setReportComment(event.target.value)} maxLength={300} rows={3} placeholder="売場や入荷状況など。個人情報・URLは入力しないでください。" />
             <small>{reportComment.length}/300文字</small>
