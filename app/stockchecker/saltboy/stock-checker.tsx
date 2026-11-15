@@ -7,6 +7,7 @@ import { supabase } from "@/app/lib/supabase";
 import type { FirstWeek, Inventory, Product, SaltInventory, Store } from "./data";
 import { AMAZON_JAPAN_STORE_ID, RAKUTEN_BOOKS_STORE_ID, purchaseLabel, stockKey, type PurchaseVariant } from "./purchase-variants";
 import { readShippingEstimate, shippingEstimateText } from "./shipping-estimate";
+import { firstWeekEstimate, FIRST_WEEK_LABELS } from "./first-week-estimate";
 import ShippingEstimateFields from "./shipping-estimate-fields";
 import { FeedbackForm, StoreContribution, StoreRequest } from "./support-forms";
 
@@ -332,6 +333,7 @@ function StoreCard({
             {stockItems.filter(({ item }) => !stockOnly || isInStock(item)).map(({ product, variant, item, key, url }) => {
               const shipping = online ? item?.shipping_estimate : null;
               const label = item ? stockLabel(item) : null;
+              const firstWeekStatus = online && (shipping || isInStock(item)) ? firstWeekEstimate(shipping ?? null) : null;
               return (
                 <div key={key}>
                   <dt>{url ? <ExternalLink href={url} showArrow={false}>{purchaseLabel(product.name, variant)}</ExternalLink> : purchaseLabel(product.name, variant)}</dt>
@@ -341,6 +343,10 @@ function StoreCard({
                     {shipping && <span className="salt-stock-shipping">
                       {shippingEstimateText(shipping)}
                       {shipping.condition && <><br />条件: {shipping.condition}</>}
+                    </span>}
+                    {firstWeekStatus && <span className="salt-stock-first-week" data-status={firstWeekStatus.status}>
+                      <strong>{FIRST_WEEK_LABELS[firstWeekStatus.status]}</strong>
+                      <small>{firstWeekStatus.reason}</small>
                     </span>}
                   </dd>
                 </div>

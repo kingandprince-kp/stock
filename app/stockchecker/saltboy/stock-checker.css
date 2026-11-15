@@ -180,6 +180,10 @@
 .salt-shipping-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .salt-shipping-fields :is(select, input:not([type="checkbox"])) { width: 100%; min-width: 0; min-height: 36px; padding: 5px 7px; border: 1px solid #c6d1d8; border-radius: 6px; background: #fff; }
 .salt-stock-shipping { flex-basis: 100%; font-size: 11px; font-weight: 400; }
+.salt-stock-first-week { flex-basis: 100%; display: block; margin-top: 3px; padding: 4px 6px; border: 1px solid #d0b56e; border-radius: 5px; background: #fff5d9; color: #59450d; font-size: 11px; }
+.salt-stock-first-week[data-status="likely"] { border-color: #9dbce5; background: #eef5ff; color: #284f80; }
+.salt-stock-first-week[data-status="unlikely"] { border-color: #e2a9ae; background: #fff0f1; color: #852e37; }
+.salt-stock-first-week small { display: block; font-size: inherit; }
 .salt-dialog .salt-turnstile { display: flex; justify-content: center; margin-top: 12px; }
 .salt-dialog .salt-report-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 .salt-dialog .salt-report-actions button { margin: 0; }
