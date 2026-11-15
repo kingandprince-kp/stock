@@ -184,6 +184,9 @@
 .salt-stock-first-week[data-status="likely"] { border-color: #9dbce5; background: #eef5ff; color: #284f80; }
 .salt-stock-first-week[data-status="unlikely"] { border-color: #e2a9ae; background: #fff0f1; color: #852e37; }
 .salt-stock-first-week small { display: block; font-size: inherit; }
+.salt-stock-first-week strong::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-inline-end: 4px; border-radius: 50%; background: #b48312; vertical-align: 1px; }
+.salt-stock-first-week[data-status="likely"] strong::before { background: #2e66aa; }
+.salt-stock-first-week[data-status="unlikely"] strong::before { background: #b43443; }
 .salt-dialog .salt-turnstile { display: flex; justify-content: center; margin-top: 12px; }
 .salt-dialog .salt-report-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 .salt-dialog .salt-report-actions button { margin: 0; }
