@@ -11,6 +11,7 @@ type ReportItem = {
   quantity: number;
   stockStatus: string;
   comment?: string;
+  purchaseVariant?: string;
 };
 type RequestBody = {
   storeId?: number;
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
         product_id: item.productId,
         quantity: item.quantity,
         stock_status: item.stockStatus,
-        purchase_variant: null,
+        purchase_variant: item.purchaseVariant ?? null,
         comment: item.comment?.trim() || null,
         shipping_estimate: shippingEstimate,
         auto_publish: true,

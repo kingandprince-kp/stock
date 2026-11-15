@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { parseShippingEstimate, type ShippingEstimate } from "./shipping-estimate";
+import { stockKey, type PurchaseVariant } from "./purchase-variants";
 
 export type Store = {
   id: number;
@@ -20,6 +21,7 @@ export type Store = {
 
 export type Product = { id: number; name: string; catalog_number: string };
 export type Inventory = {
+  purchase_variant: PurchaseVariant | null;
   store_id: number;
   product_id: number;
   quantity: number | null;
@@ -94,19 +96,19 @@ export async function loadInventory(): Promise<SaltInventory> {
   const pageSize = 1000;
   for (let offset = 0; ; offset += pageSize) {
     const result = await db.from("salt_boy_inventory_reports")
-      .select("id,store_id,product_id,quantity,stock_status,created_at,comment,shipping_estimate")
+      .select("id,store_id,product_id,quantity,stock_status,created_at,comment,shipping_estimate,purchase_variant")
       .eq("review_status", "approved").is("deleted_at", null)
       .order("created_at", { ascending: false }).order("id", { ascending: false })
       .range(offset, offset + pageSize - 1);
     if (result.error) throw new Error("SALT BOYの在庫情報を取得できませんでした。");
     for (const row of result.data) {
       // Preserve previously accepted shipping ranges when reading existing reports.
-      const report = { ...row, shipping_estimate: parseShippingEstimate(row.shipping_estimate, 30) };
+      const report = { ...row, purchase_variant: row.purchase_variant as PurchaseVariant | null, shipping_estimate: parseShippingEstimate(row.shipping_estimate, 30) };
       if (recentReports.length < 5) recentReports.push(report);
-      const key = `${report.store_id}:${report.product_id}`;
+      const key = stockKey(report.store_id, report.product_id, report.purchase_variant);
       if (!latest.has(key)) {
-        const { store_id, product_id, quantity, stock_status, created_at, shipping_estimate } = report;
-        latest.set(key, { store_id, product_id, quantity, stock_status, created_at, shipping_estimate });
+        const { id: _id, comment: _comment, ...stock } = report;
+        latest.set(key, stock);
       }
     }
     if (result.data.length < pageSize) break;
