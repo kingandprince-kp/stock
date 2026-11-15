@@ -65,6 +65,12 @@
 .salt-stock-filter { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 6px 10px; border: 1px solid #7295ad; border-radius: 7px; background: #e7f1f8; color: #17384e; font-size: 13px; font-weight: 700; cursor: pointer; }
 .salt-stock-filter input { width: 16px; height: 16px; accent-color: #17384e; }
 .salt-stock-filter:has(input:checked), .salt-stock-filter[aria-pressed="true"] { background: #244e69; border-color: #244e69; color: #fff; }
+.salt-first-week-filters { align-items: center; margin: 0 0 10px; }
+.salt-first-week-filters > strong { margin-inline-end: 3px; font-size: 13px; }
+.salt-first-week-filters [data-first-week]:not([data-first-week="all"])::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--first-week-dot); }
+.salt-first-week-filters [data-first-week="likely"] { --first-week-dot: #4d8cda; }
+.salt-first-week-filters [data-first-week="check"] { --first-week-dot: #e0ac2f; }
+.salt-first-week-filters [data-first-week="unlikely"] { --first-week-dot: #da5765; }
 .salt-store { margin: 0 0 12px; padding: 15px; border: 1px solid #d5e0e6; border-radius: 10px; background: #fff; }
 .salt-store-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .salt-store-title { min-width: 0; }

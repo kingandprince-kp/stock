@@ -12,6 +12,13 @@ import ShippingEstimateFields from "./shipping-estimate-fields";
 import { FeedbackForm, StoreContribution, StoreRequest } from "./support-forms";
 
 type Mode = "physical" | "online";
+type FirstWeekFilter = "all" | keyof typeof FIRST_WEEK_LABELS;
+const FIRST_WEEK_FILTERS: { value: FirstWeekFilter; label: string }[] = [
+  { value: "all", label: "すべて" },
+  { value: "likely", label: "間に合う見込み" },
+  { value: "check", label: "要確認" },
+  { value: "unlikely", label: "間に合わない見込み" },
+];
 const AMAZON_PRODUCTS: Partial<Record<string, { standard: string; bonus?: string }>> = {
   "UPCH-7909": { standard: "B0HMHZRS92", bonus: "B0HMHM67MR" },
   "UPCH-7910": { standard: "B0HMHNY2K4", bonus: "B0HMHKQVHJ" },
@@ -111,6 +118,15 @@ function stockLabel(item: Inventory) {
   return item.stock_status === "sold_out" || item.stock_status === "backorder" || item.quantity === 0 ? "在庫なし" : "要確認";
 }
 
+function listingFirstWeek(item: Inventory | undefined) {
+  return item?.shipping_estimate || isInStock(item) ? firstWeekEstimate(item?.shipping_estimate ?? null) : null;
+}
+
+function matchesStockFilters(item: Inventory | undefined, stockOnly: boolean, firstWeekFilter: FirstWeekFilter) {
+  return (!stockOnly || isInStock(item))
+    && (firstWeekFilter === "all" || listingFirstWeek(item)?.status === firstWeekFilter);
+}
+
 function distanceKm(lat: number, lng: number, store: Store) {
   if (store.latitude == null || store.longitude == null) return null;
   const a = Math.sin(radians(store.latitude - lat) / 2) ** 2
@@ -188,13 +204,14 @@ function InfoAccordions() {
 }
 
 function StoreCard({
-  store, mode, inventory, reports, stockOnly, firstWeek, commentCount, onCommentsChanged, onReport, distance,
+  store, mode, inventory, reports, stockOnly, firstWeekFilter, firstWeek, commentCount, onCommentsChanged, onReport, distance,
 }: {
   store: Store;
   mode: Mode;
   inventory: SaltInventory | null;
   reports: Map<string, Inventory>;
   stockOnly: boolean;
+  firstWeekFilter: FirstWeekFilter;
   firstWeek: FirstWeek[];
   commentCount: number;
   onCommentsChanged: () => Promise<void>;
@@ -330,10 +347,10 @@ function StoreCard({
             <p>最終更新 {lastUpdated ? <time dateTime={lastUpdated}>{DATE_FORMAT.format(new Date(lastUpdated))}</time> : "—"}</p>
           </div>
           <dl className="salt-stock">
-            {stockItems.filter(({ item }) => !stockOnly || isInStock(item)).map(({ product, variant, item, key, url }) => {
+            {stockItems.filter(({ item }) => matchesStockFilters(item, stockOnly, firstWeekFilter)).map(({ product, variant, item, key, url }) => {
               const shipping = online ? item?.shipping_estimate : null;
               const label = item ? stockLabel(item) : null;
-              const firstWeekStatus = online && (shipping || isInStock(item)) ? firstWeekEstimate(shipping ?? null) : null;
+              const firstWeekStatus = online ? listingFirstWeek(item) : null;
               return (
                 <div key={key}>
                   <dt>{url ? <ExternalLink href={url} showArrow={false}>{purchaseLabel(product.name, variant)}</ExternalLink> : purchaseLabel(product.name, variant)}</dt>
@@ -413,7 +430,8 @@ export default function StockChecker({ physical, online, inventory }: {
   const [query, setQuery] = useState("");
   const [prefecture, setPrefecture] = useState("");
   const [stockOnly, setStockOnly] = useState(false);
-  const [firstWeekSort, setFirstWeekSort] = useState(false);
+  const [firstWeekFilter, setFirstWeekFilter] = useState<FirstWeekFilter>("all");
+  const activeFirstWeekFilter = mode === "online" ? firstWeekFilter : "all";
   const [billboardOnly, setBillboardOnly] = useState(false);
   const [limit, setLimit] = useState(20);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -529,22 +547,13 @@ export default function StockChecker({ physical, online, inventory }: {
       (!prefecture || mode === "online" || store.prefecture === prefecture)
       && (!billboardOnly || store.billboard_status === "target")
       && (!stockOnly || inStockStores.has(store.id))
+      && (activeFirstWeekFilter === "all" || getListings(store, inventory?.products ?? [], true).some(({ product, variant }) =>
+        matchesStockFilters(reports.get(stockKey(store.id, product.id, variant)), stockOnly, activeFirstWeekFilter)))
       && (!term || normalize([displayName(store), store.prefecture, store.city, store.address].join(" ")).includes(term))
     ).map((store) => ({ store, distance: mode === "physical" && location ? distanceKm(location.lat, location.lng, store) : null }));
     if (mode === "physical" && location) stores.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
-    if (mode === "online" && firstWeekSort) {
-      const rank = { likely: 0, check: 1, unlikely: 2 };
-      const ranked = stores.map((entry) => ({
-        entry,
-        priority: getListings(entry.store, inventory?.products ?? [], true).reduce((best, { product, variant }) => {
-          const item = reports.get(stockKey(entry.store.id, product.id, variant));
-          return isInStock(item) ? Math.min(best, rank[firstWeekEstimate(item?.shipping_estimate ?? null).status]) : best;
-        }, 3),
-      }));
-      return ranked.sort((a, b) => a.priority - b.priority).map(({ entry }) => entry);
-    }
     return stores;
-  }, [mode, physical, online, prefecture, query, location, billboardOnly, stockOnly, inStockStores, firstWeekSort, inventory, reports]);
+  }, [mode, physical, online, prefecture, query, location, billboardOnly, stockOnly, inStockStores, activeFirstWeekFilter, inventory, reports]);
 
   function locate() {
     if (!navigator.geolocation) return setGeoMessage("このブラウザーでは現在地を取得できません。");
@@ -693,15 +702,18 @@ export default function StockChecker({ physical, online, inventory }: {
               <input type="checkbox" checked={stockOnly} onChange={(event) => { setStockOnly(event.target.checked); setLimit(20); }} />
               在庫あり商品のみ
             </label>}
-            {mode === "online" && inventory && <button type="button" className="salt-stock-filter" aria-pressed={firstWeekSort}
-              onClick={() => { setFirstWeekSort((current) => !current); setLimit(20); }}>
-              初週判定順
-            </button>}
           </div>
         </div>
+        {mode === "online" && inventory && <div className="salt-result-filters salt-first-week-filters" role="group" aria-label="初週判定">
+          <strong>初週判定</strong>
+          {FIRST_WEEK_FILTERS.map(({ value, label }) => (
+            <button key={value} type="button" className="salt-stock-filter" data-first-week={value}
+              aria-pressed={firstWeekFilter === value} onClick={() => { setFirstWeekFilter(value); setLimit(20); }}>{label}</button>
+          ))}
+        </div>}
         {!inventory && <p className="salt-error" role="alert">SALT BOYの在庫データを取得できませんでした。時間をおいて再読み込みしてください。</p>}
-        {matches.slice(0, limit).map(({ store, distance }) => <StoreCard key={`${mode}-${store.id}`} store={store} mode={mode} inventory={inventory} reports={reports} stockOnly={stockOnly} firstWeek={firstWeek.get(store.id) ?? []} commentCount={commentCountMap.get(store.id) ?? 0} onCommentsChanged={loadCommentCounts} onReport={openReport} distance={distance} />)}
-        {!matches.length && <p className="salt-empty">{stockOnly ? "条件に一致する在庫ありの投稿はありません。" : "条件に一致する店舗が見つかりませんでした。"}</p>}
+        {matches.slice(0, limit).map(({ store, distance }) => <StoreCard key={`${mode}-${store.id}`} store={store} mode={mode} inventory={inventory} reports={reports} stockOnly={stockOnly} firstWeekFilter={activeFirstWeekFilter} firstWeek={firstWeek.get(store.id) ?? []} commentCount={commentCountMap.get(store.id) ?? 0} onCommentsChanged={loadCommentCounts} onReport={openReport} distance={distance} />)}
+        {!matches.length && <p className="salt-empty">{activeFirstWeekFilter !== "all" ? "選んだ条件に一致する商品はありません。" : stockOnly ? "条件に一致する在庫ありの投稿はありません。" : "条件に一致する店舗が見つかりませんでした。"}</p>}
         {matches.length > limit && <button type="button" className="salt-more-button" onClick={() => setLimit((value) => value + 20)}>さらに20件表示</button>}
       </section>
 
