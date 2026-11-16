@@ -6,9 +6,9 @@ const LABELS: Record<PurchaseVariant, string> = {
   special: "限定特典付き",
   no_special: "特典なし",
   bluray_set: "Blu-ray 3形態セット (特典なし)",
-  bluray_set_special: "Blu-ray 3形態セット (限定特典付き)",
+  bluray_set_special: "Blu-ray 3形態セット (特典付き)",
   dvd_set: "DVD 3形態セット (特典なし)",
-  dvd_set_special: "DVD 3形態セット (限定特典付き)",
+  dvd_set_special: "DVD 3形態セット (特典付き)",
 };
 
 export function purchaseLabel(product: string, variant: PurchaseVariant | null) {

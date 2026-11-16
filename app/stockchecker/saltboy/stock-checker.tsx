@@ -50,12 +50,20 @@ const TOWER_PRODUCTS: Partial<Record<string, string>> = {
   "UPCH-7913": "8186661",
 };
 type Listing = { product: Product; variant: PurchaseVariant | null; url?: string };
+const GURUGURU_PRODUCT_URLS: Partial<Record<number, (sku: string) => string>> = {
+  320: (sku) => `https://item.rakuten.co.jp/guruguru2/${sku}/`,
+  1208: (sku) => `https://store.shopping.yahoo.co.jp/guruguru/${sku}.html`,
+};
 
 function getListings(store: Store, products: Product[], online: boolean): Listing[] {
   const retailer = `${store.name} ${store.chain_name ?? ""}`;
+  const guruguruUrl = GURUGURU_PRODUCT_URLS[store.id];
   return products.flatMap((product): Listing[] => {
     if (!online) return [{ product, variant: null }];
     const code = product.catalog_number;
+    if (guruguruUrl && /^UPCH-79(?:09|1[0-3])$/.test(code)) {
+      return [{ product, variant: null, url: guruguruUrl(code.toLowerCase()) }];
+    }
     const amazon = store.id === AMAZON_JAPAN_STORE_ID ? AMAZON_PRODUCTS[code] : undefined;
     const rakuten = store.id === RAKUTEN_BOOKS_STORE_ID ? RAKUTEN_BOOKS_PRODUCTS[code] : undefined;
     const sku = amazon ?? rakuten;
@@ -73,6 +81,9 @@ function getListings(store: Store, products: Product[], online: boolean): Listin
     { product, variant: "bluray_set_special", url: RAKUTEN_BOOKS_PRODUCT_BASE + "18854632/" },
     { product, variant: "dvd_set", url: RAKUTEN_BOOKS_PRODUCT_BASE + "18854633/" },
     { product, variant: "dvd_set_special", url: RAKUTEN_BOOKS_PRODUCT_BASE + "18854634/" },
+  ]) : online && guruguruUrl ? products.filter((product) => product.catalog_number === "UPCH-7913").flatMap((product): Listing[] => [
+    { product, variant: "bluray_set_special", url: guruguruUrl("6202610160011") },
+    { product, variant: "dvd_set_special", url: guruguruUrl("6202610160028") },
   ]) : []);
 }
 type Comment = {
