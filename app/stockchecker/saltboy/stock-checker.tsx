@@ -12,6 +12,8 @@ import ShippingEstimateFields from "./shipping-estimate-fields";
 import { FeedbackForm, StoreContribution, StoreRequest } from "./support-forms";
 
 type Mode = "physical" | "online";
+type StoreTab = Mode | "featured";
+const FEATURED_STORE_IDS = [1, 587, 6, 8, 42, 63, 57];
 type FirstWeekFilter = "all" | keyof typeof FIRST_WEEK_LABELS;
 const FIRST_WEEK_FILTERS: { value: FirstWeekFilter; label: string }[] = [
   { value: "all", label: "すべて" },
@@ -437,7 +439,9 @@ export default function StockChecker({ physical, online, inventory }: {
   online: Store[];
   inventory: SaltInventory | null;
 }) {
-  const [mode, setMode] = useState<Mode>("physical");
+  const [storeTab, setStoreTab] = useState<StoreTab>("physical");
+  const mode: Mode = storeTab === "online" ? "online" : "physical";
+  const featured = storeTab === "featured";
   const [query, setQuery] = useState("");
   const [prefecture, setPrefecture] = useState("");
   const [stockOnly, setStockOnly] = useState(false);
@@ -554,6 +558,14 @@ export default function StockChecker({ physical, online, inventory }: {
 
   const matches = useMemo(() => {
     const term = normalize(query);
+    if (featured) {
+      const indexed = new Map(physical.map((store) => [store.id, store]));
+      return FEATURED_STORE_IDS.flatMap((id) => {
+        const store = indexed.get(id);
+        if (!store || (billboardOnly && store.billboard_status !== "target") || (stockOnly && !inStockStores.has(id))) return [];
+        return [{ store, distance: null }];
+      });
+    }
     const stores = (mode === "physical" ? physical : online).filter((store) =>
       (!prefecture || mode === "online" || store.prefecture === prefecture)
       && (!billboardOnly || store.billboard_status === "target")
@@ -564,7 +576,7 @@ export default function StockChecker({ physical, online, inventory }: {
     ).map((store) => ({ store, distance: mode === "physical" && location ? distanceKm(location.lat, location.lng, store) : null }));
     if (mode === "physical" && location) stores.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
     return stores;
-  }, [mode, physical, online, prefecture, query, location, billboardOnly, stockOnly, inStockStores, activeFirstWeekFilter, inventory, reports]);
+  }, [featured, mode, physical, online, prefecture, query, location, billboardOnly, stockOnly, inStockStores, activeFirstWeekFilter, inventory, reports]);
 
   function locate() {
     if (!navigator.geolocation) return setGeoMessage("このブラウザーでは現在地を取得できません。");
@@ -668,10 +680,11 @@ export default function StockChecker({ physical, online, inventory }: {
         <h2>🏬 店舗を探す</h2>
         <p className="salt-listing-note">オリコン集計対象の店舗を掲載しています。<br />※ヴィレッジヴァンガードのアウトレット店は、オリコン集計対象か要確認です。</p>
         <div className="salt-tabs" role="group" aria-label="店舗の種類">
-          <button type="button" aria-pressed={mode === "physical"} onClick={() => { setMode("physical"); setLimit(20); }}>🏪 実店舗</button>
-          <button type="button" aria-pressed={mode === "online"} onClick={() => { setMode("online"); setLimit(20); }}>🛒 オンライン</button>
+          <button type="button" aria-pressed={storeTab === "physical"} onClick={() => { setStoreTab("physical"); setLimit(20); }}>🏪 実店舗</button>
+          <button type="button" aria-pressed={storeTab === "online"} onClick={() => { setStoreTab("online"); setLimit(20); }}>🛒 オンライン</button>
+          <button type="button" aria-pressed={featured} onClick={() => { setStoreTab("featured"); setLimit(20); }}>主要店舗</button>
         </div>
-        <div className="salt-search-tools">
+        {!featured && <div className="salt-search-tools">
           <label className="salt-search-label">{mode === "physical" ? "店舗名・チェーン名・市区町村で検索" : "オンラインショップ名で検索"}
             <input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setLimit(20); }} placeholder="店舗名・チェーン名を入力" />
           </label>
@@ -683,9 +696,9 @@ export default function StockChecker({ physical, online, inventory }: {
               {locating ? "現在地を取得中…" : location ? "現在地検索を解除" : "現在地から探す"}
             </button>
           )}
-        </div>
-        {mode === "physical" && geoMessage && <p className="salt-geolocation-message" role="status">{geoMessage}</p>}
-        {mode === "physical" && <>
+        </div>}
+        {storeTab === "physical" && geoMessage && <p className="salt-geolocation-message" role="status">{geoMessage}</p>}
+        {storeTab === "physical" && <>
           <div className="salt-prefectures">
             <div className="salt-prefecture-heading">📍 都道府県を選択</div>
             <button type="button" className={`salt-prefecture-chip salt-all-chip ${!prefecture ? "selected" : ""}`} aria-pressed={!prefecture} onClick={() => { setPrefecture(""); setLimit(20); }}>全国</button>
@@ -701,7 +714,7 @@ export default function StockChecker({ physical, online, inventory }: {
         <div className="salt-results-head">
           <div>
             <div className="salt-section-kicker">STORE RESULTS</div>
-            <p className="salt-count" aria-live="polite">{matches.length.toLocaleString("ja-JP")}件{mode === "physical" && location ? " ・現在地に近い順" : ""}</p>
+            <p className="salt-count" aria-live="polite">{matches.length.toLocaleString("ja-JP")}件{storeTab === "physical" && location ? " ・現在地に近い順" : ""}</p>
           </div>
           <div className="salt-result-filters" role="group" aria-label="店舗一覧の絞り込み">
             <label className="salt-stock-filter">
