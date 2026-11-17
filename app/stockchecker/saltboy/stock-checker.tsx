@@ -637,15 +637,14 @@ export default function StockChecker({ physical, online, inventory }: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ storeId: reportStore.id, items, clientId: clientId(), requestId, turnstileToken }),
       });
-      const result = await response.json() as { success?: boolean; message?: string; pendingCount?: number | null };
+      const result = await response.json() as { success?: boolean; message?: string };
       if (!response.ok || !result.success) {
         setReportError(result.message || "在庫を送信できませんでした。内容を確認して再度お試しください。");
         return;
       }
-      const resultMessage = result.pendingCount === 0 ? "在庫情報を投稿しました。"
-        : result.pendingCount ? `在庫情報を受け付けました。うち${result.pendingCount}件は承認待ちです。`
-        : "在庫情報を受け付けました。";
-      setReportMessage(`${displayName(reportStore)}: ${resultMessage}`);
+      setReportMessage(items.some((item) => item.shippingEstimate)
+        ? "在庫情報と発送・お届け目安を投稿しました。ありがとうございます!"
+        : "在庫情報を投稿しました。在庫チェッカーへのご協力、ありがとうございます!");
       setReportStore(null);
       router.refresh();
     } catch {

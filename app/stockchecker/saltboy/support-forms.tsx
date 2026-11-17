@@ -17,11 +17,12 @@ function field(data: FormData, name: string) {
   return String(data.get(name) ?? "").trim();
 }
 
-function SupportForm({ children, send, onReset, submitLabel = "送信する" }: {
+function SupportForm({ children, send, onReset, successMessage, submitLabel = "送信する" }: {
   children: ReactNode;
   send: (data: FormData) => PromiseLike<{ error: unknown }>;
   onReset?: () => void;
   submitLabel?: string;
+  successMessage: string;
 }) {
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
@@ -39,7 +40,7 @@ function SupportForm({ children, send, onReset, submitLabel = "送信する" }: 
       form.reset();
       onReset?.();
       setFailed(false);
-      setMessage("送信しました。情報をお寄せいただき、ありがとうございます。");
+      setMessage(successMessage);
     } catch (error) {
       setFailed(true);
       setMessage(error instanceof Error ? error.message : "送信できませんでした。時間をおいて再度お試しください。");
@@ -68,7 +69,7 @@ export function StoreContribution({ store, online }: { store: Store; online: boo
         <span className="salt-contribution-action salt-contribution-open" aria-hidden="true">＋</span>
         <span className="salt-contribution-action salt-contribution-close" aria-hidden="true">−</span>
       </summary>
-      <SupportForm send={(data) => {
+      <SupportForm successMessage="店舗情報を送信しました。確認後、必要に応じてサイトへ反映します。ありがとうございます。" send={(data) => {
         const category = field(data, "category");
         const detail = field(data, "detail");
         const evidence = field(data, "evidence");
@@ -117,7 +118,7 @@ export function StoreRequest({ online, prefecture, prefectures }: {
   return (
     <details className="salt-support" id="store-request">
       <summary>店舗が見つからない場合 <small>未掲載店舗の追加をリクエストできます</small></summary>
-      <SupportForm key={`${online}-${prefecture}`} send={(data) => {
+      <SupportForm key={`${online}-${prefecture}`} successMessage="店舗追加リクエストを送信しました。管理者が確認後、追加します。" send={(data) => {
         const requestPrefecture = online ? "オンライン" : field(data, "prefecture");
         const name = field(data, "name");
         if (!online && !prefectures.includes(requestPrefecture)) throw new Error("追加先の都道府県を選択してください。");
@@ -231,7 +232,8 @@ export function FeedbackForm() {
         <span className="salt-feedback-action salt-feedback-action--open">フォームを開く ＋</span>
         <span className="salt-feedback-action salt-feedback-action--close">フォームを閉じる −</span>
       </summary>
-      <SupportForm onReset={resetFeedback} submitLabel={isBug ? "不具合報告を送信" : "ご要望を送信"} send={async (data) => {
+      <SupportForm onReset={resetFeedback} submitLabel={isBug ? "不具合報告を送信" : "ご要望を送信"}
+        successMessage={isBug ? "不具合報告を送信しました。ありがとうございます。" : "ご要望を送信しました。ありがとうございます。"} send={async (data) => {
         const isBugReport = field(data, "type") === "bug";
         const description = field(data, "description");
         const deviceType = field(data, "device");
