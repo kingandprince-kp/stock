@@ -65,7 +65,9 @@
 .salt-stock-filter { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 6px 10px; border: 1px solid #7295ad; border-radius: 7px; background: #e7f1f8; color: #17384e; font-size: 13px; font-weight: 700; cursor: pointer; }
 .salt-stock-filter input { width: 16px; height: 16px; accent-color: #17384e; }
 .salt-stock-filter:has(input:checked), .salt-stock-filter[aria-pressed="true"] { background: #244e69; border-color: #244e69; color: #fff; }
-.salt-first-week-filters { align-items: center; margin: 0 0 10px; }
+.salt-first-week-filter-panel { margin-bottom: 10px; padding: 8px 10px; border: 1px solid #d6c28d; border-radius: 8px; background: #fffbef; color: #59450d; }
+.salt-first-week-filter-panel > p { margin: 0 0 7px; font-size: 12px; font-weight: 600; line-height: 1.55; }
+.salt-first-week-filters { align-items: center; }
 .salt-first-week-filters > strong { margin-inline-end: 3px; font-size: 13px; }
 .salt-first-week-filters [data-first-week]:not([data-first-week="all"])::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--first-week-dot); }
 .salt-first-week-filters [data-first-week="likely"] { --first-week-dot: #4d8cda; }

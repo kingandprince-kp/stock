@@ -714,12 +714,15 @@ export default function StockChecker({ physical, online, inventory }: {
             </label>}
           </div>
         </div>
-        {mode === "online" && inventory && <div className="salt-result-filters salt-first-week-filters" role="group" aria-label="初週判定">
+        {mode === "online" && inventory && <div className="salt-first-week-filter-panel">
+          <p id="salt-first-week-filter-note">※あくまで見込みであり、初週集計への反映を保証するものではありません。購入前に、各商品ページの最新情報をご確認ください。</p>
+          <div className="salt-result-filters salt-first-week-filters" role="group" aria-label="初週判定" aria-describedby="salt-first-week-filter-note">
           <strong>初週判定</strong>
           {FIRST_WEEK_FILTERS.map(({ value, label }) => (
             <button key={value} type="button" className="salt-stock-filter" data-first-week={value}
               aria-pressed={firstWeekFilter === value} onClick={() => { setFirstWeekFilter(value); setLimit(20); }}>{label}</button>
           ))}
+          </div>
         </div>}
         {!inventory && <p className="salt-error" role="alert">SALT BOYの在庫データを取得できませんでした。時間をおいて再読み込みしてください。</p>}
         {matches.slice(0, limit).map(({ store, distance }) => <StoreCard key={`${mode}-${store.id}`} store={store} mode={mode} inventory={inventory} reports={reports} stockOnly={stockOnly} firstWeekFilter={activeFirstWeekFilter} firstWeek={firstWeek.get(store.id) ?? []} commentCount={commentCountMap.get(store.id) ?? 0} onCommentsChanged={loadCommentCounts} onReport={openReport} distance={distance} />)}
