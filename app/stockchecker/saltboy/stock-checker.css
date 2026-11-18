@@ -36,7 +36,8 @@
 .salt-search, .salt-results { margin-top: 16px; padding: 17px clamp(13px, 2.8vw, 24px); border: 1px solid #d5e0e6; border-radius: 12px; background: #fcfeff; }
 .salt-section-kicker { color: #52707e; font-size: 10px; font-weight: 700; letter-spacing: .13em; }
 .salt-search h2, .salt-results h2 { margin-top: 3px; font-size: 20px; font-weight: 700; }
-.salt-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-top: 14px; padding: 5px; border-radius: 12px; background: #e3ebf0; }
+.salt-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; margin-top: 14px; padding: 5px; border-radius: 12px; background: #e3ebf0; }
+.salt-featured-sort { margin-top: 8px; }
 :where(.salt-boy button, .salt-boy select, .salt-boy input, .salt-boy textarea) { color: inherit; font: inherit; }
 .salt-boy button { cursor: pointer; }
 .salt-boy button:disabled { cursor: not-allowed; opacity: .55; }
