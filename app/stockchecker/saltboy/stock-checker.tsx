@@ -12,7 +12,8 @@ import ShippingEstimateFields from "./shipping-estimate-fields";
 import { FeedbackForm, StoreContribution, StoreRequest } from "./support-forms";
 
 type Mode = "physical" | "online";
-const FEATURED_STORE_IDS = new Set([1, 587, 6, 8, 42, 63, 57]);
+// 東京、大阪、福岡、札幌の順。
+const LARGE_STORE_IDS = [587, 6, 8, 42, 63, 57, 1];
 type FirstWeekFilter = "all" | keyof typeof FIRST_WEEK_LABELS;
 const FIRST_WEEK_FILTERS: { value: FirstWeekFilter; label: string }[] = [
   { value: "all", label: "すべて" },
@@ -439,7 +440,7 @@ export default function StockChecker({ physical, online, inventory }: {
   inventory: SaltInventory | null;
 }) {
   const [mode, setMode] = useState<Mode>("physical");
-  const [featuredFirst, setFeaturedFirst] = useState(false);
+  const [largeStoresOnly, setLargeStoresOnly] = useState(false);
   const [query, setQuery] = useState("");
   const [prefecture, setPrefecture] = useState("");
   const [stockOnly, setStockOnly] = useState(false);
@@ -564,12 +565,16 @@ export default function StockChecker({ physical, online, inventory }: {
         matchesStockFilters(reports.get(stockKey(store.id, product.id, variant)), stockOnly, activeFirstWeekFilter)))
       && (!term || normalize([displayName(store), store.prefecture, store.city, store.address].join(" ")).includes(term))
     ).map((store) => ({ store, distance: mode === "physical" && location ? distanceKm(location.lat, location.lng, store) : null }));
-    if (mode === "physical" && location) stores.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
-    if (mode === "physical" && featuredFirst) {
-      stores.sort((a, b) => Number(FEATURED_STORE_IDS.has(b.store.id)) - Number(FEATURED_STORE_IDS.has(a.store.id)));
+    if (mode === "physical" && largeStoresOnly) {
+      const matchingStores = new Map(stores.map((entry) => [entry.store.id, entry]));
+      return LARGE_STORE_IDS.flatMap((id) => {
+        const entry = matchingStores.get(id);
+        return entry ? [entry] : [];
+      });
     }
+    if (mode === "physical" && location) stores.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
     return stores;
-  }, [featuredFirst, mode, physical, online, prefecture, query, location, billboardOnly, stockOnly, inStockStores, activeFirstWeekFilter, inventory, reports]);
+  }, [largeStoresOnly, mode, physical, online, prefecture, query, location, billboardOnly, stockOnly, inStockStores, activeFirstWeekFilter, inventory, reports]);
 
   function locate() {
     if (!navigator.geolocation) return setGeoMessage("このブラウザーでは現在地を取得できません。");
@@ -692,8 +697,8 @@ export default function StockChecker({ physical, online, inventory }: {
         {mode === "physical" && geoMessage && <p className="salt-geolocation-message" role="status">{geoMessage}</p>}
         {mode === "physical" && <>
           <label className="salt-stock-filter salt-featured-sort">
-            <input type="checkbox" checked={featuredFirst} onChange={(event) => { setFeaturedFirst(event.target.checked); setLimit(20); }} />
-            主要店舗を優先
+            <input type="checkbox" checked={largeStoresOnly} onChange={(event) => { setLargeStoresOnly(event.target.checked); setLimit(20); }} />
+            大型店舗のみ
           </label>
           <div className="salt-prefectures">
             <div className="salt-prefecture-heading">📍 都道府県を選択</div>
@@ -710,7 +715,7 @@ export default function StockChecker({ physical, online, inventory }: {
         <div className="salt-results-head">
           <div>
             <div className="salt-section-kicker">STORE RESULTS</div>
-            <p className="salt-count" aria-live="polite">{matches.length.toLocaleString("ja-JP")}件{mode === "physical" && featuredFirst ? (location ? " ・主要店舗を優先、各グループ内は現在地に近い順" : " ・主要店舗を優先") : mode === "physical" && location ? " ・現在地に近い順" : ""}</p>
+            <p className="salt-count" aria-live="polite">{matches.length.toLocaleString("ja-JP")}件{mode === "physical" && largeStoresOnly ? " ・大型店舗のみ" : mode === "physical" && location ? " ・現在地に近い順" : ""}</p>
           </div>
           <div className="salt-result-filters" role="group" aria-label="店舗一覧の絞り込み">
             <label className="salt-stock-filter">
