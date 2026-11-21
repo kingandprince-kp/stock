@@ -33,6 +33,9 @@ export type RecentReport = Inventory & { id: number; comment: string | null };
 export type FirstWeek = {
   store_id: number;
   product_id: number | null;
+  purchase_variant: PurchaseVariant | null;
+  evidence: string | null;
+  verified_at: string;
   note: string | null;
   cutoff_date: string | null;
   cutoff_time: string | null;
@@ -87,7 +90,7 @@ export async function loadInventory(): Promise<SaltInventory> {
   const db = inventoryDb();
   const [products, firstWeek] = await Promise.all([
     db.from("salt_boy_products").select("id,name,catalog_number").eq("is_active", true).order("sort_order"),
-    db.from("salt_boy_first_week_info").select("store_id,product_id,note,cutoff_date,cutoff_time,cutoff_kind,estimate_basis,earliest_date,latest_date"),
+    db.from("salt_boy_first_week_info").select("store_id,product_id,purchase_variant,note,cutoff_date,cutoff_time,cutoff_kind,estimate_basis,earliest_date,latest_date,evidence,verified_at"),
   ]);
   if (products.error || firstWeek.error) throw new Error("SALT BOYの商品・初週情報を取得できませんでした。");
 

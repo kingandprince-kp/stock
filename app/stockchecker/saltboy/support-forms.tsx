@@ -60,7 +60,9 @@ function SupportForm({ children, send, onReset, successMessage, submitLabel = "�
   );
 }
 
-export function StoreContribution({ store, online }: { store: Store; online: boolean }) {
+export function StoreContribution({ store, online, onInventoryReport }: { store: Store; online: boolean; onInventoryReport?: () => void }) {
+  const [detailText, setDetailText] = useState("");
+  const stockLike = /在庫\s*(あり|なし|有り|無し|[0-9０-９])|[0-9０-９]+\s*枚|売り?切れ|完売|再?入荷|発送予定|お届け予定/.test(detailText);
   const canReportBillboard = store.billboard_status !== "target" && store.billboard_status !== "not_target";
   return (
     <details className="salt-contribution">
@@ -69,7 +71,7 @@ export function StoreContribution({ store, online }: { store: Store; online: boo
         <span className="salt-contribution-action salt-contribution-open" aria-hidden="true">＋</span>
         <span className="salt-contribution-action salt-contribution-close" aria-hidden="true">−</span>
       </summary>
-      <SupportForm successMessage="店舗情報を送信しました。確認後、必要に応じてサイトへ反映します。ありがとうございます。" send={(data) => {
+      <SupportForm onReset={() => setDetailText("")} successMessage="店舗情報を送信しました。確認後、必要に応じてサイトへ反映します。ありがとうございます。" send={(data) => {
         const category = field(data, "category");
         const detail = field(data, "detail");
         const evidence = field(data, "evidence");
@@ -100,8 +102,9 @@ export function StoreContribution({ store, online }: { store: Store; online: boo
           {canReportBillboard && <option>Billboard集計</option>}
           <option>その他</option>
         </select></label>
-        <label>提供する内容<textarea name="detail" rows={2} maxLength={900} required placeholder={online ? "例: ショップの公式サイトのURLが変更されています" : "例: 初週集計は17時までと店舗で確認"} /></label>
+        <label>提供する内容<textarea name="detail" value={detailText} onChange={(event) => setDetailText(event.target.value)} rows={2} maxLength={900} required placeholder={online ? "例: ショップの公式サイトのURLが変更されています" : "例: 初週集計は17時までと店舗で確認"} /></label>
         <p className="salt-contribution-notice">※在庫あり・在庫なし・枚数などの在庫情報は、こちらではなく「在庫投稿」からお願いします。{online && "発送・お届け目安も商品ごとに「在庫投稿」から入力できます。"}</p>
+        {stockLike && <aside className="salt-caution" role="status"><p>在庫・入荷・発送についての情報でしょうか? 商品ごとの「在庫投稿」から共有できます。</p>{onInventoryReport && <button type="button" onClick={onInventoryReport}>この店舗の在庫投稿へ</button>}</aside>}
         <label>確認方法・ソース<textarea name="evidence" rows={2} maxLength={1000} placeholder={online
           ? (canReportBillboard ? "例: 公式案内のURL。Billboard情報の場合は確認方法・ソースが必須です。" : "例: 公式サイトのお知らせのURL")
           : (canReportBillboard ? "例: 店頭で確認。Billboard情報の場合は必須です。" : "例: 公式ページURL、電話確認、店頭確認など")} /></label>

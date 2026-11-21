@@ -232,3 +232,8 @@
 .salt-contribution-action { color: #274e66; }
 .salt-contribution-notice { color: #872650; font-size: 12px; font-weight: 700; }
 .salt-contribution[open] .salt-contribution-open, .salt-contribution:not([open]) .salt-contribution-close { display: none; }
+.salt-own-reports { padding: 16px; font-size: .875rem; }
+.salt-own-reports article { padding: 12px 0; border-bottom: 1px solid #d6e1e8; overflow-wrap: anywhere; }
+.salt-own-reports button { margin: 8px 8px 8px 0; padding: 8px 12px; border: 1px solid #9db4c5; border-radius: 8px; }
+.salt-own-reports button:disabled { opacity: .5; }
+.salt-report-inputs { min-width: 0; margin: 0; padding: 0; border: 0; }

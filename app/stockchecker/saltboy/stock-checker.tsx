@@ -10,6 +10,7 @@ import { readShippingEstimate, shippingEstimateText } from "./shipping-estimate"
 import { firstWeekEstimate, FIRST_WEEK_LABELS } from "./first-week-estimate";
 import ShippingEstimateFields from "./shipping-estimate-fields";
 import { FeedbackForm, StoreContribution, StoreRequest } from "./support-forms";
+import OwnReports from "./own-reports";
 
 type Mode = "physical" | "online";
 // 東京、大阪、福岡、札幌の順。
@@ -342,15 +343,16 @@ function StoreCard({
             {online ? "初週情報: " : "初週締め時間: "}
             {online
               ? [
-                  inventory?.products.find((product) => product.id === item.product_id)?.name,
+                  purchaseLabel(inventory?.products.find((product) => product.id === item.product_id)?.name ?? "商品", item.purchase_variant),
                   item.estimate_basis === "shipping" ? "発送予定" : "お届け予定",
                   item.earliest_date === item.latest_date ? item.earliest_date : [item.earliest_date, item.latest_date].filter(Boolean).join("～"),
                   item.note,
                 ].filter(Boolean).join(" ")
-              : [item.cutoff_date, item.cutoff_kind === "closing" ? "閉店まで" : item.cutoff_time?.slice(0, 5), item.note].filter(Boolean).join(" ")}
+              : [item.cutoff_date, item.cutoff_kind === "closing" ? "閉店まで" : (item.cutoff_time?.slice(0, 5) ?? "要確認") + "まで", item.note].filter(Boolean).join(" ")}
+            <small className="block">確認: {DATE_FORMAT.format(new Date(item.verified_at))}{item.evidence && ` / ${item.evidence}`}</small>
           </p>
         ))}
-        <StoreContribution store={store} online={online} />
+        <StoreContribution store={store} online={online} onInventoryReport={() => onReport(store)} />
       </div>
 
       {inventory && (
@@ -467,6 +469,7 @@ export default function StockChecker({ physical, online, inventory }: {
   const [turnstileReady, setTurnstileReady] = useState(false);
   const [turnstileError, setTurnstileError] = useState("");
   const [requestId, setRequestId] = useState("");
+  const requestPayload = useRef("");
   const reportDialog = useRef<HTMLDialogElement>(null);
   const turnstileWidgetId = useRef<string | null>(null);
   const router = useRouter();
@@ -599,6 +602,7 @@ export default function StockChecker({ physical, online, inventory }: {
     setReportMessage("");
     setTurnstileError("");
     setRequestId(crypto.randomUUID());
+    requestPayload.current = "";
   }
 
   function closeReport() {
@@ -610,6 +614,7 @@ export default function StockChecker({ physical, online, inventory }: {
 
   async function submitReport(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (reportSubmitting) return;
     setReportError("");
     setReportMessage("");
     if (!reportStore || !inventory) return;
@@ -642,10 +647,15 @@ export default function StockChecker({ physical, online, inventory }: {
 
     setReportSubmitting(true);
     try {
+      const fingerprint = JSON.stringify({ storeId: reportStore.id, items });
+      const sendingRequestId = requestPayload.current && requestPayload.current !== fingerprint ? crypto.randomUUID() : requestId;
+      requestPayload.current = fingerprint;
+      setRequestId(sendingRequestId);
       const response = await fetch("/api/salt-boy/inventory-report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeId: reportStore.id, items, clientId: clientId(), requestId, turnstileToken }),
+        body: JSON.stringify({ storeId: reportStore.id, items, clientId: clientId(), requestId: sendingRequestId, turnstileToken }),
+        signal: AbortSignal.timeout(30000),
       });
       const result = await response.json() as { success?: boolean; message?: string };
       if (!response.ok || !result.success) {
@@ -661,6 +671,12 @@ export default function StockChecker({ physical, online, inventory }: {
       setReportError("在庫報告中にエラーが発生しました。時間をおいて再度お試しください。");
     } finally {
       setReportSubmitting(false);
+      // Siteverify consumes tokens even when the subsequent DB write fails.
+      // Keep requestId so retrying an uncertain response remains idempotent.
+      setTurnstileToken("");
+      setTurnstileReady(false);
+      const turnstile = (window as typeof window & { turnstile?: { reset?: (id: string) => void } }).turnstile;
+      if (turnstileWidgetId.current) turnstile?.reset?.(turnstileWidgetId.current);
     }
   }
 
@@ -761,6 +777,7 @@ export default function StockChecker({ physical, online, inventory }: {
             })}</ol>
           )}
         </section>
+        <OwnReports stores={[...physical, ...online]} products={inventory?.products ?? []} />
         <StoreRequest online={mode === "online"} prefecture={prefecture} prefectures={PREFECTURE_GROUPS.flatMap((group) => group.prefectures)} />
         <FeedbackForm />
       </section>
@@ -776,6 +793,7 @@ export default function StockChecker({ physical, online, inventory }: {
             <strong>複数店舗をまとめて確認・投稿される方へ</strong>
             <p>帰宅後などに複数店舗の在庫情報をまとめて投稿する場合は、各店舗のコメント欄に「店頭で確認」「電話で確認」など、確認方法を一言添えてください。</p>
           </aside>}
+          <fieldset className="salt-report-inputs" disabled={reportSubmitting}>
           <fieldset className="salt-report-products"><legend>在庫状況</legend>{reportListings.map(({ product, variant }) => {
             const key = stockKey(reportStore.id, product.id, variant);
             const title = purchaseLabel(product.name, variant);
@@ -802,6 +820,7 @@ export default function StockChecker({ physical, online, inventory }: {
               : "売場や入荷状況など。個人情報・URLは入力しないでください。"} />
             <small>{reportComment.length}/300文字</small>
           </label>
+          </fieldset>
           <div className="salt-report-caution">在庫状況は投稿後に変わる場合があります。表示された在庫を保証するものではありません。来店・購入前に店舗やショップへ最新情報をご確認ください。</div>
           <div id="salt-inventory-turnstile" className="salt-turnstile" />
           {turnstileError && <p className="salt-error" role="alert">{turnstileError}</p>}

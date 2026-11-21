@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { supabase } from "@/app/lib/supabase";
-import SaltBoyReports from "./salt-boy-reports";
+import SaltBoyAdmin from "./salt-boy-admin";
 
 type InventoryReport = {
   id: number;
@@ -564,30 +564,6 @@ export default function AdminPage() {
     }, []);
 
   // =========================================
-  // ユーザー自己削除履歴
-  // =========================================
-
-  const loadUserDeletionHistory =
-    useCallback(async () => {
-      const { data, error } =
-        await supabase.rpc(
-          "get_inventory_user_deletions_admin"
-        );
-
-      if (error) {
-        console.error(error);
-        setErrorMessage(
-          `ユーザー自己削除履歴を取得できませんでした: ${error.message}`
-        );
-        return;
-      }
-
-      setUserDeletions(
-        (data ?? []) as UserDeletionHistory[]
-      );
-    }, []);
-
-  // =========================================
   // 店舗変更・削除履歴
   // =========================================
 
@@ -904,27 +880,9 @@ export default function AdminPage() {
       setErrorMessage("");
 
       const [
-        reportsResult,
         storesResult,
         productsResult,
       ] = await Promise.all([
-        supabase
-          .from("inventory_reports")
-          .select(`
-            id,
-            store_id,
-            product_id,
-            quantity,
-            stock_status,
-            comment,
-            created_at
-          `)
-          .eq("review_status", "approved")
-          .order("created_at", {
-            ascending: false,
-          })
-          .limit(200),
-
         supabase
           .from("stores")
           .select(`
@@ -940,14 +898,6 @@ export default function AdminPage() {
           .from("products")
           .select("id, name"),
       ]);
-
-      if (reportsResult.error) {
-        setErrorMessage(
-          `投稿一覧を取得できませんでした: ${reportsResult.error.message}`
-        );
-        setLoading(false);
-        return;
-      }
 
       if (storesResult.error) {
         setErrorMessage(
@@ -965,10 +915,9 @@ export default function AdminPage() {
         return;
       }
 
-      setReports(
-        (reportsResult.data ??
-          []) as InventoryReport[]
-      );
+      // So Honey's public API still uses its RPCs. Keep them, but do not load
+      // the retired management queues when opening SALT BOY's admin screen.
+      setReports([]);
 
       setStores(
         (storesResult.data ??
@@ -981,10 +930,6 @@ export default function AdminPage() {
       );
 
       await Promise.all([
-        loadReviewReports(),
-        loadSecurityEvents(),
-        loadDeletionHistory(),
-        loadUserDeletionHistory(),
         loadStoreChangeHistory(),
         loadStoreInfoRequests(),
         loadStoreInfoRequestHistory(),
@@ -998,10 +943,6 @@ export default function AdminPage() {
 
       setLoading(false);
     }, [
-      loadReviewReports,
-      loadSecurityEvents,
-      loadDeletionHistory,
-      loadUserDeletionHistory,
       loadStoreChangeHistory,
       loadStoreInfoRequests,
       loadStoreInfoRequestHistory,
@@ -2397,16 +2338,6 @@ export default function AdminPage() {
               📋 投稿一覧
             </AdminTabButton>
 
-            <AdminTabButton
-              active={
-                activeTab === "security"
-              }
-              onClick={() =>
-                setActiveTab("security")
-              }
-            >
-              🛡️ セキュリティ
-            </AdminTabButton>
 
             <AdminTabButton
               active={activeTab === "store-history"}
@@ -2524,7 +2455,7 @@ export default function AdminPage() {
               読み込み中…
             </div>
           ) : activeTab === "salt-boy" ? (
-            <SaltBoyReports />
+            <SaltBoyAdmin />
           ) : activeTab ===
             "reports" ? (
             <ReportsTab

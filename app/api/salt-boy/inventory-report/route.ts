@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
 import { inventoryDb } from "@/app/stockchecker/saltboy/data";
 import { parseShippingEstimate } from "@/app/stockchecker/saltboy/shipping-estimate";
@@ -29,7 +29,20 @@ function errorResponse(message: string, status = 400) {
 }
 
 export async function POST(request: Request) {
+  let security: { clientHash: string; storeId: number; requestId: string } | null = null;
+  async function logSecurity(reason: string, eventType = "blocked") {
+    if (!security) return;
+    try {
+      const { error } = await inventoryDb().from("salt_boy_security_events").insert({
+        event_type: eventType, client_hash: security.clientHash, store_id: security.storeId,
+        request_id: security.requestId, reason,
+      });
+      if (error) console.error("SALT BOY security log:", error.message);
+    } catch (error) { console.error("SALT BOY security log:", error); }
+  }
   try {
+    const origin = request.headers.get("origin");
+    if (origin && origin !== new URL(request.url).origin) return errorResponse("送信元を確認できません。", 403);
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
@@ -45,6 +58,7 @@ export async function POST(request: Request) {
       return errorResponse("投稿内容を読み取れませんでした。");
     }
 
+    if (!body || typeof body !== "object" || Array.isArray(body)) return errorResponse("投稿内容を確認してください。");
     const { storeId, items, clientId, requestId, turnstileToken } = body;
     const shippingEstimate = parseShippingEstimate(body.shippingEstimate);
     if (body.shippingEstimate != null && !shippingEstimate) {
@@ -62,7 +76,7 @@ export async function POST(request: Request) {
       || !Number.isSafeInteger(item.quantity) || item.quantity < 0 || item.quantity > 10000
       || !STOCK_STATUSES.has(item.stockStatus)
       || (item.stockStatus === "sold_out" && item.quantity !== 0)
-      || (typeof item.comment === "string" && item.comment.length > 300)
+      || (item.comment != null && (typeof item.comment !== "string" || item.comment.length > 300))
     )) {
       return errorResponse("形態ごとの在庫情報を確認してください。");
     }
@@ -73,7 +87,10 @@ export async function POST(request: Request) {
       || typeof requestId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
       return errorResponse("投稿情報を確認できません。画面を開き直してください。");
     }
+    const clientHash = createHash("sha256").update(clientId).digest("hex");
+    security = { clientHash, storeId: Number(storeId), requestId };
     if (typeof turnstileToken !== "string" || turnstileToken.length < 1 || turnstileToken.length > 2048) {
+      await logSecurity("Bot認証トークンなし", "turnstile_block");
       return errorResponse("Bot対策の確認を完了してください。");
     }
 
@@ -93,14 +110,17 @@ export async function POST(request: Request) {
       signal: AbortSignal.timeout(8000),
       cache: "no-store",
     });
-    if (!verifyResponse.ok) return errorResponse("Bot対策の確認に失敗しました。もう一度お試しください。", 403);
+    if (!verifyResponse.ok) {
+      await logSecurity(`Bot認証 HTTP ${verifyResponse.status}`, "turnstile_block");
+      return errorResponse("Bot対策の確認に失敗しました。もう一度お試しください。", 403);
+    }
     const verification = (await verifyResponse.json()) as TurnstileResponse;
     if (!verification.success || verification.hostname !== ALLOWED_HOSTNAME || verification.action !== "inventory_report") {
+      await logSecurity("Bot認証・ホスト・操作の検証に失敗", "turnstile_block");
       return errorResponse("Bot対策の確認に失敗しました。もう一度お試しください。", 403);
     }
 
     const supabase = inventoryDb();
-    const clientHash = createHash("sha256").update(clientId).digest("hex");
     const listings = items.map((item) => ({
       ...item,
       estimate: item.shippingEstimate === undefined ? shippingEstimate : parseShippingEstimate(item.shippingEstimate),
@@ -108,10 +128,11 @@ export async function POST(request: Request) {
     if (listings.some((item) => item.shippingEstimate != null && !item.estimate)) {
       return errorResponse("商品ごとの発送・お届け目安を確認してください。");
     }
-    const { data, error } = await supabase.rpc("salt_boy_submit_inventory", {
+    const { data, error } = await supabase.rpc("salt_boy_submit_inventory_checked", {
       p_store_id: storeId,
       p_client_hash: clientHash,
       p_request_id: requestId,
+      p_ip_hash: remoteIp ? createHmac("sha256", turnstileSecret).update(remoteIp).digest("hex") : null,
       p_items: listings.map((item) => ({
         product_id: item.productId,
         quantity: item.quantity,
@@ -123,7 +144,10 @@ export async function POST(request: Request) {
       })),
     });
     if (error) {
+      await logSecurity(error.message, error.code === "P0429" ? "rate_limit" : "submit_error");
       console.error("SALT BOY inventory submit error:", error.message);
+      if (error.code === "P0429") return errorResponse(error.message, 429);
+      if (error.code === "23505") return errorResponse("前回の送信と内容が異なります。投稿画面を開き直してください。", 409);
       return errorResponse("在庫を送信できませんでした。内容を確認して再度お試しください。", 400);
     }
 
@@ -132,6 +156,7 @@ export async function POST(request: Request) {
     const pendingCount = reports.error ? null : reports.data.filter((report) => report.review_status === "pending").length;
     return NextResponse.json({ success: true, reportCount: data?.length ?? items.length, pendingCount });
   } catch (error) {
+    await logSecurity("通信・処理エラー", "submit_error");
     console.error("SALT BOY inventory report unexpected error:", error);
     return errorResponse("在庫報告中にエラーが発生しました。時間をおいて再度お試しください。", 500);
   }

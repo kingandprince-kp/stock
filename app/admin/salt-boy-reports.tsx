@@ -18,6 +18,7 @@ type Report = {
   review_status: string;
   deleted_at: string | null;
   manually_approved: boolean;
+  review_reason: string | null;
 };
 
 const VIEWS: Record<View, string> = { pending: "承認待ち", published: "公開中", closed: "却下・削除済み" };
@@ -35,27 +36,31 @@ export default function SaltBoyReports() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<number[]>([]);
+  const [note, setNote] = useState("");
   const visible = reports.slice(0, 50);
-  const selectable = visible.filter((report) => view !== "closed" || report.deleted_at);
+  const selectable = visible;
   const chosen = selectable.filter((report) => selected.includes(report.id));
   const allSelected = selectable.length > 0 && chosen.length === selectable.length;
   const load = useCallback(async () => {
     setLoading(true);
-    setError("");
-    const { data, error } = await supabase.rpc("salt_boy_list_admin_reports", {
-      p_view: view,
-      p_before_id: before ?? null,
-    });
-    if (error) {
+    try {
+      const { data, error } = await supabase.rpc("salt_boy_list_admin_reports_v2", {
+        p_view: view,
+        p_before_id: before ?? null,
+      });
+      if (error) throw error;
+      setError("");
+      setReports((data ?? []) as Report[]);
+    } catch {
       setReports([]);
       setError("SALT BOYの投稿一覧を取得できませんでした。");
-    } else {
-      setReports((data ?? []) as Report[]);
-    }
-    setLoading(false);
+    } finally { setLoading(false); }
   }, [view, before]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const task = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(task);
+  }, [load]);
 
   async function manage(id: number, action: Action) {
     if (busy) return;
@@ -63,14 +68,14 @@ export default function SaltBoyReports() {
     setBusy(true);
     setMessage("");
     setError("");
-    const { error } = await supabase.rpc("salt_boy_manage_inventory_report", { p_report_id: id, p_action: action });
-    if (error) {
-      setError("操作できませんでした。最新の状態に更新して確認してください。");
-    } else {
+    try {
+      const { error } = await supabase.rpc("salt_boy_manage_inventory_report", { p_report_id: id, p_action: action, p_note: note.trim() || null });
+      if (error) throw error;
+      setSelected((current) => current.filter((value) => value !== id));
       setMessage(`投稿 #${id} を${ACTIONS[action]}しました。`);
       await load();
-    }
-    setBusy(false);
+    } catch { setError("操作できませんでした。最新の状態に更新して確認してください。"); }
+    finally { setBusy(false); }
   }
 
   async function manageSelection(action: Action) {
@@ -83,7 +88,7 @@ export default function SaltBoyReports() {
     const failed: number[] = [];
     try {
       for (const { id } of chosen) {
-        const result = await supabase.rpc("salt_boy_manage_inventory_report", { p_report_id: id, p_action: action });
+        const result = await supabase.rpc("salt_boy_manage_inventory_report", { p_report_id: id, p_action: action, p_note: note.trim() || null });
         if (result.error) failed.push(id);
       }
       const completed = chosen.length - failed.length;
@@ -107,14 +112,15 @@ export default function SaltBoyReports() {
         {(Object.keys(VIEWS) as View[]).map((key) => (
           <button key={key} type="button" aria-pressed={view === key} disabled={busy || loading}
             className={`rounded-lg border px-3 py-2 text-sm font-bold ${view === key ? "bg-slate-800 text-white" : "bg-white"}`}
-            onClick={() => { setView(key); setBefore(undefined); setSelected([]); setMessage(""); }}>
+            onClick={() => { if (view !== key || before) setLoading(true); setView(key); setBefore(undefined); setSelected([]); setMessage(""); }}>
             {VIEWS[key]}
           </button>
         ))}
-        <button type="button" disabled={busy || loading} className="rounded-lg border px-3 py-2 text-sm" onClick={() => void load()}>更新</button>
+        <button type="button" disabled={busy || loading} className="rounded-lg border px-3 py-2 text-sm" onClick={() => { setLoading(true); void load(); }}>更新</button>
       </div>
       {message && <p role="status" className="mb-2 text-sm">{message}</p>}
       {error && <p role="alert" className="mb-2 text-sm text-red-800">{error}</p>}
+      <label className="mb-3 block text-sm">操作理由 (任意・履歴に保存)<input className="ml-2 rounded-lg border px-3 py-2" value={note} maxLength={500} disabled={busy} onChange={(event) => setNote(event.target.value)} /></label>
       {!loading && selectable.length > 0 && (
         <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm">
           <label className="flex items-center gap-2">
@@ -136,7 +142,7 @@ export default function SaltBoyReports() {
           {visible.map((report) => {
             const shipping = parseShippingEstimate(report.shipping_estimate, 30);
             let actions: Action[] = [];
-            if (report.deleted_at) actions = ["restore"];
+            if (report.deleted_at || report.review_status === "rejected") actions = ["restore"];
             else if (report.review_status === "pending") actions = ["approve", "reject", "delete"];
             else if (report.review_status === "approved") actions = ["delete"];
             const status = report.deleted_at ? "削除済み"
@@ -156,6 +162,7 @@ export default function SaltBoyReports() {
                 <p>#{report.id} · {timeFormat.format(new Date(report.created_at))} · {status} · {report.quantity > 0 ? `${report.quantity.toLocaleString("ja-JP")}枚` : report.stock_status === "in_stock" ? "在庫あり" : "在庫なし"}</p>
                 {shipping && <p>{shippingEstimateText(shipping)}{shipping.condition && ` / 条件: ${shipping.condition}`}</p>}
                 {report.comment && <p className="whitespace-pre-wrap break-words">{report.comment}</p>}
+                {report.review_status === "pending" && report.review_reason && <p className="text-amber-800">確認理由: {report.review_reason}</p>}
                 <div className="flex flex-wrap gap-2">
                   {actions.map((action) => <button key={action} type="button" className="rounded-lg border px-3 py-1.5" disabled={busy} onClick={() => void manage(report.id, action)}>{ACTIONS[action]}</button>)}
                 </div>
