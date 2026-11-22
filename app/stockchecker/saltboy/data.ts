@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { parseShippingEstimate, type ShippingEstimate } from "./shipping-estimate";
 import { stockKey, type PurchaseVariant } from "./purchase-variants";
+import type { FirstWeekSettings, RetailerRule } from "./first-week-model";
 
 export type Store = {
   id: number;
@@ -43,8 +44,10 @@ export type FirstWeek = {
   estimate_basis: string | null;
   earliest_date: string | null;
   latest_date: string | null;
+  closing_time: string | null;
+  closing_verified_date: string | null;
 };
-export type SaltInventory = { products: Product[]; reports: Inventory[]; recentReports: RecentReport[]; firstWeek: FirstWeek[] };
+export type SaltInventory = { products: Product[]; reports: Inventory[]; recentReports: RecentReport[]; firstWeek: FirstWeek[]; rules: RetailerRule[]; settings: FirstWeekSettings | null };
 export type Directory = {
   stores: Store[];
   online_stores: Store[];
@@ -88,11 +91,13 @@ export function inventoryDb() {
 
 export async function loadInventory(): Promise<SaltInventory> {
   const db = inventoryDb();
-  const [products, firstWeek] = await Promise.all([
+  const [products, firstWeek, rules, settings] = await Promise.all([
     db.from("salt_boy_products").select("id,name,catalog_number").eq("is_active", true).order("sort_order"),
-    db.from("salt_boy_first_week_info").select("store_id,product_id,purchase_variant,note,cutoff_date,cutoff_time,cutoff_kind,estimate_basis,earliest_date,latest_date,evidence,verified_at"),
+    db.from("salt_boy_first_week_info").select("store_id,product_id,purchase_variant,note,cutoff_date,cutoff_time,cutoff_kind,estimate_basis,earliest_date,latest_date,evidence,verified_at,closing_time,closing_verified_date"),
+    db.from("salt_boy_retailer_rules").select("*"),
+    db.from("salt_boy_first_week_settings").select("release_date,cutoff_date,delivery_cutoff_date").eq("id", true).maybeSingle(),
   ]);
-  if (products.error || firstWeek.error) throw new Error("SALT BOYの商品・初週情報を取得できませんでした。");
+  if (products.error || firstWeek.error || rules.error || settings.error) throw new Error("SALT BOYの商品・初週情報を取得できませんでした。");
 
   const latest = new Map<string, Inventory>();
   const recentReports: RecentReport[] = [];
@@ -116,5 +121,5 @@ export async function loadInventory(): Promise<SaltInventory> {
     }
     if (result.data.length < pageSize) break;
   }
-  return { products: products.data as Product[], reports: [...latest.values()], recentReports, firstWeek: firstWeek.data as FirstWeek[] };
+  return { products: products.data as Product[], reports: [...latest.values()], recentReports, firstWeek: firstWeek.data as FirstWeek[], rules: rules.data as RetailerRule[], settings: settings.data as FirstWeekSettings | null };
 }

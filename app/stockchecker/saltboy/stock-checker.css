@@ -237,3 +237,8 @@
 .salt-own-reports button { margin: 8px 8px 8px 0; padding: 8px 12px; border: 1px solid #9db4c5; border-radius: 8px; }
 .salt-own-reports button:disabled { opacity: .5; }
 .salt-report-inputs { min-width: 0; margin: 0; padding: 0; border: 0; }
+.salt-first-week[data-status="likely"] { border-color: #9dbce5; background: #eef5ff; color: #284f80; }
+.salt-first-week[data-status="unlikely"] { border-color: #e2a9ae; background: #fff0f1; color: #852e37; }
+.salt-first-week-evidence { flex-basis: 100%; font-size: 11px; overflow-wrap: anywhere; }
+.salt-first-week-evidence p, .salt-shipping-context p { white-space: pre-wrap; }
+.salt-shipping-context { padding: 8px; border: 1px solid #d8c99c; border-radius: 6px; }

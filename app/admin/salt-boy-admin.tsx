@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/app/lib/supabase";
 import SaltBoyReports from "./salt-boy-reports";
+import RetailerRules from "./salt-boy-retailer-rules";
+import type { FirstWeekSettings, RetailerRule } from "@/app/stockchecker/saltboy/first-week-model";
 import { purchaseLabel, type PurchaseVariant } from "@/app/stockchecker/saltboy/purchase-variants";
 
 type Tab = "reports" | "history" | "firstWeek" | "security";
@@ -13,9 +15,10 @@ type FirstWeekRecord = {
   cutoff_kind: string | null; cutoff_date: string | null; cutoff_time: string | null;
   estimate_basis: string | null; earliest_date: string | null; latest_date: string | null;
   note: string | null; evidence: string | null; verified_at: string;
+  closing_time: string | null; closing_verified_date: string | null;
 };
 type SecurityEvent = { id: number; event_type: string; store_id: number | null; reason: string; created_at: string };
-type AdminData = { stores: Store[]; products: Product[]; firstWeek: FirstWeekRecord[]; security: SecurityEvent[] };
+type AdminData = { stores: Store[]; products: Product[]; firstWeek: FirstWeekRecord[]; security: SecurityEvent[]; rules: RetailerRule[]; settings: FirstWeekSettings | null };
 type History = { id: number; report_id: number; store_name: string; product_name: string; action: string; actor_kind: string; note: string | null; created_at: string };
 const tabs: Record<Tab, string> = { reports: "投稿一覧", history: "操作履歴", firstWeek: "初週情報", security: "セキュリティ履歴" };
 const actions: Record<string, string> = { approve: "承認", reject: "却下", delete: "削除", restore: "復元" };
@@ -77,6 +80,7 @@ function FirstWeekEditor({ store, record, productId, variant, saved }: {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [kind, setKind] = useState(record?.cutoff_kind ?? "closing");
+  const [closingTime, setClosingTime] = useState(record?.closing_time?.slice(0, 5) ?? "");
   async function submit(form: HTMLFormElement, remove = false) {
     if (busy || (remove && !window.confirm("この初週情報の公開を取り下げますか?"))) return;
     setBusy(true); setMessage("");
@@ -106,6 +110,11 @@ function FirstWeekEditor({ store, record, productId, variant, saved }: {
         <label className="block text-sm">締切日<input className={fieldClass} name="cutoff_date" type="date" required defaultValue={record?.cutoff_date ?? ""} /></label>
         <label className="block text-sm">締め時間<select className={fieldClass} name="cutoff_kind" value={kind} onChange={(event) => setKind(event.target.value)}><option value="closing">閉店まで</option><option value="time">指定時刻まで</option></select></label>
         {kind === "time" && <label className="block text-sm">指定時刻<input className={fieldClass} name="cutoff_time" type="time" required defaultValue={record?.cutoff_time?.slice(0, 5) ?? ""} /></label>}
+        {kind === "closing" && <>
+          <label className="block text-sm">締切当日の確認済み閉店時刻 (任意)<input className={fieldClass} name="closing_time" type="time" value={closingTime} onChange={(event) => setClosingTime(event.target.value)} /></label>
+          <label className="block text-sm">その閉店時刻が適用される日<input className={fieldClass} name="closing_verified_date" type="date" required={!!closingTime} defaultValue={record?.closing_verified_date ?? ""} /></label>
+          <p className="text-sm">通常の営業時間から補完しません。当日の閉店時刻が未確認なら、公開画面の判定は「要確認」になります。</p>
+        </>}
       </>}
       <label className="block text-sm">補足 (任意)<textarea className={fieldClass} name="note" maxLength={500} rows={2} defaultValue={record?.note ?? ""} /></label>
       <label className="block text-sm">確認方法・ソース<textarea className={fieldClass} name="evidence" required maxLength={1000} rows={2} defaultValue={record?.evidence ?? ""} /></label>
@@ -147,6 +156,7 @@ function FirstWeekPanel({ data, reload }: { data: AdminData; reload: () => Promi
       {listings.map((row) => <option key={row.value} value={row.value}>{purchaseLabel(row.product.name, row.variant)}</option>)}
     </select></label>}
     {store && (!store.online || selected) && <FirstWeekEditor key={`${storeId}:${listing}`} store={store} record={record} productId={productId} variant={variant} saved={reload} />}
+    {store?.online && <RetailerRules key={store.id} storeId={store.id} rules={data.rules ?? []} settings={data.settings} saved={reload} />}
     <details className="rounded-lg border p-3 text-sm"><summary>登録済みの初週情報 ({data.firstWeek.length}件)</summary>
       {data.firstWeek.map((row) => <button className="block w-full border-b py-2 text-left" key={`${row.store_id}:${row.product_id}:${row.purchase_variant}`} onClick={() => { setQuery(""); setStoreId(row.store_id); setListing(row.product_id ? `${row.product_id}:${row.purchase_variant ?? ""}` : ""); }}>
         {data.stores.find((s) => s.id === row.store_id)?.name ?? row.store_id} / {row.product_id ? purchaseLabel(data.products.find((p) => p.id === row.product_id)?.name ?? "商品", row.purchase_variant) : "店舗の締め時間"}

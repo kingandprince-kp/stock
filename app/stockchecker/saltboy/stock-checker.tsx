@@ -7,7 +7,8 @@ import { supabase } from "@/app/lib/supabase";
 import type { FirstWeek, Inventory, Product, SaltInventory, Store } from "./data";
 import { AMAZON_JAPAN_STORE_ID, RAKUTEN_BOOKS_STORE_ID, purchaseLabel, stockKey, type PurchaseVariant } from "./purchase-variants";
 import { readShippingEstimate, shippingEstimateText } from "./shipping-estimate";
-import { firstWeekEstimate, FIRST_WEEK_LABELS } from "./first-week-estimate";
+import { physicalFirstWeek, FIRST_WEEK_LABELS, type FirstWeekEstimate } from "./first-week-estimate";
+import { listingFirstWeek } from "./listing-first-week";
 import ShippingEstimateFields from "./shipping-estimate-fields";
 import { FeedbackForm, StoreContribution, StoreRequest } from "./support-forms";
 import OwnReports from "./own-reports";
@@ -132,13 +133,9 @@ function stockLabel(item: Inventory) {
   return item.stock_status === "sold_out" || item.stock_status === "backorder" || item.quantity === 0 ? "在庫なし" : "要確認";
 }
 
-function listingFirstWeek(item: Inventory | undefined) {
-  return item?.shipping_estimate || isInStock(item) ? firstWeekEstimate(item?.shipping_estimate ?? null) : null;
-}
-
-function matchesStockFilters(item: Inventory | undefined, stockOnly: boolean, firstWeekFilter: FirstWeekFilter) {
+function matchesStockFilters(item: Inventory | undefined, stockOnly: boolean, firstWeekFilter: FirstWeekFilter, judgment?: FirstWeekEstimate | null) {
   return (!stockOnly || isInStock(item))
-    && (firstWeekFilter === "all" || listingFirstWeek(item)?.status === firstWeekFilter);
+    && (firstWeekFilter === "all" || judgment?.status === firstWeekFilter);
 }
 
 function distanceKm(lat: number, lng: number, store: Store) {
@@ -218,7 +215,7 @@ function InfoAccordions() {
 }
 
 function StoreCard({
-  store, mode, inventory, reports, stockOnly, firstWeekFilter, firstWeek, commentCount, onCommentsChanged, onReport, distance,
+  store, mode, inventory, reports, stockOnly, firstWeekFilter, firstWeek, commentCount, onCommentsChanged, onReport, distance, now,
 }: {
   store: Store;
   mode: Mode;
@@ -231,6 +228,7 @@ function StoreCard({
   onCommentsChanged: () => Promise<void>;
   onReport: (store: Store) => void;
   distance: number | null;
+  now: number;
 }) {
   const [infoOpen, setInfoOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -247,7 +245,8 @@ function StoreCard({
   const listings = getListings(store, inventory?.products ?? [], online);
   const stockItems = listings.map((listing) => {
     const key = stockKey(store.id, listing.product.id, listing.variant);
-    return { ...listing, key, item: reports.get(key) };
+    const item = reports.get(key);
+    return { ...listing, key, item, judgment: online ? listingFirstWeek(item, store.id, listing.product.id, listing.variant, inventory) : null };
   });
   const lastUpdated = stockItems.reduce<string | null>((latest, { item }) => (
     item && (!latest || Date.parse(item.created_at) > Date.parse(latest)) ? item.created_at : latest
@@ -335,23 +334,11 @@ function StoreCard({
       </div>
 
       <div className="salt-store-tools">
-        {!online && !firstWeek.some((item) => item.cutoff_date) && (
-          <p className="salt-first-week">初週締め時間: 要確認</p>
-        )}
-        {firstWeek.map((item, index) => (
-          <p key={`${item.product_id}-${index}`} className="salt-first-week">
-            {online ? "初週情報: " : "初週締め時間: "}
-            {online
-              ? [
-                  purchaseLabel(inventory?.products.find((product) => product.id === item.product_id)?.name ?? "商品", item.purchase_variant),
-                  item.estimate_basis === "shipping" ? "発送予定" : "お届け予定",
-                  item.earliest_date === item.latest_date ? item.earliest_date : [item.earliest_date, item.latest_date].filter(Boolean).join("～"),
-                  item.note,
-                ].filter(Boolean).join(" ")
-              : [item.cutoff_date, item.cutoff_kind === "closing" ? "閉店まで" : (item.cutoff_time?.slice(0, 5) ?? "要確認") + "まで", item.note].filter(Boolean).join(" ")}
-            <small className="block">確認: {DATE_FORMAT.format(new Date(item.verified_at))}{item.evidence && ` / ${item.evidence}`}</small>
-          </p>
-        ))}
+        {!online && (() => {
+          const info = firstWeek.find((item) => item.product_id === null);
+          const status = physicalFirstWeek(info, now);
+          return <div className="salt-first-week" data-status={status.status}>{status.cutoffLabel}<small className="block">{FIRST_WEEK_LABELS[status.status]} / {status.reason}</small>{info?.verified_at && <small className="block">確認: {DATE_FORMAT.format(new Date(info.verified_at))}</small>}{info?.evidence && <details><summary>確認の根拠</summary><p>{info.evidence}</p>{info.note && <p>{info.note}</p>}</details>}</div>;
+        })()}
         <StoreContribution store={store} online={online} onInventoryReport={() => onReport(store)} />
       </div>
 
@@ -362,10 +349,10 @@ function StoreCard({
             <p>最終更新 {lastUpdated ? <time dateTime={lastUpdated}>{DATE_FORMAT.format(new Date(lastUpdated))}</time> : "—"}</p>
           </div>
           <dl className="salt-stock">
-            {stockItems.filter(({ item }) => matchesStockFilters(item, stockOnly, firstWeekFilter)).map(({ product, variant, item, key, url }) => {
-              const shipping = online ? item?.shipping_estimate : null;
+            {stockItems.filter(({ item, judgment }) => matchesStockFilters(item, stockOnly, firstWeekFilter, judgment?.result)).map(({ product, variant, item, key, url, judgment }) => {
+              const shipping = judgment?.estimate;
               const label = item ? stockLabel(item) : null;
-              const firstWeekStatus = online ? listingFirstWeek(item) : null;
+              const firstWeekStatus = judgment?.result;
               return (
                 <div key={key}>
                   <dt>{url ? <ExternalLink href={url} showArrow={false}>{purchaseLabel(product.name, variant)}</ExternalLink> : purchaseLabel(product.name, variant)}</dt>
@@ -379,7 +366,14 @@ function StoreCard({
                     {firstWeekStatus && <span className="salt-stock-first-week" data-status={firstWeekStatus.status}>
                       <strong>{FIRST_WEEK_LABELS[firstWeekStatus.status]}</strong>
                       <small>{firstWeekStatus.reason}</small>
+                      {firstWeekStatus.normalized?.earliestDate && <small>{firstWeekStatus.normalized.basis === "shipping" ? "発送" : "到着"}: {firstWeekStatus.normalized.earliestDate} {firstWeekStatus.normalized.earliestTime}〜{firstWeekStatus.normalized.latestDate} {firstWeekStatus.normalized.latestTime}</small>}
+                      {judgment?.recordedAt && <small>{judgment.recordedKind}: {DATE_FORMAT.format(new Date(judgment.recordedAt))}</small>}
                     </span>}
+                    {judgment && (shipping?.originalText || judgment.rule?.evidence || judgment.evidence) && <details className="salt-first-week-evidence"><summary>判定の根拠</summary>
+                      {shipping?.originalText && <p>ショップの表記: {shipping.originalText}</p>}
+                      {judgment.evidence && <p>{judgment.evidence}</p>}
+                      {judgment.rule && <p>確認済みの条件: {judgment.rule.evidence}<br />確認: {DATE_FORMAT.format(new Date(judgment.rule.verified_at))}</p>}
+                    </details>}
                   </dd>
                 </div>
               );
@@ -450,6 +444,8 @@ export default function StockChecker({ physical, online, inventory }: {
   const activeFirstWeekFilter = mode === "online" ? firstWeekFilter : "all";
   const [billboardOnly, setBillboardOnly] = useState(false);
   const [limit, setLimit] = useState(20);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 30000); return () => window.clearInterval(timer); }, []);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [geoMessage, setGeoMessage] = useState("");
   const [locating, setLocating] = useState(false);
@@ -493,7 +489,10 @@ export default function StockChecker({ physical, online, inventory }: {
     const { data, error } = await supabase.rpc("get_store_comment_counts");
     if (!error) setCommentCounts((data ?? []) as CommentCount[]);
   }, []);
-  useEffect(() => { void loadCommentCounts(); }, [loadCommentCounts]);
+  useEffect(() => {
+    const task = window.setTimeout(() => void loadCommentCounts(), 0);
+    return () => window.clearTimeout(task);
+  }, [loadCommentCounts]);
 
   useEffect(() => {
     if (reportStore && reportDialog.current && !reportDialog.current.open) {
@@ -505,8 +504,8 @@ export default function StockChecker({ physical, online, inventory }: {
     if (!reportStore) return;
     const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
     if (!siteKey) {
-      setTurnstileError("Bot対策の設定を読み込めません。");
-      return;
+      const task = window.setTimeout(() => setTurnstileError("Bot対策の設定を読み込めません。"), 0);
+      return () => window.clearTimeout(task);
     }
 
     let cancelled = false;
@@ -565,7 +564,8 @@ export default function StockChecker({ physical, online, inventory }: {
       && (!billboardOnly || store.billboard_status === "target")
       && (!stockOnly || inStockStores.has(store.id))
       && (activeFirstWeekFilter === "all" || getListings(store, inventory?.products ?? [], true).some(({ product, variant }) =>
-        matchesStockFilters(reports.get(stockKey(store.id, product.id, variant)), stockOnly, activeFirstWeekFilter)))
+        matchesStockFilters(reports.get(stockKey(store.id, product.id, variant)), stockOnly, activeFirstWeekFilter,
+          listingFirstWeek(reports.get(stockKey(store.id, product.id, variant)), store.id, product.id, variant, inventory)?.result)))
       && (!term || normalize([displayName(store), store.prefecture, store.city, store.address].join(" ")).includes(term))
     ).map((store) => ({ store, distance: mode === "physical" && location ? distanceKm(location.lat, location.lng, store) : null }));
     if (mode === "physical" && largeStoresOnly) {
@@ -745,7 +745,7 @@ export default function StockChecker({ physical, online, inventory }: {
           </div>
         </div>
         {mode === "online" && inventory && <div className="salt-first-week-filter-panel">
-          <p id="salt-first-week-filter-note">※あくまで見込みであり、初週集計への反映を保証するものではありません。購入前に、各商品ページの最新情報をご確認ください。</p>
+          <p id="salt-first-week-filter-note">サイトの購入目安: 発送は{inventory.settings?.cutoff_date ?? "未設定"}、到着は{inventory.settings?.delivery_cutoff_date ?? "未設定"}まで。各ショップで確認済みの条件を使います。条件不足・締切をまたぐ期間・締切当日の時刻不明は「要確認」です。※初週集計への反映を保証するものではありません。購入前に各商品ページの最新情報をご確認ください。</p>
           <div className="salt-result-filters salt-first-week-filters" role="group" aria-label="初週判定" aria-describedby="salt-first-week-filter-note">
           <strong>初週判定</strong>
           {FIRST_WEEK_FILTERS.map(({ value, label }) => (
@@ -755,7 +755,7 @@ export default function StockChecker({ physical, online, inventory }: {
           </div>
         </div>}
         {!inventory && <p className="salt-error" role="alert">SALT BOYの在庫データを取得できませんでした。時間をおいて再読み込みしてください。</p>}
-        {matches.slice(0, limit).map(({ store, distance }) => <StoreCard key={`${mode}-${store.id}`} store={store} mode={mode} inventory={inventory} reports={reports} stockOnly={stockOnly} firstWeekFilter={activeFirstWeekFilter} firstWeek={firstWeek.get(store.id) ?? []} commentCount={commentCountMap.get(store.id) ?? 0} onCommentsChanged={loadCommentCounts} onReport={openReport} distance={distance} />)}
+        {matches.slice(0, limit).map(({ store, distance }) => <StoreCard key={`${mode}-${store.id}`} store={store} mode={mode} inventory={inventory} reports={reports} stockOnly={stockOnly} firstWeekFilter={activeFirstWeekFilter} firstWeek={firstWeek.get(store.id) ?? []} commentCount={commentCountMap.get(store.id) ?? 0} onCommentsChanged={loadCommentCounts} onReport={openReport} distance={distance} now={now} />)}
         {!matches.length && <p className="salt-empty">{activeFirstWeekFilter !== "all" ? "選んだ条件に一致する商品はありません。" : stockOnly ? "条件に一致する在庫ありの投稿はありません。" : "条件に一致する店舗が見つかりませんでした。"}</p>}
         {matches.length > limit && <button type="button" className="salt-more-button" onClick={() => setLimit((value) => value + 20)}>さらに20件表示</button>}
       </section>
@@ -811,7 +811,7 @@ export default function StockChecker({ physical, online, inventory }: {
                 <input type="number" min="1" max="10000" step="1" inputMode="numeric" value={selected.quantity} onChange={(event) => setReportInputs((current) => ({ ...current, [key]: { ...selected, quantity: event.target.value } }))} required aria-label={title + "の在庫数"} />
                 <span>枚</span>
               </label>}
-              {mode === "online" && selected.status && <ShippingEstimateFields prefix={key + ":"} />}
+              {mode === "online" && selected.status && <ShippingEstimateFields prefix={key + ":"} storeId={reportStore.id} />}
             </div>;
           })}</fieldset>
           <label className="salt-report-comment">コメント (任意)
