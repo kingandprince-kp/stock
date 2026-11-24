@@ -157,3 +157,13 @@ test('listing source selection preserves bonus variants and takes the latest con
   assert.equal(listingFirstWeek({...item,created_at:'2026-11-24T00:00:00Z'},308,1,'special',inventory).result.status,'unlikely');
   assert.equal(listingFirstWeek(undefined,308,1,'no_special',inventory),null);
 });
+
+test('Seven Net bonus labels preserve single and bundle inventory identities', () => {
+  const variants=load('app/stockchecker/saltboy/purchase-variants.ts');
+  assert.equal(variants.purchaseLabel('初回限定盤A (CD+Blu-ray)',null,310),'初回限定盤A (CD+Blu-ray) (特典あり)');
+  assert.equal(variants.purchaseLabel('通常盤','bluray_set_special',310),'Blu-ray 3形態セット (特典あり)');
+  assert.equal(variants.purchaseLabel('通常盤','dvd_set_special',310),'DVD 3形態セット (特典あり)');
+  assert.equal(variants.purchaseLabel('通常盤',null,307),'通常盤');
+  assert.equal(variants.purchaseLabel('通常盤','no_special',308),'通常盤 (特典なし)');
+  assert.equal(variants.stockKey(310,1,null),'310:1:');
+});

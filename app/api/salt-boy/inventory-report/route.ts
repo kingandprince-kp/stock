@@ -1,4 +1,5 @@
 import { createHash, createHmac } from "node:crypto";
+import { isIP } from "node:net";
 import { NextResponse } from "next/server";
 import { inventoryDb } from "@/app/stockchecker/saltboy/data";
 import { parseShippingEstimate } from "@/app/stockchecker/saltboy/shipping-estimate";
@@ -29,13 +30,13 @@ function errorResponse(message: string, status = 400) {
 }
 
 export async function POST(request: Request) {
-  let security: { clientHash: string; storeId: number; requestId: string } | null = null;
+  let security: { clientHash: string; storeId: number; requestId: string; ipAddress: string | null; ipHash: string | null } | null = null;
   async function logSecurity(reason: string, eventType = "blocked") {
     if (!security) return;
     try {
       const { error } = await inventoryDb().from("salt_boy_security_events").insert({
         event_type: eventType, client_hash: security.clientHash, store_id: security.storeId,
-        request_id: security.requestId, reason,
+        request_id: security.requestId, ip_address: security.ipAddress, ip_hash: security.ipHash, reason,
       });
       if (error) console.error("SALT BOY security log:", error.message);
     } catch (error) { console.error("SALT BOY security log:", error); }
@@ -87,18 +88,21 @@ export async function POST(request: Request) {
       || typeof requestId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
       return errorResponse("投稿情報を確認できません。画面を開き直してください。");
     }
+    const forwardedFor = request.headers.get("x-vercel-forwarded-for")
+      ?? request.headers.get("x-forwarded-for")
+      ?? request.headers.get("x-real-ip")
+      ?? "";
+    const candidateIp = forwardedFor.split(",")[0]?.trim() ?? "";
+    const remoteIp = isIP(candidateIp) ? candidateIp : null;
+    const ipHash = remoteIp ? createHmac("sha256", turnstileSecret).update(remoteIp).digest("hex") : null;
+
     const clientHash = createHash("sha256").update(clientId).digest("hex");
-    security = { clientHash, storeId: Number(storeId), requestId };
+    security = { clientHash, storeId: Number(storeId), requestId, ipAddress: remoteIp, ipHash };
     if (typeof turnstileToken !== "string" || turnstileToken.length < 1 || turnstileToken.length > 2048) {
       await logSecurity("Bot認証トークンなし", "turnstile_block");
       return errorResponse("Bot対策の確認を完了してください。");
     }
 
-    const forwardedFor = request.headers.get("x-vercel-forwarded-for")
-      ?? request.headers.get("x-forwarded-for")
-      ?? request.headers.get("x-real-ip")
-      ?? "";
-    const remoteIp = forwardedFor.split(",")[0]?.trim();
     const verifyBody = new FormData();
     verifyBody.set("secret", turnstileSecret);
     verifyBody.set("response", turnstileToken);
@@ -128,11 +132,12 @@ export async function POST(request: Request) {
     if (listings.some((item) => item.shippingEstimate != null && !item.estimate)) {
       return errorResponse("商品ごとの発送・お届け目安を確認してください。");
     }
-    const { data, error } = await supabase.rpc("salt_boy_submit_inventory_checked", {
+    const { data, error } = await supabase.rpc("salt_boy_submit_inventory_with_ip", {
       p_store_id: storeId,
       p_client_hash: clientHash,
       p_request_id: requestId,
-      p_ip_hash: remoteIp ? createHmac("sha256", turnstileSecret).update(remoteIp).digest("hex") : null,
+      p_ip_hash: ipHash,
+      p_ip_address: remoteIp,
       p_items: listings.map((item) => ({
         product_id: item.productId,
         quantity: item.quantity,

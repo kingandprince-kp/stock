@@ -387,7 +387,7 @@ function StoreCard({
               const firstWeekStatus = judgment?.result;
               return (
                 <div key={key}>
-                  <dt>{url ? <ExternalLink href={url} showArrow={false}>{purchaseLabel(product.name, variant)}</ExternalLink> : purchaseLabel(product.name, variant)}</dt>
+                  <dt>{url ? <ExternalLink href={url} showArrow={false}>{purchaseLabel(product.name, variant, store.id)}</ExternalLink> : purchaseLabel(product.name, variant, store.id)}</dt>
                   <dd>
                     {label ? <strong className="salt-stock-status" data-status={isInStock(item) ? "available" : label === "在庫なし" ? "unavailable" : "unknown"}>{label === "在庫あり" ? "○ " : label === "在庫なし" ? "× " : ""}{label}</strong> : "投稿なし"}
                     {item && <time dateTime={item.created_at}>{DATE_FORMAT.format(new Date(item.created_at))}</time>}
@@ -674,7 +674,7 @@ export default function StockChecker({ physical, online, inventory }: {
       const includesShipping = mode === "online" && form.has(prefix + "includeShipping");
       const shippingEstimate = includesShipping ? readShippingEstimate(form, prefix) : null;
       if (includesShipping && !shippingEstimate) {
-        return setReportError(purchaseLabel(product.name, variant) + "の発送・お届け目安を確認してください。");
+        return setReportError(purchaseLabel(product.name, variant, reportStore.id) + "の発送・お届け目安を確認してください。");
       }
       items.push({ productId: product.id, purchaseVariant: variant, quantity, stockStatus: isQuantity ? "in_stock" : selected.status, comment, shippingEstimate });
     }
@@ -814,7 +814,7 @@ export default function StockChecker({ physical, online, inventory }: {
               const store = storesById.get(item.store_id);
               return (
                 <li key={item.id}>
-                  <div><strong>{store ? displayName(store) : "掲載終了店舗"}</strong><span>{purchaseLabel(productsById.get(item.product_id)?.name ?? "掲載終了商品", item.purchase_variant)}{!item.purchase_variant && (item.store_id === AMAZON_JAPAN_STORE_ID || item.store_id === RAKUTEN_BOOKS_STORE_ID) ? " (特典区分不明)" : ""}</span></div>
+                  <div><strong>{store ? displayName(store) : "掲載終了店舗"}</strong><span>{purchaseLabel(productsById.get(item.product_id)?.name ?? "掲載終了商品", item.purchase_variant, item.store_id)}{!item.purchase_variant && (item.store_id === AMAZON_JAPAN_STORE_ID || item.store_id === RAKUTEN_BOOKS_STORE_ID) ? " (特典区分不明)" : ""}</span></div>
                   <div><strong>{stockLabel(item)}</strong><time dateTime={item.created_at}>{DATE_FORMAT.format(new Date(item.created_at))}</time></div>
                   {item.comment && <p>{item.comment}</p>}
                 </li>
@@ -841,7 +841,7 @@ export default function StockChecker({ physical, online, inventory }: {
           <fieldset className="salt-report-inputs" disabled={reportSubmitting}>
           <fieldset className="salt-report-products"><legend>在庫状況</legend>{reportListings.map(({ product, variant }) => {
             const key = stockKey(reportStore.id, product.id, variant);
-            const title = purchaseLabel(product.name, variant);
+            const title = purchaseLabel(product.name, variant, reportStore?.id);
             const selected = reportInputs[key] ?? { status: "", quantity: "" };
             return <div className="salt-report-product" key={key}>
               <label htmlFor={"salt-status-" + key}>{title}</label>

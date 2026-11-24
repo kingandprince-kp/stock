@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/app/lib/supabase";
 import SaltBoyReports from "./salt-boy-reports";
+import SecurityIdentityDetails, { type SecurityIdentity } from "./salt-boy-security-identity";
 import RetailerRules from "./salt-boy-retailer-rules";
 import type { FirstWeekSettings, RetailerRule } from "@/app/stockchecker/saltboy/first-week-model";
 import { purchaseLabel, type PurchaseVariant } from "@/app/stockchecker/saltboy/purchase-variants";
@@ -17,7 +18,7 @@ type FirstWeekRecord = {
   note: string | null; evidence: string | null; verified_at: string;
   closing_time: string | null; closing_verified_date: string | null;
 };
-type SecurityEvent = { id: number; event_type: string; store_id: number | null; reason: string; created_at: string };
+type SecurityEvent = SecurityIdentity & { id: number; event_type: string; store_id: number | null; reason: string; created_at: string };
 type AdminData = { stores: Store[]; products: Product[]; firstWeek: FirstWeekRecord[]; security: SecurityEvent[]; rules: RetailerRule[]; settings: FirstWeekSettings | null };
 type History = { id: number; report_id: number; store_name: string; product_name: string; action: string; actor_kind: string; note: string | null; created_at: string };
 const tabs: Record<Tab, string> = { reports: "投稿一覧", history: "操作履歴", firstWeek: "初週情報", security: "セキュリティ履歴" };
@@ -168,6 +169,7 @@ function FirstWeekPanel({ data, reload }: { data: AdminData; reload: () => Promi
 
 export default function SaltBoyAdmin() {
   const [tab, setTab] = useState<Tab>("reports");
+  const [securityQuery, setSecurityQuery] = useState("");
   const [data, setData] = useState<AdminData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -186,6 +188,7 @@ export default function SaltBoyAdmin() {
     const task = window.setTimeout(() => void reload(), 0);
     return () => window.clearTimeout(task);
   }, [tab, reload]);
+  const filteredSecurity = data?.security.filter((row) => [row.ip_address,row.ip_hash,row.client_hash,row.request_id,row.reason,data.stores.find((s) => s.id === row.store_id)?.name].join(" ").toLowerCase().includes(securityQuery.trim().toLowerCase())) ?? [];
   return <div className="mt-4 space-y-3">
     <nav aria-label="SALT BOYの管理" className="flex flex-wrap gap-2">
       {(Object.keys(tabs) as Tab[]).map((key) => <button key={key} className={`${buttonClass} ${tab === key ? "bg-slate-800 text-white" : "bg-white"}`} aria-pressed={tab === key} onClick={() => setTab(key)}>{tabs[key]}</button>)}
@@ -196,11 +199,13 @@ export default function SaltBoyAdmin() {
       {loading && !data ? <p>読み込み中…</p> : data && (tab === "firstWeek" ? <FirstWeekPanel data={data} reload={reload} /> : <>
         <h2 className="font-bold">SALT BOY セキュリティ履歴</h2>
         <p className="text-sm">最新100件。形態の一括送信は1回として数えます。</p>
-        <ul className="divide-y">{data.security.map((row) => <li key={row.id} className="py-2 text-sm">
+        <label className="block text-sm">IP・IPハッシュ・ブラウザ識別子・店舗名で検索<input className={fieldClass} type="search" value={securityQuery} onChange={(event) => setSecurityQuery(event.target.value)} /></label>
+        <ul className="divide-y">{filteredSecurity.map((row) => <li key={row.id} className="py-2 text-sm">
           <p>{dateFormat.format(new Date(row.created_at))} · {data.stores.find((s) => s.id === row.store_id)?.name ?? "店舗未指定"}</p>
           <p>{row.reason}</p>
+          <SecurityIdentityDetails value={row} />
         </li>)}</ul>
-        {!data.security.length && <p>記録はありません。</p>}
+        {!filteredSecurity.length && <p>{securityQuery ? "条件に一致する記録はありません。" : "記録はありません。"}</p>}
       </>)}
     </section>}
   </div>;

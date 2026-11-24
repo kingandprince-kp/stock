@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
-const { createHash } = require('node:crypto');
+const { createHash, createHmac } = require('node:crypto');
 const ts = require('typescript');
 
 function load(relative, mocks = {}) {
@@ -28,7 +28,7 @@ const hash = (id) => createHash('sha256').update(id).digest('hex');
 const clientId = 'test-browser-random-owner-12345';
 const requestId = '88c91f5a-57be-48ae-8e54-f830d278d832';
 const body = () => ({ storeId: 307, items: [{ productId: 1, quantity: 0, stockStatus: 'in_stock' }], clientId, requestId, turnstileToken: 'test-token' });
-const request = (value, path = 'inventory-report', origin = 'https://kingandprince-stock.vercel.app') => new Request(`https://kingandprince-stock.vercel.app/api/salt-boy/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: origin }, body: JSON.stringify(value) });
+const request = (value, path = 'inventory-report', origin = 'https://kingandprince-stock.vercel.app', extraHeaders = {}) => new Request(`https://kingandprince-stock.vercel.app/api/salt-boy/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: origin, ...extraHeaders }, body: JSON.stringify(value) });
 
 test('inventory API verifies Turnstile and sends normalized per-listing estimates to checked RPC', async () => {
   const previous = { fetch: global.fetch, url: process.env.NEXT_PUBLIC_SUPABASE_URL, key: process.env.SUPABASE_SERVICE_ROLE_KEY, secret: process.env.TURNSTILE_SECRET_KEY };
@@ -48,17 +48,28 @@ test('inventory API verifies Turnstile and sends normalized per-listing estimate
   try {
     let value = body();
     value.items[0].shippingEstimate = { basis: 'delivery', kind: 'date', date: '2026-11-28', source: 'product_page' };
-    let response = await POST(request(value));
+    let response = await POST(request(value, undefined, undefined, { 'x-vercel-forwarded-for': '203.0.113.9, 198.51.100.20', 'x-forwarded-for': '198.51.100.99' }));
     assert.equal(response.status, 200);
-    assert.equal(calls[0].name, 'salt_boy_submit_inventory_checked');
+    assert.equal(calls[0].name, 'salt_boy_submit_inventory_with_ip');
     assert.equal(calls[0].args.p_client_hash, hash(clientId));
+    assert.equal(calls[0].args.p_ip_address, '203.0.113.9');
+    assert.equal(calls[0].args.p_ip_hash, createHmac('sha256','test-secret').update('203.0.113.9').digest('hex'));
+    assert.ok(!JSON.stringify(await response.clone().json()).includes('203.0.113.9'), 'public response leaked IP');
+    value.ipAddress='198.51.100.66';
+    response = await POST(request(value, undefined, undefined, { 'x-real-ip': '2001:db8::7' }));
+    assert.equal(calls.at(-1).args.p_ip_address,'2001:db8::7');
+    response = await POST(request(value, undefined, undefined, { 'x-real-ip': 'invalid-ip' }));
+    assert.equal(calls.at(-1).args.p_ip_address,null);
+    assert.equal(calls.at(-1).args.p_ip_hash,null);
     assert.equal(calls[0].args.p_items[0].shipping_estimate.basis, 'delivery');
     assert.equal(calls[0].args.p_items[0].auto_publish, true);
     assert.equal(calls[0].args.p_request_id, requestId);
     for (const invalid of [{ success: false }, { ...verification, hostname: 'wrong.example' }, { ...verification, action: 'wrong_action' }]) {
       calls = []; verification = invalid;
-      response = await POST(request(body()));
-      assert.equal(response.status, 403); assert.equal(calls.length, 0);
+      response = await POST(request(body(), undefined, undefined, { 'x-vercel-forwarded-for': '203.0.113.9' }));
+      assert.equal(response.status, 403);
+      assert.equal(security.at(-1).row.ip_address, '203.0.113.9');
+      assert.equal(security.at(-1).row.ip_hash, createHmac('sha256','test-secret').update('203.0.113.9').digest('hex')); assert.equal(calls.length, 0);
     }
     assert.ok(security.every((row) => row.table === 'salt_boy_security_events'));
     verification = { success: true, hostname: 'kingandprince-stock.vercel.app', action: 'inventory_report' };
@@ -68,7 +79,9 @@ test('inventory API verifies Turnstile and sends normalized per-listing estimate
     response = await POST(request(body(), 'inventory-report', 'https://other.example'));
     assert.equal(response.status, 403);
     rpcError = { code: 'P0429', message: '同じ店舗・同じ商品への連続投稿は、3分以上時間をおいてください。' };
-    response = await POST(request(body())); assert.equal(response.status, 429);
+    response = await POST(request(body(), undefined, undefined, { 'x-vercel-forwarded-for': '203.0.113.9' })); assert.equal(response.status, 429);
+    assert.equal(security.at(-1).row.event_type,'rate_limit');
+    assert.equal(security.at(-1).row.ip_address,'203.0.113.9');
     assert.match((await response.json()).message, /3分/);
     rpcError = { code: '23505', message: 'different payload' };
     response = await POST(request(body())); assert.equal(response.status, 409);
@@ -88,7 +101,7 @@ test('inventory API verifies Turnstile and sends normalized per-listing estimate
 
 test('own reports are scoped to the browser; deletion is idempotent and cannot delete another owner', async () => {
   const rows = [
-    { id: 1, client_hash: hash(clientId), store_id: 307, deleted_at: null },
+    { id: 1, client_hash: hash(clientId), store_id: 307, deleted_at: null, ip_address:'203.0.113.9', ip_hash:'private-ip-hash' },
     { id: 2, client_hash: hash('another-owner'), store_id: 308, deleted_at: null },
   ];
   const db = {
@@ -106,6 +119,8 @@ test('own reports are scoped to the browser; deletion is idempotent and cannot d
   assert.equal(result.reports.length, 1); assert.equal(result.reports[0].id, 1);
   assert.equal(response.headers.get('cache-control'), 'no-store');
   assert.ok(!JSON.stringify(result).includes('client_hash'));
+  assert.ok(!JSON.stringify(result).includes('ip_address'));
+  assert.ok(!JSON.stringify(result).includes('ip_hash'));
   for (const id of [1, 1, 2]) {
     response = await POST(request({ action: 'delete', clientId, reportId: id }, 'own-reports'));
     assert.equal(response.status, id === 2 ? 404 : 200);

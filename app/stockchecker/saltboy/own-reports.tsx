@@ -66,7 +66,7 @@ export default function OwnReports({ stores, products }: { stores: Store[]; prod
       {loaded && !reports.length && <p>自分の在庫投稿はありません。</p>}
       {reports.map((report) => <article key={report.id}>
         <strong>{stores.find((store) => store.id === report.store_id)?.name ?? "掲載終了店舗"}</strong>
-        <p>{purchaseLabel(products.find((product) => product.id === report.product_id)?.name ?? "掲載終了商品", report.purchase_variant)}</p>
+        <p>{purchaseLabel(products.find((product) => product.id === report.product_id)?.name ?? "掲載終了商品", report.purchase_variant, report.store_id)}</p>
         <p>{report.quantity > 0 ? `${report.quantity.toLocaleString("ja-JP")}枚` : report.stock_status === "in_stock" || report.stock_status === "low_stock" ? "在庫あり" : "在庫なし"} · {dateFormat.format(new Date(report.created_at))}</p>
         {report.comment && <p className="whitespace-pre-wrap break-words">{report.comment}</p>}
         {report.deleted_at ? <span>削除済み</span> : <button type="button" disabled={busy} onClick={() => void remove(report)}>自分の投稿を削除</button>}

@@ -11,7 +11,12 @@ const LABELS: Record<PurchaseVariant, string> = {
   dvd_set_special: "DVD 3形態セット (特典付き)",
 };
 
-export function purchaseLabel(product: string, variant: PurchaseVariant | null) {
+export function purchaseLabel(product: string, variant: PurchaseVariant | null, storeId?: number) {
+  if (storeId === 310) {
+    return variant && variant !== "special" && variant !== "no_special"
+      ? LABELS[variant].replace(/特典付き|特典なし/g, "特典あり")
+      : `${product} (特典あり)`;
+  }
   if (!variant) return product;
   return variant === "special" || variant === "no_special" ? `${product} (${LABELS[variant]})` : LABELS[variant];
 }

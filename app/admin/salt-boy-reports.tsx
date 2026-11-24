@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/app/lib/supabase";
+import SecurityIdentityDetails, { type SecurityIdentity } from "./salt-boy-security-identity";
 import { parseShippingEstimate, shippingEstimateText } from "@/app/stockchecker/saltboy/shipping-estimate";
 
 type View = "pending" | "published" | "closed";
 type Action = "approve" | "reject" | "delete" | "restore";
-type Report = {
+type Report = SecurityIdentity & {
   id: number;
   store_name: string;
   product_name: string;
@@ -160,6 +161,7 @@ export default function SaltBoyReports() {
                   <p className="font-bold">{report.store_name} / {report.product_name}</p>
                 </div>
                 <p>#{report.id} · {timeFormat.format(new Date(report.created_at))} · {status} · {report.quantity > 0 ? `${report.quantity.toLocaleString("ja-JP")}枚` : report.stock_status === "in_stock" ? "在庫あり" : "在庫なし"}</p>
+                <SecurityIdentityDetails value={report} />
                 {shipping && <p>{shippingEstimateText(shipping)}{shipping.condition && ` / 条件: ${shipping.condition}`}</p>}
                 {report.comment && <p className="whitespace-pre-wrap break-words">{report.comment}</p>}
                 {report.review_status === "pending" && report.review_reason && <p className="text-amber-800">確認理由: {report.review_reason}</p>}
