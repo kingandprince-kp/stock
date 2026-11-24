@@ -256,3 +256,5 @@
 .salt-bonus-note a { margin-left: 6px; text-decoration: underline; text-underline-offset: 3px; }
 
 .salt-maintenance-badge { display: inline-flex; align-items: center; max-width: 100%; margin-top: 5px; padding: 3px 7px; border: 1px solid #c9bda4; border-radius: 5px; background: #faf3e5; color: #6d5429; font-size: 12px; font-weight: 600; line-height: 1.5; }
+
+.salt-public-url { margin: 9px 0 14px; text-align: center; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }

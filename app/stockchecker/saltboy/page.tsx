@@ -35,6 +35,7 @@ export default async function SaltBoyPage() {
         </div>
         <p className="salt-design-description">全国の実店舗・オンラインショップの<br />在庫情報を確認できます。</p>
       </header>
+        <p className="salt-public-url"><a href="https://kingandprince-stock.vercel.app/stockchecker/saltboy">https://kingandprince-stock.vercel.app/stockchecker/saltboy</a></p>
         {directory.status === "fulfilled" ? (
           <StockChecker
             physical={directory.value.stores}
