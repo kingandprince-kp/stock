@@ -342,6 +342,7 @@ function StoreCard({
       <div className="salt-store-head">
         <div className="salt-store-title">
           <h3>{displayName(store)}</h3>
+          {online && store.id === 311 && <p className="salt-maintenance-badge" role="status">メンテナンス中</p>}
           {storeBonus(store) && <p className="salt-store-bonus"><span className="salt-store-bonus-label">外付け特典</span><strong>{storeBonus(store)}</strong></p>}
           {!online && hasKaitoHandwrittenComment(store.id) && <p className="salt-handwritten-badge">
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m16 3 5 5-12 12-6 1 1-6L16 3Z" /><path d="m13 6 5 5M3 21h18" /></svg>
