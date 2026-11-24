@@ -322,7 +322,7 @@ function StoreCard({
       <div className="salt-store-head">
         <div className="salt-store-title">
           <h3>{displayName(store)}</h3>
-          {storeBonus(store) && <p className="salt-store-bonus">外付け特典: {storeBonus(store)}</p>}
+          {storeBonus(store) && <p className="salt-store-bonus"><span className="salt-store-bonus-label">外付け特典</span><strong>{storeBonus(store)}</strong></p>}
           {!online && hasKaitoHandwrittenComment(store.id) && <p className="salt-handwritten-badge">
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m16 3 5 5-12 12-6 1 1-6L16 3Z" /><path d="m13 6 5 5M3 21h18" /></svg>
             KAITO直筆コメント
@@ -760,7 +760,7 @@ export default function StockChecker({ physical, online, inventory }: {
           </div>
         </div>
         {mode === "online" && inventory && <div className="salt-first-week-filter-panel">
-          <p id="salt-first-week-filter-note">サイトの購入目安: 発送は{inventory.settings?.cutoff_date ?? "未設定"}、到着は{inventory.settings?.delivery_cutoff_date ?? "未設定"}まで。各ショップで確認済みの条件を使います。条件不足・締切をまたぐ期間・締切当日の時刻不明は「要確認」です。※初週集計への反映を保証するものではありません。購入前に各商品ページの最新情報をご確認ください。</p>
+          <p id="salt-first-week-filter-note">サイトの購入目安: {inventory.settings?.cutoff_date ?? "未設定"}までの発送。到着日は地域・配送方法により異なります。お届け先を設定し、各商品ページの発送・到着予定をご確認ください。到着予定だけでは発送日を判断できません。条件不足・締切をまたぐ期間・締切当日の時刻不明は「要確認」表示です。※初週集計への反映を保証するものではありません。購入前に各商品ページの最新情報をご確認ください。</p>
           <div className="salt-result-filters salt-first-week-filters" role="group" aria-label="初週判定" aria-describedby="salt-first-week-filter-note">
           <strong>初週判定</strong>
           {FIRST_WEEK_FILTERS.map(({ value, label }) => (
