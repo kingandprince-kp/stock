@@ -12,6 +12,7 @@ import { listingFirstWeek } from "./listing-first-week";
 import ShippingEstimateFields from "./shipping-estimate-fields";
 import { FeedbackForm, StoreContribution, StoreRequest } from "./support-forms";
 import OwnReports from "./own-reports";
+import { akaikumasanSingleUrl, akaikumasanBundles } from "./akaikumasan-products";
 import { hasKaitoHandwrittenComment } from "./kaito-handwritten-stores";
 import { storeBonus, STORE_BONUS_SOURCE } from "./store-bonuses";
 
@@ -93,6 +94,8 @@ function getListings(store: Store, products: Product[], online: boolean): Listin
       const entry = (variant: PurchaseVariant, id: string): Listing => ({ product, variant, url: base + id + (amazon ? "" : "/") });
       return [entry("no_special", sku.standard), ...(sku.bonus ? [entry("special", sku.bonus)] : [])];
     }
+    const akaikumasanUrl = akaikumasanSingleUrl(store.id, code);
+    if (akaikumasanUrl) return [{ product, variant: null, url: akaikumasanUrl }];
     if (store.id === 316 && JOSHIN_PRODUCTS[code]) return [{ product, variant: null, url: `https://joshinweb.jp/dp/${JOSHIN_PRODUCTS[code]}.html` }];
     if (store.id === 310 && SEVEN_NET_PRODUCTS[code]) return [{ product, variant: null, url: `${SEVEN_NET_PRODUCT_BASE}${SEVEN_NET_PRODUCTS[code]}.html` }];
     if (/hmv/i.test(retailer) && HMV_PRODUCTS[code]) return [{ product, variant: null, url: HMV_PRODUCT_BASE + HMV_PRODUCTS[code] }];
@@ -110,7 +113,8 @@ function getListings(store: Store, products: Product[], online: boolean): Listin
   ]) : online && guruguruUrl ? products.filter((product) => product.catalog_number === "UPCH-7913").flatMap((product): Listing[] => [
     { product, variant: "bluray_set_special", url: guruguruUrl("6202610160011") },
     { product, variant: "dvd_set_special", url: guruguruUrl("6202610160028") },
-  ]) : []);
+  ]) : []).concat(online ? products.filter((product) => product.catalog_number === "UPCH-7913").flatMap((product): Listing[] =>
+    akaikumasanBundles(store.id).map(({ variant, url }) => ({ product, variant, url }))) : []);
 }
 type Comment = {
   id: number;
@@ -604,6 +608,10 @@ export default function StockChecker({ physical, online, inventory }: {
         const entry = matchingStores.get(id);
         return entry ? [entry] : [];
       });
+    }
+    if (mode === "online") {
+      const linkedStores = new Set(stores.filter(({ store }) => getListings(store, inventory?.products ?? [], true).some((listing) => listing.url)).map(({ store }) => store.id));
+      stores.sort((a, b) => Number(linkedStores.has(b.store.id)) - Number(linkedStores.has(a.store.id)));
     }
     if (mode === "physical" && location) stores.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
     return stores;
