@@ -55,6 +55,14 @@ const TOWER_PRODUCTS: Partial<Record<string, string>> = {
   "UPCH-7912": "8186660",
   "UPCH-7913": "8186661",
 };
+const SEVEN_NET_PRODUCT_BASE = "https://7net.omni7.jp/detail/";
+const SEVEN_NET_PRODUCTS: Partial<Record<string, string>> = {
+  "UPCH-7909": "1320329789",
+  "UPCH-7910": "1320329791",
+  "UPCH-7911": "1320329793",
+  "UPCH-7912": "1320329795",
+  "UPCH-7913": "1320329797",
+};
 type Listing = { product: Product; variant: PurchaseVariant | null; url?: string };
 const GURUGURU_PRODUCT_URLS: Partial<Record<number, (sku: string) => string>> = {
   320: (sku) => `https://item.rakuten.co.jp/guruguru2/${sku}/`,
@@ -78,6 +86,7 @@ function getListings(store: Store, products: Product[], online: boolean): Listin
       const entry = (variant: PurchaseVariant, id: string): Listing => ({ product, variant, url: base + id + (amazon ? "" : "/") });
       return [entry("no_special", sku.standard), ...(sku.bonus ? [entry("special", sku.bonus)] : [])];
     }
+    if (store.id === 310 && SEVEN_NET_PRODUCTS[code]) return [{ product, variant: null, url: `${SEVEN_NET_PRODUCT_BASE}${SEVEN_NET_PRODUCTS[code]}.html` }];
     if (/hmv/i.test(retailer) && HMV_PRODUCTS[code]) return [{ product, variant: null, url: HMV_PRODUCT_BASE + HMV_PRODUCTS[code] }];
     if (/タワーレコード|tower/i.test(retailer) && TOWER_PRODUCTS[code]) return [{ product, variant: null, url: `https://tower.jp/item/${TOWER_PRODUCTS[code]}` }];
     if (store.id === 307 && /^UPCH-79(?:09|1[0-3])$/.test(code)) return [{ product, variant: null, url: `https://store.universal-music.co.jp/collections/kaito/products/${code.toLowerCase().replace("-", "")}` }];
@@ -87,6 +96,9 @@ function getListings(store: Store, products: Product[], online: boolean): Listin
     { product, variant: "bluray_set_special", url: RAKUTEN_BOOKS_PRODUCT_BASE + "18854632/" },
     { product, variant: "dvd_set", url: RAKUTEN_BOOKS_PRODUCT_BASE + "18854633/" },
     { product, variant: "dvd_set_special", url: RAKUTEN_BOOKS_PRODUCT_BASE + "18854634/" },
+  ]) : online && store.id === 310 ? products.filter((product) => product.catalog_number === "UPCH-7913").flatMap((product): Listing[] => [
+    { product, variant: "bluray_set_special", url: SEVEN_NET_PRODUCT_BASE + "1320329798.html" },
+    { product, variant: "dvd_set_special", url: SEVEN_NET_PRODUCT_BASE + "1320329799.html" },
   ]) : online && guruguruUrl ? products.filter((product) => product.catalog_number === "UPCH-7913").flatMap((product): Listing[] => [
     { product, variant: "bluray_set_special", url: guruguruUrl("6202610160011") },
     { product, variant: "dvd_set_special", url: guruguruUrl("6202610160028") },
