@@ -781,7 +781,7 @@ export default function StockChecker({ physical, online, inventory }: {
           </div>
         </div>
         {mode === "online" && inventory && <div className="salt-first-week-filter-panel">
-          <p id="salt-first-week-filter-note">サイトの購入目安: {inventory.settings?.cutoff_date ?? "未設定"}までの発送。到着日は地域・配送方法により異なります。お届け先を設定し、各商品ページの発送・到着予定をご確認ください。到着予定だけでは発送日を判断できません。条件不足・締切をまたぐ期間・締切当日の時刻不明は「要確認」表示です。※初週集計への反映を保証するものではありません。購入前に各商品ページの最新情報をご確認ください。</p>
+          <p id="salt-first-week-filter-note">サイトの購入目安: {inventory.settings?.cutoff_date?.replaceAll("-", "/") ?? "未設定"}までの発送。到着日は地域・配送方法により異なります。各商品ページでお住まいの地域への発送・到着予定をご確認ください。条件不足・締切をまたぐ期間・締切当日の時刻不明は「要確認」表示です。※初週集計への反映を保証するものではありません。購入前に各商品ページの最新情報をご確認ください。</p>
           <div className="salt-result-filters salt-first-week-filters" role="group" aria-label="初週判定" aria-describedby="salt-first-week-filter-note">
           <strong>初週判定</strong>
           {FIRST_WEEK_FILTERS.map(({ value, label }) => (
