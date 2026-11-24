@@ -12,6 +12,7 @@ import { listingFirstWeek } from "./listing-first-week";
 import ShippingEstimateFields from "./shipping-estimate-fields";
 import { FeedbackForm, StoreContribution, StoreRequest } from "./support-forms";
 import OwnReports from "./own-reports";
+import { hasKaitoHandwrittenComment } from "./kaito-handwritten-stores";
 
 type Mode = "physical" | "online";
 // 東京、大阪、福岡、札幌の順。
@@ -320,6 +321,10 @@ function StoreCard({
       <div className="salt-store-head">
         <div className="salt-store-title">
           <h3>{displayName(store)}</h3>
+          {!online && hasKaitoHandwrittenComment(store.id) && <p className="salt-handwritten-badge">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m16 3 5 5-12 12-6 1 1-6L16 3Z" /><path d="m13 6 5 5M3 21h18" /></svg>
+            KAITO直筆コメント
+          </p>}
           <div className="salt-store-meta">
             <span>{online ? "🛒 オンラインショップ" : `📍 ${store.prefecture}${store.city ? ` ${store.city}` : ""}${distance !== null ? ` · ${distance.toFixed(1)} km` : ""}`}</span>
             {!online && store.business_hours && <strong>🕒 営業時間: {store.business_hours}</strong>}
@@ -437,6 +442,7 @@ export default function StockChecker({ physical, online, inventory }: {
 }) {
   const [mode, setMode] = useState<Mode>("physical");
   const [largeStoresOnly, setLargeStoresOnly] = useState(false);
+  const [handwrittenOnly, setHandwrittenOnly] = useState(false);
   const [query, setQuery] = useState("");
   const [prefecture, setPrefecture] = useState("");
   const [stockOnly, setStockOnly] = useState(false);
@@ -561,6 +567,7 @@ export default function StockChecker({ physical, online, inventory }: {
     const term = normalize(query);
     const stores = (mode === "physical" ? physical : online).filter((store) =>
       (!prefecture || mode === "online" || store.prefecture === prefecture)
+      && (mode !== "physical" || !handwrittenOnly || hasKaitoHandwrittenComment(store.id))
       && (!billboardOnly || store.billboard_status === "target")
       && (!stockOnly || inStockStores.has(store.id))
       && (activeFirstWeekFilter === "all" || getListings(store, inventory?.products ?? [], true).some(({ product, variant }) =>
@@ -577,7 +584,7 @@ export default function StockChecker({ physical, online, inventory }: {
     }
     if (mode === "physical" && location) stores.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
     return stores;
-  }, [largeStoresOnly, mode, physical, online, prefecture, query, location, billboardOnly, stockOnly, inStockStores, activeFirstWeekFilter, inventory, reports]);
+  }, [largeStoresOnly, handwrittenOnly, mode, physical, online, prefecture, query, location, billboardOnly, stockOnly, inStockStores, activeFirstWeekFilter, inventory, reports]);
 
   function locate() {
     if (!navigator.geolocation) return setGeoMessage("このブラウザーでは現在地を取得できません。");
@@ -712,10 +719,16 @@ export default function StockChecker({ physical, online, inventory }: {
         </div>
         {mode === "physical" && geoMessage && <p className="salt-geolocation-message" role="status">{geoMessage}</p>}
         {mode === "physical" && <>
+          <div className="salt-physical-filters" role="group" aria-label="実店舗の絞り込み">
           <label className="salt-stock-filter salt-featured-sort">
             <input type="checkbox" checked={largeStoresOnly} onChange={(event) => { setLargeStoresOnly(event.target.checked); setLimit(20); }} />
             大型店舗のみ
           </label>
+          <label className="salt-stock-filter salt-featured-sort">
+            <input type="checkbox" checked={handwrittenOnly} onChange={(event) => { setHandwrittenOnly(event.target.checked); setLimit(20); }} />
+            KAITO直筆コメントあり
+          </label>
+          </div>
           <div className="salt-prefectures">
             <div className="salt-prefecture-heading">📍 都道府県を選択</div>
             <button type="button" className={`salt-prefecture-chip salt-all-chip ${!prefecture ? "selected" : ""}`} aria-pressed={!prefecture} onClick={() => { setPrefecture(""); setLimit(20); }}>全国</button>
@@ -731,7 +744,7 @@ export default function StockChecker({ physical, online, inventory }: {
         <div className="salt-results-head">
           <div>
             <div className="salt-section-kicker">STORE RESULTS</div>
-            <p className="salt-count" aria-live="polite">{matches.length.toLocaleString("ja-JP")}件{mode === "physical" && largeStoresOnly ? " ・大型店舗のみ" : mode === "physical" && location ? " ・現在地に近い順" : ""}</p>
+            <p className="salt-count" aria-live="polite">{matches.length.toLocaleString("ja-JP")}件{mode === "physical" && handwrittenOnly ? " ・KAITO直筆コメントあり" : ""}{mode === "physical" && largeStoresOnly ? " ・大型店舗のみ" : mode === "physical" && location ? " ・現在地に近い順" : ""}</p>
           </div>
           <div className="salt-result-filters" role="group" aria-label="店舗一覧の絞り込み">
             <label className="salt-stock-filter">
