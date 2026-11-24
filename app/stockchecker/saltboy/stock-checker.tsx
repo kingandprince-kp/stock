@@ -13,6 +13,7 @@ import ShippingEstimateFields from "./shipping-estimate-fields";
 import { FeedbackForm, StoreContribution, StoreRequest } from "./support-forms";
 import OwnReports from "./own-reports";
 import { hasKaitoHandwrittenComment } from "./kaito-handwritten-stores";
+import { storeBonus, STORE_BONUS_SOURCE } from "./store-bonuses";
 
 type Mode = "physical" | "online";
 // 東京、大阪、福岡、札幌の順。
@@ -321,6 +322,7 @@ function StoreCard({
       <div className="salt-store-head">
         <div className="salt-store-title">
           <h3>{displayName(store)}</h3>
+          {storeBonus(store) && <p className="salt-store-bonus">外付け特典: {storeBonus(store)}</p>}
           {!online && hasKaitoHandwrittenComment(store.id) && <p className="salt-handwritten-badge">
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m16 3 5 5-12 12-6 1 1-6L16 3Z" /><path d="m13 6 5 5M3 21h18" /></svg>
             KAITO直筆コメント
@@ -767,6 +769,7 @@ export default function StockChecker({ physical, online, inventory }: {
           ))}
           </div>
         </div>}
+        <p className="salt-bonus-note">外付け特典は先着・なくなり次第終了です。一部取扱いのない店舗もあります。取扱状況は各店舗でご確認ください。オンラインは特典付き商品をご確認ください。<a href={STORE_BONUS_SOURCE} target="_blank" rel="noopener noreferrer">特典の詳細(公式)</a></p>
         {!inventory && <p className="salt-error" role="alert">SALT BOYの在庫データを取得できませんでした。時間をおいて再読み込みしてください。</p>}
         {matches.slice(0, limit).map(({ store, distance }) => <StoreCard key={`${mode}-${store.id}`} store={store} mode={mode} inventory={inventory} reports={reports} stockOnly={stockOnly} firstWeekFilter={activeFirstWeekFilter} firstWeek={firstWeek.get(store.id) ?? []} commentCount={commentCountMap.get(store.id) ?? 0} onCommentsChanged={loadCommentCounts} onReport={openReport} distance={distance} now={now} />)}
         {!matches.length && <p className="salt-empty">{activeFirstWeekFilter !== "all" ? "選んだ条件に一致する商品はありません。" : stockOnly ? "条件に一致する在庫ありの投稿はありません。" : "条件に一致する店舗が見つかりませんでした。"}</p>}
