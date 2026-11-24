@@ -63,6 +63,13 @@ const SEVEN_NET_PRODUCTS: Partial<Record<string, string>> = {
   "UPCH-7912": "1320329795",
   "UPCH-7913": "1320329797",
 };
+const JOSHIN_PRODUCTS: Partial<Record<string, string>> = {
+  "UPCH-7909": "4988031927465",
+  "UPCH-7910": "4988031927472",
+  "UPCH-7911": "4988031927489",
+  "UPCH-7912": "4988031927496",
+  "UPCH-7913": "4988031927502",
+};
 type Listing = { product: Product; variant: PurchaseVariant | null; url?: string };
 const GURUGURU_PRODUCT_URLS: Partial<Record<number, (sku: string) => string>> = {
   320: (sku) => `https://item.rakuten.co.jp/guruguru2/${sku}/`,
@@ -86,6 +93,7 @@ function getListings(store: Store, products: Product[], online: boolean): Listin
       const entry = (variant: PurchaseVariant, id: string): Listing => ({ product, variant, url: base + id + (amazon ? "" : "/") });
       return [entry("no_special", sku.standard), ...(sku.bonus ? [entry("special", sku.bonus)] : [])];
     }
+    if (store.id === 316 && JOSHIN_PRODUCTS[code]) return [{ product, variant: null, url: `https://joshinweb.jp/dp/${JOSHIN_PRODUCTS[code]}.html` }];
     if (store.id === 310 && SEVEN_NET_PRODUCTS[code]) return [{ product, variant: null, url: `${SEVEN_NET_PRODUCT_BASE}${SEVEN_NET_PRODUCTS[code]}.html` }];
     if (/hmv/i.test(retailer) && HMV_PRODUCTS[code]) return [{ product, variant: null, url: HMV_PRODUCT_BASE + HMV_PRODUCTS[code] }];
     if (/タワーレコード|tower/i.test(retailer) && TOWER_PRODUCTS[code]) return [{ product, variant: null, url: `https://tower.jp/item/${TOWER_PRODUCTS[code]}` }];
