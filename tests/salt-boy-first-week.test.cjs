@@ -21,11 +21,32 @@ const { listingFirstWeek } = load('app/stockchecker/saltboy/listing-first-week.t
 const rule = (overrides = {}) => ({ store_id: 307, basis: 'shipping', cutoff_date: '2026-11-29', cutoff_time: null, whole_day: true, evidence: 'verified test source', verified_at: '2026-11-22T00:00:00Z', order_cutoff_kind: 'none', order_cutoff_time: null, business_weekdays: null, excluded_dates: null, calendar_verified_from: null, calendar_verified_until: null, ...overrides });
 const date = (value, overrides = {}) => ({ basis: 'shipping', kind: 'date', date: value, source: 'product_page', sourceDetail: '', condition: '', ...overrides });
 const range = (referenceDate, maxDays, overrides = {}) => ({ basis: 'shipping', kind: 'range', minDays: 0, maxDays, source: 'product_page', sourceDetail: '', condition: '', relative: { referenceDate, referenceTime: '', anchor: 'order', calendar: 'calendar', orderType: 'stock' }, ...overrides });
-test('explicit dates need a verified matching retailer basis', () => {
-  assert.equal(model.firstWeekEstimate(date('2026-11-27')).status, 'check');
-  assert.equal(model.firstWeekEstimate(date('2026-11-27'), rule()).status, 'likely');
-  assert.equal(model.firstWeekEstimate(date('2026-11-27'), rule({ basis: 'delivery' })).status, 'check');
-  assert.equal(model.firstWeekEstimate(date('2026-11-27'), rule({ evidence: '' })).status, 'check');
+test('explicit shipping dates use the site deadline without requiring retailer registration', () => {
+  for (const inputRule of [undefined, rule({basis:'delivery'}), rule({evidence:''})]) {
+    assert.equal(model.firstWeekEstimate(date('2026-11-25'), inputRule).status, 'likely');
+    assert.equal(model.firstWeekEstimate(date('2026-11-28'), inputRule).status, 'likely');
+    assert.equal(model.firstWeekEstimate(date('2026-11-30'), inputRule).status, 'unlikely');
+  }
+  assert.match(model.firstWeekEstimate(date('2026-11-25')).reason, /サイトの発送目安/);
+  assert.equal(model.firstWeekEstimate(date('2026-11-29')).status,'check');
+  assert.equal(model.firstWeekEstimate(date('2026-11-25'),undefined,{cutoff_date:null}).status,'check');
+  assert.equal(model.firstWeekEstimate(date('2026-11-27'),rule()).status,'likely');
+  assert.equal(model.firstWeekEstimate(date('2026-11-27',{basis:'delivery'})).status,'check');
+  assert.equal(model.firstWeekEstimate(date('2026-11-27',{condition:'入金後'})).status,'check');
+});
+test('site fallback classifies explicit shipping ranges without inventing relative-day conditions', () => {
+  const input={...date('2026-11-25'),kind:'date_range',earliestDate:'2026-11-25',latestDate:'2026-11-28'};
+  assert.equal(model.firstWeekEstimate(input).status,'likely');
+  assert.equal(model.firstWeekEstimate({...input,latestDate:'2026-11-30'}).status,'check');
+  assert.equal(model.firstWeekEstimate({...input,earliestDate:'2026-11-30',latestDate:'2026-12-01'}).status,'unlikely');
+  assert.equal(model.firstWeekEstimate(range('2026-11-25',1)).status,'check');
+  assert.equal(model.firstWeekEstimate(range('2026-11-25',1),rule({evidence:''})).status,'check');
+});
+test('listing uses the same configured site deadline for badge and filter result', () => {
+  const item={store_id:307,product_id:1,purchase_variant:null,stock_status:'in_stock',created_at:'2026-11-24T14:03:00Z',shipping_estimate:date('2026-11-25')};
+  const inventory={rules:[],firstWeek:[],settings:{...model.DEFAULT_FIRST_WEEK_SETTINGS,cutoff_date:'2026-11-29'}};
+  assert.equal(listingFirstWeek(item,307,1,null,inventory).result.status,'likely');
+  assert.equal(listingFirstWeek(item,307,1,null,{...inventory,settings:{...inventory.settings,cutoff_date:'2026-11-24'}}).result.status,'unlikely');
 });
 test('Sunday shipment and Monday arrival use independent cutoffs', () => {
   assert.equal(model.firstWeekEstimate(date('2026-11-29'), rule()).status, 'likely');

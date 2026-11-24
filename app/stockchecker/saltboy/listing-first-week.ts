@@ -15,7 +15,7 @@ export function listingFirstWeek(item: Inventory | undefined, storeId: number, p
   } : item?.shipping_estimate ?? null;
   if (!estimate && (!item || (item.stock_status !== "in_stock" && item.stock_status !== "low_stock" && !(item.quantity && item.quantity > 0)))) return null;
   const rule = inventory?.rules?.find((row) => row.store_id === storeId && row.basis === estimate?.basis);
-  return { estimate, rule, result: firstWeekEstimate(estimate, rule),
+  return { estimate, rule, result: firstWeekEstimate(estimate, rule, inventory?.settings ?? undefined),
     recordedAt: estimate?.confirmedAt ?? (useAdmin ? admin?.verified_at : item?.created_at),
     recordedKind: estimate?.confirmedAt || useAdmin ? "確認" : "投稿", evidence: useAdmin ? admin?.evidence : null };
 }

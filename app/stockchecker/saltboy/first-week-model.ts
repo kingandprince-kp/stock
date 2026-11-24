@@ -67,26 +67,33 @@ export function normalizeTiming(estimate: ShippingEstimate, rule?: RetailerRule)
   if (context.calendar === "business" && (context.referenceDate < (rule.calendar_verified_from ?? "") || latestDate > (rule.calendar_verified_until ?? ""))) return missing("確認済みの営業日カレンダーの範囲外");
   return { ...result, earliestDate, latestDate };
 }
-export function firstWeekEstimate(estimate: ShippingEstimate | null, rule?: RetailerRule): FirstWeekEstimate {
+export function firstWeekEstimate(estimate: ShippingEstimate | null, rule?: RetailerRule, settings: FirstWeekSettings = DEFAULT_FIRST_WEEK_SETTINGS): FirstWeekEstimate {
   if (!estimate) return { status: "check", reason: "発送・お届け目安の投稿なし" };
-  const normalized = normalizeTiming(estimate, rule);
+  const verifiedRule = rule?.basis === estimate.basis && rule.evidence?.trim() && rule.verified_at && validDate(rule.cutoff_date) ? rule : undefined;
+  const normalized = normalizeTiming(estimate, verifiedRule);
   const check = (reason: string): FirstWeekEstimate => ({ status: "check", reason, normalized });
   if (estimate.condition && estimate.conditionsMet !== true) return check("支払い・予約・同梱などの注文条件を確認");
   if (normalized.missing) return check(normalized.missing);
-  if (!rule || rule.basis !== estimate.basis || !rule.evidence?.trim() || !rule.verified_at || !validDate(rule.cutoff_date)) return check("ショップの発送・到着の判定条件が未確認");
+  // Explicit shipping dates can be compared with the published site deadline.
+  // Retailer verification remains necessary for delivery-based and relative-day assumptions.
+  const deadline = verifiedRule ?? (estimate.basis === "shipping" && validDate(settings.cutoff_date)
+    ? { cutoff_date: settings.cutoff_date, cutoff_time: null, whole_day: false } : null);
+  if (!deadline) return check(estimate.basis === "delivery"
+    ? "到着予定だけでは発送日を判断できません。お届け先を設定してご確認ください"
+    : "サイトの発送締切日が未設定");
   const { earliestDate, latestDate } = normalized;
   if (!earliestDate || !latestDate) return check("根拠となる日付が未確認");
   const basis = estimate.basis === "shipping" ? "発送" : "到着";
-  const label = `${rule.cutoff_date.replaceAll("-", "/")} ${rule.whole_day ? "終日" : rule.cutoff_time?.slice(0, 5) ?? "時刻要確認"}${basis}まで`;
+  const label = `${deadline.cutoff_date.replaceAll("-", "/")} ${deadline.whole_day ? "終日" : deadline.cutoff_time?.slice(0, 5) ?? "時刻要確認"}${basis}まで`;
   // Day-only ranges are compared as full-day intervals, never as midnight.
-  if (latestDate < rule.cutoff_date) return { status: "likely", reason: `基準: ${label}`, normalized };
-  if (earliestDate > rule.cutoff_date) return { status: "unlikely", reason: `基準: ${label}`, normalized };
-  if (!rule.whole_day && !validTime(rule.cutoff_time)) return check(`締切当日の${basis}時刻を確認`);
-  const cutoff = jstMillis(rule.cutoff_date, rule.whole_day ? "23:59:59.999" : rule.cutoff_time!);
+  if (latestDate < deadline.cutoff_date) return { status: "likely", reason: `${verifiedRule ? "ショップの基準" : "サイトの発送目安"}: ${label}`, normalized };
+  if (earliestDate > deadline.cutoff_date) return { status: "unlikely", reason: `${verifiedRule ? "ショップの基準" : "サイトの発送目安"}: ${label}`, normalized };
+  if (!deadline.whole_day && !validTime(deadline.cutoff_time)) return check(`締切当日の${basis}時刻を確認`);
+  const cutoff = jstMillis(deadline.cutoff_date, deadline.whole_day ? "23:59:59.999" : deadline.cutoff_time!);
   const earliest = jstMillis(earliestDate, normalized.earliestTime ?? "00:00:00");
   const latest = jstMillis(latestDate, normalized.latestTime ?? "23:59:59.999");
-  if (latest <= cutoff) return { status: "likely", reason: `基準: ${label}`, normalized };
-  if (earliest > cutoff) return { status: "unlikely", reason: `基準: ${label}`, normalized };
+  if (latest <= cutoff) return { status: "likely", reason: `${verifiedRule ? "ショップの基準" : "サイトの発送目安"}: ${label}`, normalized };
+  if (earliest > cutoff) return { status: "unlikely", reason: `${verifiedRule ? "ショップの基準" : "サイトの発送目安"}: ${label}`, normalized };
   return check(`期間が締切をまたぐか、締切当日の${basis}時刻が未確認`);
 }
 export function physicalFirstWeek(info: PhysicalCutoff | undefined, now = Date.now()): FirstWeekEstimate & { cutoffLabel: string } {
