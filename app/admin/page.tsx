@@ -624,7 +624,7 @@ export default function AdminPage() {
   const loadStoreComments =
     useCallback(async () => {
       const { data, error } = await supabase.rpc(
-        "get_store_comments_admin"
+        "salt_boy_get_store_comments_admin"
       );
       if (error) {
         setErrorMessage(
@@ -709,6 +709,7 @@ export default function AdminPage() {
           created_at,
           checked_at
         `)
+        .eq("page_path", "/stockchecker/saltboy")
         .order("created_at", { ascending: false })
         .limit(500);
 
@@ -1776,7 +1777,7 @@ export default function AdminPage() {
   async function handleDeleteStoreComment(commentId: number) {
     if (!window.confirm("この店舗コメントを非表示にしますか?")) return;
     const { error } = await supabase.rpc(
-      "set_store_comment_deleted_admin",
+      "salt_boy_set_store_comment_deleted_admin",
       { p_comment_id: commentId, p_deleted: true }
     );
     if (error) {
@@ -1791,7 +1792,7 @@ export default function AdminPage() {
 
   async function handleRestoreStoreComment(commentId: number) {
     const { error } = await supabase.rpc(
-      "set_store_comment_deleted_admin",
+      "salt_boy_set_store_comment_deleted_admin",
       { p_comment_id: commentId, p_deleted: false }
     );
     if (error) {

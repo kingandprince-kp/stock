@@ -257,7 +257,7 @@ function StoreCard({
   const loadComments = useCallback(async () => {
     setCommentsLoading(true);
     setCommentError("");
-    const { data, error } = await supabase.rpc("get_store_comments", {
+    const { data, error } = await supabase.rpc("salt_boy_get_store_comments", {
       p_store_id: store.id, p_limit: 20, p_client_id: clientId(),
     });
     if (error) setCommentError("コメントを読み込めませんでした。時間をおいて再度お試しください。");
@@ -281,7 +281,7 @@ function StoreCard({
     if (body.length > 300) return setCommentError("コメントは300文字以内で入力してください。");
     if (/https?:\/\/|www\./i.test(body)) return setCommentError("店舗コメントにはURLを投稿できません。");
     setCommentSubmitting(true);
-    const { error } = await supabase.rpc("submit_store_comment", {
+    const { error } = await supabase.rpc("salt_boy_submit_store_comment", {
       p_store_id: store.id, p_body: body, p_client_id: clientId(),
     });
     if (error) setCommentError("コメントを投稿できませんでした。時間をおいて再度お試しください。");
@@ -295,7 +295,7 @@ function StoreCard({
 
   async function applaud(comment: Comment) {
     setBusyComment(comment.id);
-    const { error } = await supabase.rpc("toggle_store_comment_applause", {
+    const { error } = await supabase.rpc("salt_boy_toggle_store_comment_applause", {
       p_comment_id: comment.id, p_client_id: clientId(),
     });
     if (error) setCommentError("応援を更新できませんでした。もう一度お試しください。");
@@ -306,7 +306,7 @@ function StoreCard({
   async function deleteComment(comment: Comment) {
     if (!window.confirm("自分の店舗コメントを削除しますか?")) return;
     setBusyComment(comment.id);
-    const { error } = await supabase.rpc("delete_own_store_comment", {
+    const { error } = await supabase.rpc("salt_boy_delete_own_store_comment", {
       p_comment_id: comment.id, p_client_id: localStorage.getItem("kp_inventory_client_id"),
     });
     if (error) setCommentError("コメントを削除できませんでした。");
@@ -494,7 +494,7 @@ export default function StockChecker({ physical, online, inventory }: {
   const commentCountMap = useMemo(() => new Map(commentCounts.map((item) => [item.store_id, Number(item.comment_count) || 0])), [commentCounts]);
 
   const loadCommentCounts = useCallback(async () => {
-    const { data, error } = await supabase.rpc("get_store_comment_counts");
+    const { data, error } = await supabase.rpc("salt_boy_get_store_comment_counts");
     if (!error) setCommentCounts((data ?? []) as CommentCount[]);
   }, []);
   useEffect(() => {
