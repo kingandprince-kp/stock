@@ -204,7 +204,7 @@ type SalesSummary = {
   today_sales: number | null;
   weekly_sales: number | null;
   total_sales: number | null;
-  goal: number;
+  goal: number | null;
   sales_date: string;
   week_start: string;
   week_end: string;
@@ -1894,17 +1894,17 @@ export default function AdminPage() {
     event: React.FormEvent
   ) {
     event.preventDefault();
+    if (salesUpdating) return;
 
     setMessage("");
     setErrorMessage("");
 
     if (
       !salesDate ||
-      todaySales.trim() === "" ||
-      salesGoal.trim() === ""
+      todaySales.trim() === ""
     ) {
       setErrorMessage(
-        "売上対象日・その日の売上・目標枚数を入力してください。"
+        "売上対象日・その日の売上を入力してください。"
       );
       return;
     }
@@ -1941,7 +1941,7 @@ export default function AdminPage() {
       parseSalesValue(todaySales);
 
     const goal =
-      Number(salesGoal);
+      salesGoal.trim() ? Number(salesGoal) : null;
 
     if (daySales === "invalid") {
       setErrorMessage(
@@ -1951,8 +1951,8 @@ export default function AdminPage() {
     }
 
     if (
-      !Number.isInteger(goal) ||
-      goal <= 0
+      goal !== null && (!Number.isInteger(goal) ||
+      goal <= 0)
     ) {
       setErrorMessage(
         "目標枚数は1以上の整数で入力してください。"
@@ -1960,6 +1960,8 @@ export default function AdminPage() {
       return;
     }
 
+    setSalesUpdating(true);
+    try {
     const {
       data: previewData,
       error: previewError,
@@ -2009,12 +2011,11 @@ export default function AdminPage() {
 
     const confirmed =
       window.confirm(
-        `売上情報を更新します。\n\n対象日: ${formatShortDateKey(salesDate)}付\nその日の売上: ${displaySales(daySales)}\n週 (${formatShortDateKey(preview.week_start)}〜${formatShortDateKey(preview.week_end)}): ${displaySales(preview.weekly_sales)}\n累計: ${displaySales(preview.total_sales)}\n目標: ${goal.toLocaleString()}枚`
+        `売上情報を更新します。\n\n対象日: ${formatShortDateKey(salesDate)}付\nその日の売上: ${displaySales(daySales)}\n週 (${formatShortDateKey(preview.week_start)}〜${formatShortDateKey(preview.week_end)}): ${displaySales(preview.weekly_sales)}\n累計: ${displaySales(preview.total_sales)}\n目標: ${goal === null ? "変更なし (未設定でも保存できます)" : goal.toLocaleString() + "枚"}`
       );
 
     if (!confirmed) return;
 
-    setSalesUpdating(true);
 
     const { error } =
       await supabase.rpc(
@@ -2033,7 +2034,6 @@ export default function AdminPage() {
       setErrorMessage(
         `売上情報を更新できませんでした: ${error.message}`
       );
-      setSalesUpdating(false);
       return;
     }
 
@@ -2046,7 +2046,11 @@ export default function AdminPage() {
       `${formatShortDateKey(savedDate)}付の売上を反映しました。次の入力日は自動で${formatShortDateKey(addDaysToDateKey(savedDate, 1))}に進みます。`
     );
 
-    setSalesUpdating(false);
+    } catch {
+      setErrorMessage("売上の保存中に通信エラーが発生しました。入力内容は残っています。再度お試しください。");
+    } finally {
+      setSalesUpdating(false);
+    }
   }
 
   function handleSalesDateChange(
@@ -2609,6 +2613,8 @@ export default function AdminPage() {
             />
           ) : (
             <SalesTab
+              feedbackError={errorMessage}
+              feedbackMessage={message}
               salesData={salesData}
               salesDate={salesDate}
               todaySales={todaySales}
@@ -6259,6 +6265,8 @@ function DeletionHistoryTab({ deletions, stores, products, restoringId, onRestor
 }
 
 function SalesTab({
+  feedbackError,
+  feedbackMessage,
   salesData,
   salesDate,
   todaySales,
@@ -6272,6 +6280,8 @@ function SalesTab({
   onSubmit,
   formatDate,
 }: {
+  feedbackError: string;
+  feedbackMessage: string;
   salesData: SalesSummary | null;
   salesDate: string;
   todaySales: string;
@@ -6457,10 +6467,11 @@ function SalesTab({
           </div>
 
           <SalesInput
-            label="🎯 目標枚数"
+            label="🎯 目標枚数 (任意)"
             value={salesGoal}
             onChange={setSalesGoal}
           />
+          <p className="mt-2 text-sm text-gray-600">目標枚数は未入力でも保存できます。</p>
         </div>
 
         <button
@@ -6474,6 +6485,8 @@ function SalesTab({
             ? "更新中…"
             : `${formatShortDateKey(salesDate)}付の売上を反映`}
         </button>
+        {feedbackError && <p className="mt-3 text-sm text-red-700" role="alert">{feedbackError}</p>}
+        {feedbackMessage && <p className="mt-3 text-sm text-green-800" role="status">{feedbackMessage}</p>}
       </form>
     </div>
   );
