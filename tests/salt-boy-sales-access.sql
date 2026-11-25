@@ -1,0 +1,58 @@
+-- Run as database admin. No test data persists.
+begin;
+do $test$
+declare
+  v_admin uuid;
+  v_old_sales text;
+  v_old_pv bigint;
+  v_before_pv bigint;
+  v_before_unique bigint;
+  v_event uuid:=gen_random_uuid();
+  v_client text:='salt-pv-test-'||gen_random_uuid()::text;
+  v_summary record;
+  v_preview record;
+  v_activity jsonb;
+  v_day jsonb;
+  v_expected bigint;
+begin
+  select md5(coalesce(jsonb_agg(to_jsonb(d) order by sales_date)::text,'')) into v_old_sales from public.sales_daily d;
+  select coalesce(sum(views),0) into v_old_pv from public.page_access_daily where path<>'/stockchecker/saltboy';
+  assert not has_function_privilege('anon','public.salt_boy_record_page_access(uuid,text)','execute');
+  assert not has_table_privilege('authenticated','public.salt_boy_sales_daily','insert');
+  perform set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
+  begin perform public.salt_boy_get_activity_admin(30);raise exception 'nonadmin activity allowed';exception when insufficient_privilege then null;end;
+  begin perform public.salt_boy_get_sales_summary_v2();raise exception 'nonadmin sales allowed';exception when insufficient_privilege then null;end;
+  select user_id into v_admin from public.admins limit 1;
+  assert v_admin is not null;
+  perform set_config('request.jwt.claim.sub',v_admin::text,true);
+  perform public.salt_boy_upsert_sales_day_admin('2026-11-24',10,100);
+  perform public.salt_boy_upsert_sales_day_admin('2026-11-25',20,100);
+  select * into v_summary from public.salt_boy_get_sales_summary_v2();
+  assert v_summary.weekly_sales=30 and v_summary.total_sales=30 and v_summary.week_start='2026-11-23' and v_summary.week_end='2026-11-29';
+  perform public.salt_boy_upsert_sales_day_admin('2026-11-30',5,100);
+  select * into v_summary from public.salt_boy_get_sales_summary_v2();
+  assert v_summary.weekly_sales=5 and v_summary.total_sales=35;
+  perform public.salt_boy_upsert_sales_day_admin('2026-11-25',15,100);
+  select * into v_preview from public.salt_boy_preview_sales_day_admin('2026-11-25',12);
+  assert v_preview.weekly_sales=22 and v_preview.total_sales=27,'sales correction/preview mismatch';
+  assert v_old_sales=(select md5(coalesce(jsonb_agg(to_jsonb(d) order by sales_date)::text,'')) from public.sales_daily d),'So Honey sales changed';
+  select coalesce(max(views),0),coalesce(max(unique_visitors),0) into v_before_pv,v_before_unique from public.salt_boy_page_access_daily where path='/stockchecker/saltboy' and access_date=(now() at time zone 'Asia/Tokyo')::date;
+  perform public.salt_boy_record_page_access(v_event,v_client);
+  perform public.salt_boy_record_page_access(v_event,v_client);
+  assert (select views from public.salt_boy_page_access_daily where path='/stockchecker/saltboy' and access_date=(now() at time zone 'Asia/Tokyo')::date)=v_before_pv+1,'retry counted twice';
+  perform public.salt_boy_record_page_access(gen_random_uuid(),v_client);
+  assert (select views from public.salt_boy_page_access_daily where path='/stockchecker/saltboy' and access_date=(now() at time zone 'Asia/Tokyo')::date)=v_before_pv+2,'new view missing';
+  assert (select unique_visitors from public.salt_boy_page_access_daily where path='/stockchecker/saltboy' and access_date=(now() at time zone 'Asia/Tokyo')::date)=v_before_unique+1,'same browser counted twice';
+  assert v_old_pv=(select coalesce(sum(views),0) from public.page_access_daily where path<>'/stockchecker/saltboy'),'So Honey PV changed';
+  v_activity:=public.salt_boy_get_activity_admin(30);
+  select value into v_day from jsonb_array_elements(v_activity->'daily') where value->>'access_date'=(now() at time zone 'Asia/Tokyo')::date::text;
+  select count(distinct(client_hash,request_id)) into v_expected from public.salt_boy_inventory_reports where (created_at at time zone 'Asia/Tokyo')::date=(now() at time zone 'Asia/Tokyo')::date;
+  assert (v_day->>'inventory_submissions')::bigint=v_expected,'submission count mismatch';
+  select count(*) into v_expected from public.salt_boy_inventory_reports where (created_at at time zone 'Asia/Tokyo')::date=(now() at time zone 'Asia/Tokyo')::date;
+  assert (v_day->>'inventory_reports')::bigint=v_expected,'edition count mismatch';
+  assert (v_day->>'views')::bigint=v_before_pv+2;
+  assert exists(select 1 from public.stores where id=472 and not is_active and cd_handling_note like '%CD取り扱いなし%');
+  assert exists(select 1 from public.stores where id=672 and not is_active and cd_handling_note like '%10/18%');
+end;
+$test$;
+rollback;

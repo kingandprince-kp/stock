@@ -65,7 +65,14 @@ export async function loadDirectory() {
   if (!Array.isArray(directory.stores) || !Array.isArray(directory.online_stores)) {
     throw new Error("店舗情報の形式が変わりました。");
   }
-  return directory;
+  const hidden = new Set<number>();
+  for (let offset=0; ;offset+=1000) {
+    const result=await inventoryDb().from("stores").select("id").eq("is_active",false).order("id").range(offset,offset+999);
+    if (result.error) throw new Error("店舗の公開設定を取得できませんでした。");
+    for (const row of result.data) hidden.add(row.id);
+    if (result.data.length<1000) break;
+  }
+  return { stores:directory.stores.filter((store)=>!hidden.has(store.id)), online_stores:directory.online_stores.filter((store)=>!hidden.has(store.id)) };
 }
 
 export function inventoryDb() {

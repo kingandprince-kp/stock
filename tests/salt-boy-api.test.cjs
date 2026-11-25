@@ -133,3 +133,16 @@ test('own reports are scoped to the browser; deletion is idempotent and cannot d
   response = await POST(request({ action: 'delete', clientId, reportId: 1 }, 'own-reports', 'https://other.example'));
   assert.equal(response.status, 403);
 });
+
+test('SALT BOY page access uses only its dedicated RPC and does not collect IP', async () => {
+  const calls=[];
+  const db={rpc:async(name,args)=>{calls.push({name,args});return{error:null}}};
+  const {POST}=load('app/api/salt-boy/page-access/route.ts',{'@/app/stockchecker/saltboy/data':{inventoryDb:()=>db}});
+  let response=await POST(request({eventId:requestId,clientId,path:'/stockchecker/so-honey',ip_address:'203.0.113.7'},'page-access'));
+  assert.equal(response.status,200);
+  assert.deepEqual(calls[0],{name:'salt_boy_record_page_access',args:{p_event_id:requestId,p_client_id:clientId}});
+  assert.equal(response.headers.get('cache-control'),'no-store');
+  for(const value of [null,{eventId:'invalid',clientId},{eventId:requestId,clientId:''}]){response=await POST(request(value,'page-access'));assert.equal(response.status,400);}
+  response=await POST(request({eventId:requestId,clientId},'page-access','https://wrong.example'));assert.equal(response.status,403);
+  assert.equal(calls.length,1);
+});

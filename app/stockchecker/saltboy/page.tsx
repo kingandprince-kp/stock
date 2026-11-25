@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { loadDirectory, loadInventory } from "./data";
 import StockChecker from "./stock-checker";
+import PageAccessTracker from "./page-access-tracker";
 import "./stock-checker.css";
 import "./salt-boy-theme.css";
 
@@ -16,6 +17,7 @@ export default async function SaltBoyPage() {
   const [directory, inventory] = await Promise.allSettled([loadDirectory(), loadInventory()]);
   return (
     <main className="salt-boy">
+      <PageAccessTracker />
       <div className="salt-wrap">
         <header id="top" className="salt-design-hero salt-design-wave">
         <svg className="salt-design-waves" viewBox="0 0 1000 220" preserveAspectRatio="none" aria-hidden="true">

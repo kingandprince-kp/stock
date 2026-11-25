@@ -222,6 +222,11 @@ type AccessDaily = {
   path: string;
   views: number;
   unique_visitors: number;
+  inventory_submissions: number;
+  inventory_reports: number;
+  inventory_deleted: number;
+  comments: number;
+  store_info: number;
 };
 
 type AdminTab =
@@ -428,8 +433,9 @@ export default function AdminPage() {
     useState<SalesDaily[]>([]);
 
   const [salesDate, setSalesDate] =
-    useState("2026-09-02");
+    useState(() => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()));
 
+  const [accessStartedAt, setAccessStartedAt] = useState<string | null>(null);
   const [accessDaily, setAccessDaily] =
     useState<AccessDaily[]>([]);
 
@@ -443,7 +449,7 @@ export default function AdminPage() {
     useState("");
 
   const [salesGoal, setSalesGoal] =
-    useState("300000");
+    useState("");
 
   const [activeTab, setActiveTab] =
     useState<AdminTab>("salt-boy");
@@ -774,10 +780,10 @@ export default function AdminPage() {
       const [summaryResult, dailyResult] =
         await Promise.all([
           supabase.rpc(
-            "get_sales_summary_v2"
+            "salt_boy_get_sales_summary_v2"
           ),
           supabase.rpc(
-            "get_sales_daily_admin"
+            "salt_boy_get_sales_daily_admin"
           ),
         ]);
 
@@ -817,7 +823,7 @@ export default function AdminPage() {
               latest.sales_date,
               1
             )
-          : "2026-09-01";
+          : new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
       setSalesDate(nextDate);
 
@@ -849,7 +855,7 @@ export default function AdminPage() {
         );
 
         setSalesGoal(
-          String(latest.goal)
+          latest.goal == null ? "" : String(latest.goal)
         );
       }
     }, []);
@@ -857,7 +863,7 @@ export default function AdminPage() {
   const loadAccessData =
     useCallback(async () => {
       const { data, error } = await supabase.rpc(
-        "get_page_access_admin",
+        "salt_boy_get_activity_admin",
         { p_days: 30 }
       );
 
@@ -868,7 +874,8 @@ export default function AdminPage() {
         return;
       }
 
-      setAccessDaily((data ?? []) as AccessDaily[]);
+      setAccessDaily((data?.daily ?? []) as AccessDaily[]);
+      setAccessStartedAt(data?.started_at ?? null);
     }, []);
 
   // =========================================
@@ -1957,7 +1964,7 @@ export default function AdminPage() {
       data: previewData,
       error: previewError,
     } = await supabase.rpc(
-      "preview_sales_day_admin",
+      "salt_boy_preview_sales_day_admin",
       {
         p_sales_date:
           salesDate,
@@ -2011,7 +2018,7 @@ export default function AdminPage() {
 
     const { error } =
       await supabase.rpc(
-        "upsert_sales_day_admin",
+        "salt_boy_upsert_sales_day_admin",
         {
           p_sales_date:
             salesDate,
@@ -2598,6 +2605,7 @@ export default function AdminPage() {
             "access" ? (
             <AccessTab
               rows={accessDaily}
+              startedAt={accessStartedAt}
             />
           ) : (
             <SalesTab
@@ -3284,87 +3292,26 @@ function StoreChangeHistoryTab({
   );
 }
 
-function AccessTab({
-  rows,
-}: {
-  rows: AccessDaily[];
-}) {
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-
-  const todayRows = rows.filter((row) => row.access_date === today);
-  const todayViews = todayRows.reduce((sum, row) => sum + Number(row.views), 0);
-  const todayUnique = todayRows.reduce(
-    (sum, row) => sum + Number(row.unique_visitors),
-    0
-  );
-  const totalViews = rows.reduce((sum, row) => sum + Number(row.views), 0);
-
-  const byDate = Array.from(
-    rows.reduce((map, row) => {
-      const current = map.get(row.access_date) ?? { views: 0, unique: 0 };
-      current.views += Number(row.views);
-      current.unique += Number(row.unique_visitors);
-      map.set(row.access_date, current);
-      return map;
-    }, new Map<string, { views: number; unique: number }>())
-  ).sort(([a], [b]) => b.localeCompare(a));
-
-  return (
-    <div className="mt-4">
-      <h2 className="text-2xl font-bold">👀 アクセス数</h2>
-      <p className="mt-2 text-sm text-gray-600">
-        管理画面だけに表示されます。PVはページ表示回数、訪問者数は同じブラウザを日ごとに重複除外した目安です。IPアドレスはアクセス集計には保存しません。
-      </p>
-
-      <div className="mt-3 grid gap-3 md:grid-cols-3">
-        <div className="rounded-xl border bg-white p-3">
-          <div className="text-sm text-gray-500">今日のPV</div>
-          <div className="mt-1 text-3xl font-bold">{todayViews.toLocaleString()}</div>
-        </div>
-        <div className="rounded-xl border bg-white p-3">
-          <div className="text-sm text-gray-500">今日の訪問者数</div>
-          <div className="mt-1 text-3xl font-bold">{todayUnique.toLocaleString()}</div>
-        </div>
-        <div className="rounded-xl border bg-white p-3">
-          <div className="text-sm text-gray-500">直近30日のPV</div>
-          <div className="mt-1 text-3xl font-bold">{totalViews.toLocaleString()}</div>
-        </div>
-      </div>
-
-      <div className="mt-3 overflow-x-auto rounded-xl border bg-white">
-        <table className="w-full min-w-[520px] text-left text-sm">
-          <thead className="bg-[#f5edf4]">
-            <tr>
-              <th className="p-3">日付</th>
-              <th className="p-3 text-right">PV</th>
-              <th className="p-3 text-right">訪問者数</th>
-            </tr>
-          </thead>
-          <tbody>
-            {byDate.map(([date, value]) => (
-              <tr key={date} className="border-t">
-                <td className="p-3">{date}</td>
-                <td className="p-3 text-right">{value.views.toLocaleString()}</td>
-                <td className="p-3 text-right">{value.unique.toLocaleString()}</td>
-              </tr>
-            ))}
-            {byDate.length === 0 && (
-              <tr>
-                <td colSpan={3} className="p-6 text-center text-gray-500">
-                  まだアクセス記録はありません。
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+function AccessTab({ rows, startedAt }: { rows: AccessDaily[]; startedAt: string | null }) {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit" }).format(new Date());
+  const current = rows.find((row)=>row.access_date===today);
+  const firstDay = startedAt ? new Intl.DateTimeFormat("en-CA", {timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(startedAt)) : null;
+  const count = (value: number | undefined) => Number(value??0).toLocaleString("ja-JP");
+  const measured = (date: string) => !!firstDay && date>=firstDay;
+  const pv = (date: string,value: number | undefined) => measured(date)?count(value):"未計測";
+  const cards = [
+    ["今日のPV",pv(today,current?.views)], ["今日の訪問者数",pv(today,current?.unique_visitors)],
+    ["今日の在庫投稿 (送信回数)",count(current?.inventory_submissions)],
+    ["今日の商品別投稿件数",count(current?.inventory_reports)], ["今日の店舗情報提供",count(current?.store_info)],
+    ["直近30日の計測済みPV",count(rows.reduce((sum,row)=>sum+Number(row.views),0))],
+  ];
+  return <section className="mt-4 space-y-3">
+    <h2 className="text-2xl font-bold">SALT BOY アクセス・投稿数</h2>
+    <p className="text-sm text-gray-600">日本時間の日付でSALT BOYだけを集計しています。訪問者数は同じブラウザを日ごとに重複除外した目安です。在庫投稿は形態の一括送信を1回と数え、商品別の件数を別に表示します。削除済みの投稿も受付件数に含みます。アクセス集計にはIPアドレスを保存しません。</p>
+    <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">PV計測開始: {startedAt ? new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",dateStyle:"short",timeStyle:"short"}).format(new Date(startedAt)) : "本番計測の開始待ち"}。それ以前のPVは未計測です。投稿数は保存済みのデータから集計しています。</p>
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{cards.map(([label,value])=><div key={label} className="rounded-xl border bg-white p-3"><div className="text-sm text-gray-500">{label}</div><div className="mt-1 text-3xl font-bold">{value}</div></div>)}</div>
+    <div className="overflow-x-auto rounded-xl border bg-white"><table className="w-full text-left text-sm"><thead className="bg-[#f5edf4]"><tr>{["日付","PV","訪問者数","在庫投稿 (送信)","商品別件数","店舗コメント","店舗情報提供"].map(label=><th key={label} className="whitespace-nowrap p-3">{label}</th>)}</tr></thead><tbody>{rows.map(row=><tr key={row.access_date} className="border-t"><td className="whitespace-nowrap p-3">{row.access_date.replaceAll("-","/")}</td><td className="p-3">{pv(row.access_date,row.views)}</td><td className="p-3">{pv(row.access_date,row.unique_visitors)}</td><td className="p-3">{count(row.inventory_submissions)}</td><td className="p-3">{count(row.inventory_reports)}</td><td className="p-3">{count(row.comments)}</td><td className="p-3">{count(row.store_info)}</td></tr>)}</tbody></table></div>
+  </section>;
 }
 
 function ReviewReportsTab({
@@ -6380,7 +6327,7 @@ function SalesTab({
   return (
     <div className="mt-3 rounded-3xl border border-[#eaddea] bg-[#fcf9fc] p-3 md:p-7">
       <h2 className="text-2xl font-bold">
-        📈 売上情報
+        📈 SALT BOY 売上情報
       </h2>
 
       <p className="mt-2 text-sm leading-6 text-gray-600">
@@ -6393,7 +6340,7 @@ function SalesTab({
       {salesData && (
         <div className="mt-3 rounded-xl bg-white p-3 text-sm text-gray-600">
           <div>
-            現在公開中: 
+            最新登録:
             <b className="ml-1">
               {formatShortDateKey(
                 salesData.sales_date
@@ -6483,7 +6430,7 @@ function SalesTab({
 
           <div className="rounded-xl border border-[#e3d6e2] bg-[#f5eef4] p-3">
             <div className="font-bold">
-              📊 現在公開中の週売上
+              📊 登録済みの週売上
             </div>
 
             <div className="mt-2 text-2xl font-bold text-[#6d4966]">
