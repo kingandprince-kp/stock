@@ -71,6 +71,14 @@ const JOSHIN_PRODUCTS: Partial<Record<string, string>> = {
   "UPCH-7912": "4988031927496",
   "UPCH-7913": "4988031927502",
 };
+// Product order confirmed by the user: A Blu-ray, A DVD, B Blu-ray, B DVD, regular.
+const ANIMATE_PRODUCTS: Partial<Record<string, string>> = {
+  "UPCH-7909": "3621996",
+  "UPCH-7910": "3621997",
+  "UPCH-7911": "3621998",
+  "UPCH-7912": "3621999",
+  "UPCH-7913": "3622000",
+};
 type Listing = { product: Product; variant: PurchaseVariant | null; url?: string };
 const GURUGURU_PRODUCT_URLS: Partial<Record<number, (sku: string) => string>> = {
   320: (sku) => `https://item.rakuten.co.jp/guruguru2/${sku}/`,
@@ -96,6 +104,7 @@ function getListings(store: Store, products: Product[], online: boolean): Listin
     }
     const akaikumasanUrl = akaikumasanSingleUrl(store.id, code);
     if (akaikumasanUrl) return [{ product, variant: null, url: akaikumasanUrl }];
+    if (store.id === 314 && ANIMATE_PRODUCTS[code]) return [{ product, variant: null, url: `https://www.animate-onlineshop.jp/pd/${ANIMATE_PRODUCTS[code]}/` }];
     if (store.id === 316 && JOSHIN_PRODUCTS[code]) return [{ product, variant: null, url: `https://joshinweb.jp/dp/${JOSHIN_PRODUCTS[code]}.html` }];
     if (store.id === 310 && SEVEN_NET_PRODUCTS[code]) return [{ product, variant: null, url: `${SEVEN_NET_PRODUCT_BASE}${SEVEN_NET_PRODUCTS[code]}.html` }];
     if (/hmv/i.test(retailer) && HMV_PRODUCTS[code]) return [{ product, variant: null, url: HMV_PRODUCT_BASE + HMV_PRODUCTS[code] }];
