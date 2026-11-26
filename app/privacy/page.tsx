@@ -57,10 +57,10 @@ export default function PrivacyPage() {
 </div>
 
           <a
-  href="/stockchecker/so-honey"
+  href="/stockchecker/saltboy"
   className="mt-6 inline-block rounded-lg bg-[#f0dfec] px-4 py-2 text-sm font-bold text-[#6d4966]"
 >
-  So Honey 在庫チェッカーに戻る
+  SALT BOY 在庫チェッカーに戻る
 </a>
         </section>
       </div>
