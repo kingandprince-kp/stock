@@ -124,26 +124,34 @@ export function StoreRequest({ online, prefecture, prefectures }: {
       <SupportForm key={`${online}-${prefecture}`} successMessage="店舗追加リクエストを送信しました。管理者が確認後、追加します。" send={(data) => {
         const requestPrefecture = online ? "オンライン" : field(data, "prefecture");
         const name = field(data, "name");
+        const city = field(data, "city");
+        const phone = field(data, "phone").normalize("NFKC");
         if (!online && !prefectures.includes(requestPrefecture)) throw new Error("追加先の都道府県を選択してください。");
-        if (!name) throw new Error("店舗名を入力してください。");
-        const note = field(data, "note");
-        return supabase.rpc("submit_store_request", {
+        if (!name) throw new Error("支店名を含む店舗名を入力してください。");
+        if (!online && !city) throw new Error("市区町村を入力してください。");
+        if (!online && (!/^[0-9()\s-]+$/.test(phone) || !/^0[0-9]{9,10}$/.test(phone.replace(/[^0-9]/g, "")))) {
+          throw new Error("店舗の電話番号を市外局番から入力してください。");
+        }
+        return supabase.rpc("salt_boy_submit_store_request", {
           p_prefecture: requestPrefecture,
-          p_city: online ? null : field(data, "city") || null,
+          p_city: online ? null : city,
           p_name: name,
           p_chain_name: field(data, "chain") || null,
-          p_comment: note ? `[SALT BOY] ${note}` : "[SALT BOY]",
+          p_phone: online ? null : phone,
+          p_note: field(data, "note") || null,
           p_client_id: clientId(),
         });
       }}>
+        <p className="salt-contribution-notice">店舗の場所を特定できない場合は追加できません。実店舗は、市区町村・支店名を含む店舗名・店舗の電話番号を入力してください。「イオンモール店」など施設名だけでなく、どこの施設か分かる正式な店舗名をお願いします。</p>
         {!online && <>
           <label><span>追加先の都道府県 <strong className="salt-form-required">必須</strong></span><select name="prefecture" defaultValue={prefecture} required>
             <option value="">選択してください</option>
             {prefectures.map((name) => <option key={name}>{name}</option>)}
           </select></label>
-          <label>市区町村 (任意)<input name="city" maxLength={80} /></label>
+          <label><span>市区町村 <strong className="salt-form-required">必須</strong></span><input name="city" maxLength={80} required placeholder="例: さいたま市大宮区" /></label>
         </>}
-        <label><span>店舗名 <strong className="salt-form-required">必須</strong></span><input name="name" maxLength={100} required /></label>
+        <label><span>店舗名 <strong className="salt-form-required">必須</strong></span><input name="name" maxLength={100} required placeholder={online ? "オンラインショップの正式名称" : "支店名・施設名を含む正式名称"} /></label>
+        {!online && <label><span>店舗の電話番号 <strong className="salt-form-required">必須</strong></span><input name="phone" type="tel" inputMode="tel" maxLength={30} required placeholder="例: 048-123-4567" /><small>店舗の公式電話番号を市外局番から入力してください。ご自身の電話番号は入力しないでください。</small></label>}
         <label>チェーン名 (任意)<input name="chain" maxLength={100} /></label>
         <label>補足 (任意)<textarea name="note" rows={2} maxLength={400} /></label>
       </SupportForm>
