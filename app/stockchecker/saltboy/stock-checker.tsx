@@ -374,6 +374,8 @@ function StoreCard({
         </div>
       </div>
 
+      {online && store.id === AMAZON_JAPAN_STORE_ID && <p className="salt-amazon-notice">出荷元・販売元がどちらも<strong>Amazon.co.jp</strong>の商品かご確認ください。<strong>異なる店舗は集計非対象です。</strong></p>}
+
       <div className="salt-store-tools">
         {!online && (() => {
           const info = firstWeek.find((item) => item.product_id === null);
