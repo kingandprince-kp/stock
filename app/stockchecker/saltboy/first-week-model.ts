@@ -73,6 +73,12 @@ export function firstWeekEstimate(estimate: ShippingEstimate | null, rule?: Reta
   const normalized = normalizeTiming(estimate, verifiedRule);
   const check = (reason: string): FirstWeekEstimate => ({ status: "check", reason, normalized });
   if (estimate.condition && estimate.conditionsMet !== true) return check("支払い・予約・同梱などの注文条件を確認");
+  if (normalized.missing && estimate.kind === "range" && !estimate.relative && estimate.basis === "shipping") {
+    const dayLabel = (days: number) => days === 0 ? "当日" : `${days}日`;
+    const days = estimate.minDays === estimate.maxDays ? dayLabel(estimate.minDays) : `${dayLabel(estimate.minDays)}〜${dayLabel(estimate.maxDays)}`;
+    const cutoff = verifiedRule?.cutoff_date ?? settings.cutoff_date;
+    return check(`発送目安: ${days}。${validDate(cutoff) ? cutoff.replaceAll("-", "/") : "初週の締切"}までに発送されるかご確認ください。`);
+  }
   if (normalized.missing) return check(normalized.missing);
   // Explicit shipping dates can be compared with the published site deadline.
   // Retailer verification remains necessary for delivery-based and relative-day assumptions.

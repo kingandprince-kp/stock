@@ -167,3 +167,17 @@ test('Seven Net bonus labels preserve single and bundle inventory identities', (
   assert.equal(variants.purchaseLabel('通常盤','no_special',308),'通常盤 (特典なし)');
   assert.equal(variants.stockKey(310,1,null),'310:1:');
 });
+
+test('posted two-to-five-day shipping stays visible in the first-week explanation', () => {
+  const input = { kind:'range', basis:'shipping', source:'product_page', minDays:2, maxDays:5, condition:'', sourceDetail:'', conditionsMet:false };
+  const saved = JSON.stringify(input);
+  const result = model.firstWeekEstimate(input);
+  assert.equal(result.status, 'check');
+  assert.match(result.reason, /発送目安: 2日〜5日/);
+  assert.match(result.reason, /2026\/11\/29まで/);
+  assert.doesNotMatch(result.reason, /起算日|注文時刻|未確認/);
+  assert.equal(JSON.stringify(input), saved);
+  assert.equal(result.normalized.earliestDate, null);
+  assert.match(shipping.shippingEstimateText(input), /2日〜5日/);
+  assert.match(model.firstWeekEstimate(input, undefined, {...model.DEFAULT_FIRST_WEEK_SETTINGS, cutoff_date:'2026-12-06'}).reason, /2026\/12\/06/);
+});
