@@ -174,6 +174,7 @@ type Store = {
   prefecture: string;
   city: string | null;
   store_type: string | null;
+  is_active: boolean;
 };
 
 type EditableStore = {
@@ -892,16 +893,17 @@ export default function AdminPage() {
         storesResult,
         productsResult,
       ] = await Promise.all([
-        supabase
-          .from("stores")
-          .select(`
-            id,
-            name,
-            chain_name,
-            prefecture,
-            city,
-            store_type
-          `),
+        (async () => {
+          const rows: Store[] = [];
+          for (let offset = 0; ; offset += 1000) {
+            const result = await supabase.from("stores")
+              .select("id,name,chain_name,prefecture,city,store_type,is_active")
+              .order("id").range(offset, offset + 999);
+            if (result.error) return { data: null, error: result.error };
+            rows.push(...result.data as Store[]);
+            if (result.data.length < 1000) return { data: rows, error: null };
+          }
+        })(),
 
         supabase
           .from("products")
@@ -2541,6 +2543,7 @@ export default function AdminPage() {
             "store-comments" ? (
             <StoreCommentsAdminTab
               comments={storeComments}
+              stores={stores}
               onDelete={handleDeleteStoreComment}
               onRestore={handleRestoreStoreComment}
               onStoreHidden={async () => { await Promise.all([loadStoreInfoRequests(), loadAdminData()]); }}
@@ -2592,7 +2595,7 @@ export default function AdminPage() {
                 </button>
               </div>
               {storeInfoSubTab === "store-info" ? (
-                <StoreInfoRequestsAdminTab onStoreHidden={async () => { await Promise.all([loadStoreInfoRequests(), loadAdminData()]); }} requests={storeInfoRequests} history={storeInfoRequestHistory} products={products} onApprove={handleApproveStoreInfoRequest} onReject={handleRejectStoreInfoRequest} onUpdate={handleUpdateStoreInfoRequest} onWithdraw={handleWithdrawStoreInfoRequest} onDeleteProcessed={handleDeleteStoreInfoHistory} formatDate={formatDate} />
+                <StoreInfoRequestsAdminTab stores={stores} onStoreHidden={async () => { await Promise.all([loadStoreInfoRequests(), loadAdminData()]); }} requests={storeInfoRequests} history={storeInfoRequestHistory} products={products} onApprove={handleApproveStoreInfoRequest} onReject={handleRejectStoreInfoRequest} onUpdate={handleUpdateStoreInfoRequest} onWithdraw={handleWithdrawStoreInfoRequest} onDeleteProcessed={handleDeleteStoreInfoHistory} formatDate={formatDate} />
               ) : (
                 <BillboardInfoRequestsTab requests={billboardInfoRequests} stores={stores} processingId={billboardProcessingId} onApprove={handleApproveBillboardInfo} onReject={handleRejectBillboardInfo} onDeleteProcessed={handleDeleteBillboardHistory} formatDate={formatDate} />
               )}
@@ -2650,6 +2653,7 @@ export default function AdminPage() {
 }
 
 function StoreInfoRequestsAdminTab({
+  stores,
   onStoreHidden,
   requests,
   history,
@@ -2661,6 +2665,7 @@ function StoreInfoRequestsAdminTab({
   onDeleteProcessed,
   formatDate,
 }: {
+  stores: Store[];
   onStoreHidden: () => Promise<void>;
   requests: StoreInfoRequestAdmin[];
   history: StoreInfoRequestChangeHistory[];
@@ -3002,7 +3007,7 @@ function StoreInfoRequestsAdminTab({
           )}
         </div>
 
-        {request.request_type === "other" && request.detail.startsWith("[SALT BOY") && (request.status === "pending" || request.status === "approved") && <HideStoreAction sourceType="store_info" sourceId={request.id} storeName={request.store_name} defaultNote={request.detail.replace(/^\[SALT BOY[^\]]*\]\s*/, "")} onHidden={onStoreHidden} />}
+        {request.request_type === "other" && request.detail.startsWith("[SALT BOY") && (request.status === "pending" || request.status === "approved") && <HideStoreAction key={String(stores.find((store) => store.id === request.store_id)?.is_active)} isActive={stores.find((store) => store.id === request.store_id)?.is_active} sourceType="store_info" sourceId={request.id} storeName={request.store_name} defaultNote={request.detail.replace(/^\[SALT BOY[^\]]*\]\s*/, "")} onHidden={onStoreHidden} />}
 
         {processedRow && (
           <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
@@ -3080,12 +3085,14 @@ function StoreInfoRequestsAdminTab({
 }
 
 function StoreCommentsAdminTab({
+  stores,
   onStoreHidden,
   comments,
   onDelete,
   onRestore,
   formatDate,
 }: {
+  stores: Store[];
   onStoreHidden: () => Promise<void>;
   comments: StoreCommentAdmin[];
   onDelete: (id: number) => Promise<void>;
@@ -3156,7 +3163,7 @@ function StoreCommentsAdminTab({
               <div className="mt-3 whitespace-pre-wrap break-words rounded-xl bg-[#faf7fa] p-3 text-sm leading-6">
                 {comment.body}
               </div>
-              <HideStoreAction sourceType="store_comment" sourceId={comment.id} storeName={comment.store_name} defaultNote={comment.body} onHidden={onStoreHidden} />
+              <HideStoreAction key={String(stores.find((store) => store.id === comment.store_id)?.is_active)} isActive={stores.find((store) => store.id === comment.store_id)?.is_active} sourceType="store_comment" sourceId={comment.id} storeName={comment.store_name} defaultNote={comment.body} onHidden={onStoreHidden} />
             </div>
           ))
         )}
