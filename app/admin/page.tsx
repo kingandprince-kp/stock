@@ -8,6 +8,7 @@ import {
 } from "react";
 import { supabase } from "@/app/lib/supabase";
 import SaltBoyAdmin from "./salt-boy-admin";
+import HideStoreAction from "./hide-store-action";
 
 type InventoryReport = {
   id: number;
@@ -2542,6 +2543,7 @@ export default function AdminPage() {
               comments={storeComments}
               onDelete={handleDeleteStoreComment}
               onRestore={handleRestoreStoreComment}
+              onStoreHidden={async () => { await Promise.all([loadStoreInfoRequests(), loadAdminData()]); }}
               formatDate={formatDate}
             />
           ) : activeTab ===
@@ -2590,7 +2592,7 @@ export default function AdminPage() {
                 </button>
               </div>
               {storeInfoSubTab === "store-info" ? (
-                <StoreInfoRequestsAdminTab requests={storeInfoRequests} history={storeInfoRequestHistory} products={products} onApprove={handleApproveStoreInfoRequest} onReject={handleRejectStoreInfoRequest} onUpdate={handleUpdateStoreInfoRequest} onWithdraw={handleWithdrawStoreInfoRequest} onDeleteProcessed={handleDeleteStoreInfoHistory} formatDate={formatDate} />
+                <StoreInfoRequestsAdminTab onStoreHidden={async () => { await Promise.all([loadStoreInfoRequests(), loadAdminData()]); }} requests={storeInfoRequests} history={storeInfoRequestHistory} products={products} onApprove={handleApproveStoreInfoRequest} onReject={handleRejectStoreInfoRequest} onUpdate={handleUpdateStoreInfoRequest} onWithdraw={handleWithdrawStoreInfoRequest} onDeleteProcessed={handleDeleteStoreInfoHistory} formatDate={formatDate} />
               ) : (
                 <BillboardInfoRequestsTab requests={billboardInfoRequests} stores={stores} processingId={billboardProcessingId} onApprove={handleApproveBillboardInfo} onReject={handleRejectBillboardInfo} onDeleteProcessed={handleDeleteBillboardHistory} formatDate={formatDate} />
               )}
@@ -2648,6 +2650,7 @@ export default function AdminPage() {
 }
 
 function StoreInfoRequestsAdminTab({
+  onStoreHidden,
   requests,
   history,
   products,
@@ -2658,6 +2661,7 @@ function StoreInfoRequestsAdminTab({
   onDeleteProcessed,
   formatDate,
 }: {
+  onStoreHidden: () => Promise<void>;
   requests: StoreInfoRequestAdmin[];
   history: StoreInfoRequestChangeHistory[];
   products: Product[];
@@ -2998,6 +3002,8 @@ function StoreInfoRequestsAdminTab({
           )}
         </div>
 
+        {request.request_type === "other" && request.detail.startsWith("[SALT BOY") && (request.status === "pending" || request.status === "approved") && <HideStoreAction sourceType="store_info" sourceId={request.id} storeName={request.store_name} defaultNote={request.detail.replace(/^\[SALT BOY[^\]]*\]\s*/, "")} onHidden={onStoreHidden} />}
+
         {processedRow && (
           <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
             <input
@@ -3074,11 +3080,13 @@ function StoreInfoRequestsAdminTab({
 }
 
 function StoreCommentsAdminTab({
+  onStoreHidden,
   comments,
   onDelete,
   onRestore,
   formatDate,
 }: {
+  onStoreHidden: () => Promise<void>;
   comments: StoreCommentAdmin[];
   onDelete: (id: number) => Promise<void>;
   onRestore: (id: number) => Promise<void>;
@@ -3133,7 +3141,7 @@ function StoreCommentsAdminTab({
                     onClick={() => void onRestore(comment.id)}
                     className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold"
                   >
-                    復元
+                    コメントを復元
                   </button>
                 ) : (
                   <button
@@ -3141,13 +3149,14 @@ function StoreCommentsAdminTab({
                     onClick={() => void onDelete(comment.id)}
                     className="rounded-xl bg-red-600 px-3 py-2 text-sm font-bold text-white"
                   >
-                    非表示
+                    コメントを非表示
                   </button>
                 )}
               </div>
               <div className="mt-3 whitespace-pre-wrap break-words rounded-xl bg-[#faf7fa] p-3 text-sm leading-6">
                 {comment.body}
               </div>
+              <HideStoreAction sourceType="store_comment" sourceId={comment.id} storeName={comment.store_name} defaultNote={comment.body} onHidden={onStoreHidden} />
             </div>
           ))
         )}
@@ -3177,6 +3186,9 @@ function StoreChangeHistoryTab({
     oricon_target: "オリコン",
     billboard_status: "Billboard",
     is_active: "有効状態",
+    cd_handling_note: "CD取り扱い・店舗非表示の管理メモ",
+    cd_handling_source: "CD取り扱い・非表示の根拠",
+    cd_handling_verified_at: "根拠となる投稿日時",
     source: "登録元",
   };
 
